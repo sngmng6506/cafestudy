@@ -15,5 +15,6 @@ secrets.*
 *.secrets
 *.local
 dist/
+client/dist/
 coverage/
 npm-debug.log*

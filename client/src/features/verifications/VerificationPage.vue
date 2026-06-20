@@ -1,0 +1,241 @@
+<script setup>
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { Camera, Image as ImageIcon, RotateCcw } from '@lucide/vue';
+import { apiFetch } from '../../shared/api.js';
+import { compressImage } from '../../shared/image-compression.js';
+
+const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
+
+const photoInput = ref(null);
+const meetups = ref([]);
+const selectedMeetupId = ref('');
+const compressedFile = ref(null);
+const previewUrl = ref('');
+const originalSize = ref(0);
+const status = ref('');
+const errorMessage = ref('');
+const submitting = ref(false);
+
+const compressedSize = computed(() => compressedFile.value?.size ?? 0);
+const compressionRatio = computed(() => {
+  if (!originalSize.value || !compressedSize.value) return '';
+  const ratio = Math.round((1 - compressedSize.value / originalSize.value) * 100);
+  return `${Math.max(0, ratio)}% 감소`;
+});
+
+onBeforeUnmount(() => {
+  clearPreviewUrl();
+});
+
+onMounted(() => {
+  void loadMeetups();
+});
+
+async function loadMeetups() {
+  try {
+    const body = await apiFetch('/api/meetups');
+    meetups.value = body.data;
+    selectedMeetupId.value = body.data[0]?.id ?? '';
+  } catch (error) {
+    errorMessage.value = error.message;
+  }
+}
+
+function openCamera() {
+  photoInput.value?.click();
+}
+
+async function handlePhotoChange(event) {
+  const [file] = event.target.files ?? [];
+  resetPhoto();
+
+  if (!file) return;
+
+  originalSize.value = file.size;
+  status.value = '압축 중입니다.';
+
+  try {
+    const nextFile = await compressImage(file, { maxEdge: 1600, quality: 0.8 });
+    compressedFile.value = nextFile;
+    previewUrl.value = URL.createObjectURL(nextFile);
+    status.value = '압축본이 준비되었습니다.';
+  } catch (error) {
+    errorMessage.value = error.message;
+    status.value = '';
+  } finally {
+    event.target.value = '';
+  }
+}
+
+function resetPhoto() {
+  clearPreviewUrl();
+  compressedFile.value = null;
+  originalSize.value = 0;
+  status.value = '';
+  errorMessage.value = '';
+}
+
+async function submitVerification() {
+  errorMessage.value = '';
+
+  if (!selectedMeetupId.value) {
+    errorMessage.value = '인증할 모임을 선택하세요.';
+    return;
+  }
+
+  if (!compressedFile.value) {
+    errorMessage.value = '인증 사진을 먼저 촬영하세요.';
+    return;
+  }
+
+  submitting.value = true;
+  status.value = '업로드 중입니다.';
+
+  try {
+    const upload = await apiFetch('/api/verifications/upload-url', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': DEMO_USER_ID,
+      },
+      body: JSON.stringify({
+        meetupId: selectedMeetupId.value,
+        contentType: compressedFile.value.type,
+      }),
+    });
+
+    const uploadResponse = await fetch(upload.data.uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': compressedFile.value.type,
+      },
+      body: compressedFile.value,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error('사진 업로드에 실패했습니다.');
+    }
+
+    await apiFetch('/api/verifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': DEMO_USER_ID,
+      },
+      body: JSON.stringify({
+        meetupId: selectedMeetupId.value,
+        photoUrl: upload.data.photoUrl,
+      }),
+    });
+
+    status.value = '인증이 완료되어 10점이 지급되었습니다.';
+  } catch (error) {
+    errorMessage.value = error.message;
+    status.value = '';
+  } finally {
+    submitting.value = false;
+  }
+}
+
+function clearPreviewUrl() {
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value);
+    previewUrl.value = '';
+  }
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '-';
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+}
+</script>
+
+<template>
+  <section class="verification-layout">
+    <section class="panel verification-panel">
+      <div class="panel-heading">
+        <Camera :size="18" />
+        <h2>사진 인증</h2>
+      </div>
+
+      <p class="helper-copy">
+        모바일에서는 사진 촬영 버튼을 누르면 카메라가 우선 열립니다.
+        원본은 저장하지 않고 압축본만 업로드 대상으로 준비합니다.
+      </p>
+
+      <label>
+        모임
+        <select v-model="selectedMeetupId">
+          <option value="" disabled>모임을 선택하세요</option>
+          <option v-for="meetup in meetups" :key="meetup.id" :value="meetup.id">
+            {{ meetup.title }} - {{ meetup.cafeName }}
+          </option>
+        </select>
+      </label>
+
+      <input
+        ref="photoInput"
+        class="visually-hidden"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        @change="handlePhotoChange"
+      />
+
+      <button class="primary-button capture-button" type="button" @click="openCamera">
+        <Camera :size="18" />
+        사진 촬영
+      </button>
+
+      <button
+        v-if="compressedFile"
+        class="secondary-button"
+        type="button"
+        @click="resetPhoto"
+      >
+        <RotateCcw :size="16" />
+        다시 촬영
+      </button>
+
+      <button
+        class="primary-button submit-verification-button"
+        type="button"
+        :disabled="submitting || !compressedFile || !selectedMeetupId"
+        @click="submitVerification"
+      >
+        인증 제출
+      </button>
+
+      <p v-if="status" class="status success">{{ status }}</p>
+      <p v-if="errorMessage" class="status error">{{ errorMessage }}</p>
+    </section>
+
+    <section class="panel verification-panel">
+      <div class="panel-heading">
+        <ImageIcon :size="18" />
+        <h2>압축 결과</h2>
+      </div>
+
+      <div v-if="previewUrl" class="photo-preview">
+        <img :src="previewUrl" alt="압축된 인증 사진 미리보기" />
+      </div>
+      <p v-else class="empty">아직 준비된 인증 사진이 없습니다.</p>
+
+      <dl class="compression-stats">
+        <div>
+          <dt>원본</dt>
+          <dd>{{ formatBytes(originalSize) }}</dd>
+        </div>
+        <div>
+          <dt>압축본</dt>
+          <dd>{{ formatBytes(compressedSize) }}</dd>
+        </div>
+        <div>
+          <dt>절감</dt>
+          <dd>{{ compressionRatio || '-' }}</dd>
+        </div>
+      </dl>
+    </section>
+  </section>
+</template>

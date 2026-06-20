@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "vite build --config client/vite.config.js",
     "dev": "node --watch src/server.js",
+    "dev:web": "vite --config client/vite.config.js",
     "start": "node src/server.js",
     "db:migrate": "node scripts/migrate.js",
     "test": "node --test"
@@ -13,10 +15,15 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1073.0",
+    "@aws-sdk/s3-request-presigner": "^3.1073.0",
+    "@lucide/vue": "^1.21.0",
+    "@vitejs/plugin-vue": "^6.0.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "pg": "^8.13.1"
-  },
-  "devDependencies": {}
+    "pg": "^8.13.1",
+    "vite": "^8.0.16",
+    "vue": "^3.5.38"
+  }
 }

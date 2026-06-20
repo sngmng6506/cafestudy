@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { createApp } from './app.js';
 import { createAuth } from './core/auth.js';
 import { createDb } from './core/db.js';
+import { createStorage } from './core/storage.js';
 
 const config = {
   env: process.env.NODE_ENV ?? 'development',
@@ -10,7 +11,8 @@ const config = {
 
 const db = createDb({ connectionString: process.env.DATABASE_URL });
 const auth = createAuth({ env: config.env });
-const app = await createApp({ db, auth, config });
+const storage = createStorage(process.env);
+const app = await createApp({ db, auth, storage, config });
 
 app.listen(config.port, () => {
   console.log(`cafestudy API listening on ${config.port}`);
