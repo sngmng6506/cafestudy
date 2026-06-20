@@ -1,19 +1,27 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { RefreshCw, Trophy } from '@lucide/vue';
+import { ChevronLeft, ChevronRight, Trophy } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 
-const mode = ref('all-time');
+const now = new Date();
+const CURRENT = { year: now.getFullYear(), month: now.getMonth() + 1 };
+
+const mode = ref('monthly');
 const rankings = ref([]);
 const loading = ref(true);
 const errorMessage = ref('');
+const cursor = ref({ ...CURRENT });
 
 const title = computed(() => (mode.value === 'monthly' ? '월간 랭킹' : '누적 랭킹'));
-const emptyMessage = computed(() => (
+const monthLabel = computed(() => `${cursor.value.year}년 ${cursor.value.month}월`);
+const isCurrentMonth = computed(
+  () => cursor.value.year === CURRENT.year && cursor.value.month === CURRENT.month,
+);
+const emptyMessage = computed(() =>
   mode.value === 'monthly'
-    ? '이번 달 포인트 기록이 아직 없습니다.'
-    : '아직 포인트를 얻은 사용자가 없습니다.'
-));
+    ? '이 달에 쌓인 포인트가 아직 없습니다.'
+    : '아직 포인트를 얻은 사용자가 없습니다.',
+);
 
 onMounted(() => {
   void loadRanking();
@@ -21,7 +29,21 @@ onMounted(() => {
 
 async function switchMode(nextMode) {
   mode.value = nextMode;
+  if (nextMode === 'monthly') cursor.value = { ...CURRENT };
   await loadRanking();
+}
+
+function shiftMonth(delta) {
+  const date = new Date(cursor.value.year, cursor.value.month - 1 + delta, 1);
+  const next = { year: date.getFullYear(), month: date.getMonth() + 1 };
+
+  // Never navigate into the future.
+  if (next.year > CURRENT.year || (next.year === CURRENT.year && next.month > CURRENT.month)) {
+    return;
+  }
+
+  cursor.value = next;
+  void loadRanking();
 }
 
 async function loadRanking() {
@@ -29,7 +51,10 @@ async function loadRanking() {
   errorMessage.value = '';
 
   try {
-    const endpoint = mode.value === 'monthly' ? '/api/ranking/monthly' : '/api/ranking/all-time';
+    const endpoint =
+      mode.value === 'monthly'
+        ? `/api/ranking/monthly?year=${cursor.value.year}&month=${cursor.value.month}`
+        : '/api/ranking/all-time';
     const body = await apiFetch(endpoint);
     rankings.value = body.data;
   } catch (error) {
@@ -41,29 +66,27 @@ async function loadRanking() {
 </script>
 
 <template>
-  <section class="mx-auto grid max-w-2xl gap-5">
+  <section class="grid gap-5">
     <section class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
-      <div class="mb-5 flex items-start justify-between gap-3">
-        <div class="flex items-center gap-2">
-          <Trophy :size="19" class="text-[#16A34A]" />
-          <div>
-            <h2 class="text-lg font-semibold text-[#191F28]">{{ title }}</h2>
-            <p class="mt-1 text-sm font-medium text-[#8B95A1]">
-              인증으로 쌓인 포인트를 기준으로 정렬합니다.
-            </p>
-          </div>
+      <div class="mb-5 flex items-center gap-2">
+        <Trophy :size="19" class="text-[#16A34A]" />
+        <div>
+          <h2 class="text-lg font-semibold text-[#191F28]">{{ title }}</h2>
+          <p class="mt-1 text-sm font-medium text-[#8B95A1]">
+            인증으로 쌓인 포인트를 기준으로 정렬합니다.
+          </p>
         </div>
-        <button
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#E5E8EB] text-[#8B95A1] transition hover:text-[#191F28]"
-          type="button"
-          aria-label="새로고침"
-          @click="loadRanking"
-        >
-          <RefreshCw :size="17" />
-        </button>
       </div>
 
       <div class="mb-5 grid grid-cols-2 rounded-2xl border border-[#E5E8EB] bg-[#F9FAFB] p-1">
+        <button
+          class="h-11 rounded-xl text-[15px] font-semibold transition"
+          :class="mode === 'monthly' ? 'bg-white text-[#191F28] shadow-sm' : 'text-[#8B95A1]'"
+          type="button"
+          @click="switchMode('monthly')"
+        >
+          월간
+        </button>
         <button
           class="h-11 rounded-xl text-[15px] font-semibold transition"
           :class="mode === 'all-time' ? 'bg-white text-[#191F28] shadow-sm' : 'text-[#8B95A1]'"
@@ -72,13 +95,26 @@ async function loadRanking() {
         >
           누적
         </button>
+      </div>
+
+      <div v-if="mode === 'monthly'" class="mb-5 flex items-center justify-center gap-2">
         <button
-          class="h-11 rounded-xl text-[15px] font-semibold transition"
-          :class="mode === 'monthly' ? 'bg-white text-[#191F28] shadow-sm' : 'text-[#8B95A1]'"
+          class="flex h-9 w-9 items-center justify-center rounded-xl text-[#8B95A1] transition hover:bg-[#F9FAFB] hover:text-[#191F28]"
           type="button"
-          @click="switchMode('monthly')"
+          aria-label="이전 달"
+          @click="shiftMonth(-1)"
         >
-          월간
+          <ChevronLeft :size="18" />
+        </button>
+        <span class="min-w-[100px] text-center text-[15px] font-semibold text-[#191F28]">{{ monthLabel }}</span>
+        <button
+          class="flex h-9 w-9 items-center justify-center rounded-xl text-[#8B95A1] transition hover:bg-[#F9FAFB] hover:text-[#191F28] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#8B95A1]"
+          type="button"
+          aria-label="다음 달"
+          :disabled="isCurrentMonth"
+          @click="shiftMonth(1)"
+        >
+          <ChevronRight :size="18" />
         </button>
       </div>
 

@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { getCurrentMonthRange } from '../src/features/ranking/ranking.service.js';
+import { getCurrentMonthRange, getMonthRange } from '../src/features/ranking/ranking.service.js';
+
+test('getMonthRange computes a specific past month in Asia/Seoul', () => {
+  // January 2026 (month0 = 0) in KST starts 2025-12-31T15:00Z and ends 2026-01-31T15:00Z.
+  const { start, end } = getMonthRange(2026, 0);
+  assert.equal(start, '2025-12-31T15:00:00.000Z');
+  assert.equal(end, '2026-01-31T15:00:00.000Z');
+});
 
 test('month range uses Asia/Seoul boundaries, not UTC', () => {
   // 2026-06-01 03:00 KST is still 2026-05-31 18:00 UTC.

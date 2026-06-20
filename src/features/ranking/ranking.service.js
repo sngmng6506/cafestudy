@@ -12,26 +12,32 @@ export function createRankingService({ db }) {
       return queries.getAllTimeRanking();
     },
 
-    getMonthlyRanking() {
-      const { start, end } = getCurrentMonthRange();
-      return queries.getMonthlyRanking({ start, end });
+    // `year` + `month` (1-12) select a specific month; omitted -> current month.
+    getMonthlyRanking({ year, month } = {}) {
+      const range =
+        Number.isInteger(year) && Number.isInteger(month)
+          ? getMonthRange(year, month - 1)
+          : getCurrentMonthRange();
+
+      return queries.getMonthlyRanking(range);
     },
   };
 }
 
-// Returns the [start, end) instants of the current Asia/Seoul calendar month,
-// as UTC ISO strings suitable for comparing against `timestamptz` columns.
-// `now` is injectable for testing.
-export function getCurrentMonthRange(now = new Date()) {
-  const seoulNow = new Date(now.getTime() + SEOUL_OFFSET_MS);
-  const year = seoulNow.getUTCFullYear();
-  const month = seoulNow.getUTCMonth();
-
-  const start = new Date(Date.UTC(year, month, 1) - SEOUL_OFFSET_MS);
-  const end = new Date(Date.UTC(year, month + 1, 1) - SEOUL_OFFSET_MS);
+// [start, end) UTC ISO instants for the given Asia/Seoul calendar month (month0: 0-11),
+// suitable for comparing against `timestamptz` columns.
+export function getMonthRange(year, month0) {
+  const start = new Date(Date.UTC(year, month0, 1) - SEOUL_OFFSET_MS);
+  const end = new Date(Date.UTC(year, month0 + 1, 1) - SEOUL_OFFSET_MS);
 
   return {
     start: start.toISOString(),
     end: end.toISOString(),
   };
+}
+
+// The current Asia/Seoul calendar month. `now` is injectable for testing.
+export function getCurrentMonthRange(now = new Date()) {
+  const seoulNow = new Date(now.getTime() + SEOUL_OFFSET_MS);
+  return getMonthRange(seoulNow.getUTCFullYear(), seoulNow.getUTCMonth());
 }
