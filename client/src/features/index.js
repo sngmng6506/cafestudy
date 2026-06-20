@@ -1,6 +1,7 @@
-import { CalendarDays, Camera, Home } from '@lucide/vue';
+import { CalendarDays, Camera, Home, Trophy } from '@lucide/vue';
 import HomePage from './home/HomePage.vue';
 import MeetupPage from './meetups/MeetupPage.vue';
+import RankingPage from './ranking/RankingPage.vue';
 import VerificationPage from './verifications/VerificationPage.vue';
 
 export const features = [
@@ -24,5 +25,12 @@ export const features = [
     order: 20,
     icon: Camera,
     component: VerificationPage,
+  },
+  {
+    name: 'ranking',
+    label: '랭킹',
+    order: 30,
+    icon: Trophy,
+    component: RankingPage,
   },
 ];

@@ -13,6 +13,7 @@ const originalSize = ref(0);
 const status = ref('');
 const errorMessage = ref('');
 const submitting = ref(false);
+const showSuccessEffect = ref(false);
 
 const compressedSize = computed(() => compressedFile.value?.size ?? 0);
 const compressionRatio = computed(() => {
@@ -71,6 +72,7 @@ function resetPhoto() {
   originalSize.value = 0;
   status.value = '';
   errorMessage.value = '';
+  showSuccessEffect.value = false;
 }
 
 async function submitVerification() {
@@ -125,12 +127,20 @@ async function submitVerification() {
     });
 
     status.value = '인증이 완료되어 10점이 지급되었습니다.';
+    triggerSuccessEffect();
   } catch (error) {
     errorMessage.value = error.message;
     status.value = '';
   } finally {
     submitting.value = false;
   }
+}
+
+function triggerSuccessEffect() {
+  showSuccessEffect.value = true;
+  window.setTimeout(() => {
+    showSuccessEffect.value = false;
+  }, 1200);
 }
 
 function clearPreviewUrl() {
@@ -206,7 +216,14 @@ function formatBytes(bytes) {
         인증 제출
       </button>
 
-      <p v-if="status" class="mt-4 text-sm font-semibold text-[#16A34A]">{{ status }}</p>
+      <div v-if="showSuccessEffect" class="success-burst" aria-hidden="true">
+        <span v-for="index in 12" :key="index" />
+      </div>
+
+      <div v-if="status" class="mt-4 rounded-2xl border border-[#E5E8EB] bg-[#F9FAFB] p-4">
+        <p class="text-sm font-semibold text-[#16A34A]">{{ status }}</p>
+        <p v-if="showSuccessEffect" class="mt-1 text-2xl font-bold text-[#191F28]">+10 포인트</p>
+      </div>
       <p v-if="errorMessage" class="mt-4 text-sm font-semibold text-[#F04452]">{{ errorMessage }}</p>
     </section>
 

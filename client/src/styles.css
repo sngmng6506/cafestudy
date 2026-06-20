@@ -47,3 +47,54 @@ button {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+.success-burst {
+  position: relative;
+  height: 0;
+  pointer-events: none;
+}
+
+.success-burst span {
+  position: absolute;
+  left: 50%;
+  top: -18px;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: #16a34a;
+  opacity: 0;
+  animation: success-burst 900ms ease-out forwards;
+}
+
+.success-burst span:nth-child(2n) {
+  background: #86efac;
+}
+
+.success-burst span:nth-child(1) { --x: -72px; --y: -42px; animation-delay: 0ms; }
+.success-burst span:nth-child(2) { --x: -48px; --y: -68px; animation-delay: 30ms; }
+.success-burst span:nth-child(3) { --x: -18px; --y: -54px; animation-delay: 20ms; }
+.success-burst span:nth-child(4) { --x: 18px; --y: -70px; animation-delay: 40ms; }
+.success-burst span:nth-child(5) { --x: 48px; --y: -48px; animation-delay: 10ms; }
+.success-burst span:nth-child(6) { --x: 72px; --y: -26px; animation-delay: 45ms; }
+.success-burst span:nth-child(7) { --x: -66px; --y: 10px; animation-delay: 25ms; }
+.success-burst span:nth-child(8) { --x: -34px; --y: 22px; animation-delay: 50ms; }
+.success-burst span:nth-child(9) { --x: 0; --y: 28px; animation-delay: 15ms; }
+.success-burst span:nth-child(10) { --x: 34px; --y: 18px; animation-delay: 35ms; }
+.success-burst span:nth-child(11) { --x: 62px; --y: 4px; animation-delay: 55ms; }
+.success-burst span:nth-child(12) { --x: 6px; --y: -92px; animation-delay: 5ms; }
+
+@keyframes success-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.4);
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--x)), var(--y)) scale(1);
+  }
+}

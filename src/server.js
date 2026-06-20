@@ -1,8 +1,10 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import { createApp } from './app.js';
 import { createAuth } from './core/auth.js';
 import { createDb } from './core/db.js';
 import { createStorage } from './core/storage.js';
+
+dotenv.config({ override: true });
 
 const config = {
   env: process.env.NODE_ENV ?? 'development',
