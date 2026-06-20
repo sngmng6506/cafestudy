@@ -1,9 +1,13 @@
-import { CalendarDays, Camera, Home, Trophy } from '@lucide/vue';
+import { CalendarDays, Camera, Dices, Home, Trophy } from '@lucide/vue';
 import HomePage from './home/HomePage.vue';
 import MeetupPage from './meetups/MeetupPage.vue';
 import RankingPage from './ranking/RankingPage.vue';
 import VerificationPage from './verifications/VerificationPage.vue';
+import DicePage from './dice/DicePage.vue';
 
+// `primary: true` pins a feature to the bottom tab bar. Features without it
+// (extra/non-core features contributors add later) collect in the "더보기" sheet,
+// so core navigation never gets crowded out as features grow.
 export const features = [
   {
     name: 'home',
@@ -11,6 +15,7 @@ export const features = [
     order: 0,
     icon: Home,
     component: HomePage,
+    primary: true,
   },
   {
     name: 'meetups',
@@ -18,6 +23,7 @@ export const features = [
     order: 10,
     icon: CalendarDays,
     component: MeetupPage,
+    primary: true,
   },
   {
     name: 'verifications',
@@ -25,6 +31,7 @@ export const features = [
     order: 20,
     icon: Camera,
     component: VerificationPage,
+    primary: true,
   },
   {
     name: 'ranking',
@@ -32,5 +39,13 @@ export const features = [
     order: 30,
     icon: Trophy,
     component: RankingPage,
+    primary: true,
+  },
+  {
+    name: 'dice',
+    label: '주사위',
+    order: 100,
+    icon: Dices,
+    component: DicePage,
   },
 ];

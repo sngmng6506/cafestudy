@@ -158,7 +158,7 @@ function formatBytes(bytes) {
 </script>
 
 <template>
-  <section class="grid gap-5 lg:grid-cols-[minmax(300px,380px)_1fr]">
+  <section class="grid gap-5">
     <section class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
       <div class="mb-5 flex items-center gap-2">
         <Camera :size="18" class="text-[#16A34A]" />
@@ -178,7 +178,7 @@ function formatBytes(bytes) {
         >
           <option value="" disabled>모임을 선택하세요</option>
           <option v-for="meetup in meetups" :key="meetup.id" :value="meetup.id">
-            {{ meetup.title }} - {{ meetup.cafeName }}
+            {{ meetup.title }}
           </option>
         </select>
       </label>
@@ -240,7 +240,7 @@ function formatBytes(bytes) {
         아직 준비된 인증 사진이 없습니다.
       </p>
 
-      <dl class="mt-5 grid gap-3 sm:grid-cols-3">
+      <dl class="mt-5 grid grid-cols-3 gap-3">
         <div class="rounded-xl border border-[#E5E8EB] bg-[#F9FAFB] p-4">
           <dt class="text-sm font-semibold text-[#8B95A1]">원본</dt>
           <dd class="mt-1 text-base font-bold text-[#191F28]">{{ formatBytes(originalSize) }}</dd>
