@@ -7,7 +7,7 @@ export function createVerificationService({ db, storage }) {
   const queries = createVerificationQueries(db);
 
   return {
-    createUploadUrl({ userId, meetupId, contentType }) {
+    async createUploadUrl({ userId, meetupId, contentType }) {
       if (!meetupId) {
         throwValidationError('meetupId is required');
       }
@@ -15,6 +15,8 @@ export function createVerificationService({ db, storage }) {
       if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
         throwValidationError('Only jpeg, png, and webp images are allowed');
       }
+
+      await ensureHost(meetupId, userId);
 
       return storage.createUploadUrl({
         prefix: `verifications/${meetupId}/${userId}`,
@@ -30,6 +32,8 @@ export function createVerificationService({ db, storage }) {
       if (!photoUrl) {
         throwValidationError('photoUrl is required');
       }
+
+      await ensureHost(meetupId, userId);
 
       try {
         return await queries.createVerificationWithPoints({
@@ -50,6 +54,25 @@ export function createVerificationService({ db, storage }) {
       }
     },
   };
+
+  // Only the meetup's host may verify it.
+  async function ensureHost(meetupId, userId) {
+    const meetup = await queries.getMeetupHost(meetupId);
+
+    if (!meetup) {
+      const error = new Error('모임을 찾을 수 없습니다.');
+      error.statusCode = 404;
+      error.code = 'MEETUP_NOT_FOUND';
+      throw error;
+    }
+
+    if (meetup.hostId !== userId) {
+      const error = new Error('모임 개설자만 인증할 수 있습니다.');
+      error.statusCode = 403;
+      error.code = 'NOT_MEETUP_HOST';
+      throw error;
+    }
+  }
 }
 
 function throwValidationError(message) {

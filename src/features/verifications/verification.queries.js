@@ -1,5 +1,14 @@
 export function createVerificationQueries(db) {
   return {
+    async getMeetupHost(meetupId) {
+      const result = await db.query(
+        `SELECT host_id AS "hostId" FROM meetups WHERE id = $1`,
+        [meetupId],
+      );
+
+      return result.rows[0];
+    },
+
     createVerificationWithPoints({ userId, meetupId, photoUrl, points }) {
       return db.transaction(async (client) => {
         const verificationResult = await client.query(

@@ -14,5 +14,11 @@ export function createAuth({ env }) {
 
       return res.status(401).json(fail('UNAUTHENTICATED', 'Authentication is required'));
     },
+
+    // Resolves the current user without rejecting — for public reads that still
+    // want to personalize (e.g. "have I joined this meetup?").
+    userId(req) {
+      return req.header('x-user-id') || DEMO_USER_ID;
+    },
   };
 }
