@@ -4,8 +4,6 @@ import { Camera, Image as ImageIcon, RotateCcw } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { compressImage } from '../../shared/image-compression.js';
 
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
-
 const photoInput = ref(null);
 const meetups = ref([]);
 const selectedMeetupId = ref('');
@@ -96,7 +94,6 @@ async function submitVerification() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-user-id': DEMO_USER_ID,
       },
       body: JSON.stringify({
         meetupId: selectedMeetupId.value,
@@ -120,7 +117,6 @@ async function submitVerification() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-user-id': DEMO_USER_ID,
       },
       body: JSON.stringify({
         meetupId: selectedMeetupId.value,
@@ -152,21 +148,24 @@ function formatBytes(bytes) {
 </script>
 
 <template>
-  <section class="verification-layout">
-    <section class="panel verification-panel">
-      <div class="panel-heading">
-        <Camera :size="18" />
-        <h2>사진 인증</h2>
+  <section class="grid gap-5 lg:grid-cols-[minmax(300px,380px)_1fr]">
+    <section class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
+      <div class="mb-5 flex items-center gap-2">
+        <Camera :size="18" class="text-[#16A34A]" />
+        <h2 class="text-lg font-semibold text-[#191F28]">사진 인증</h2>
       </div>
 
-      <p class="helper-copy">
+      <p class="mb-5 text-[15px] leading-7 text-[#8B95A1]">
         모바일에서는 사진 촬영 버튼을 누르면 카메라가 우선 열립니다.
-        원본은 저장하지 않고 압축본만 업로드 대상으로 준비합니다.
+        원본은 저장하지 않고 압축본만 업로드합니다.
       </p>
 
-      <label>
+      <label class="mb-4 grid gap-2 text-sm font-semibold text-[#191F28]">
         모임
-        <select v-model="selectedMeetupId">
+        <select
+          v-model="selectedMeetupId"
+          class="h-12 rounded-xl border border-[#E5E8EB] bg-white px-4 text-[15px] font-medium outline-none transition focus:border-[#16A34A]"
+        >
           <option value="" disabled>모임을 선택하세요</option>
           <option v-for="meetup in meetups" :key="meetup.id" :value="meetup.id">
             {{ meetup.title }} - {{ meetup.cafeName }}
@@ -183,14 +182,14 @@ function formatBytes(bytes) {
         @change="handlePhotoChange"
       />
 
-      <button class="primary-button capture-button" type="button" @click="openCamera">
+      <button class="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#16A34A] text-[15px] font-semibold text-white transition hover:opacity-90" type="button" @click="openCamera">
         <Camera :size="18" />
         사진 촬영
       </button>
 
       <button
         v-if="compressedFile"
-        class="secondary-button"
+        class="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#E5E8EB] bg-white text-[15px] font-semibold text-[#191F28] transition hover:bg-[#F9FAFB]"
         type="button"
         @click="resetPhoto"
       >
@@ -199,7 +198,7 @@ function formatBytes(bytes) {
       </button>
 
       <button
-        class="primary-button submit-verification-button"
+        class="flex h-12 w-full items-center justify-center rounded-xl bg-[#16A34A] text-[15px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         type="button"
         :disabled="submitting || !compressedFile || !selectedMeetupId"
         @click="submitVerification"
@@ -207,33 +206,35 @@ function formatBytes(bytes) {
         인증 제출
       </button>
 
-      <p v-if="status" class="status success">{{ status }}</p>
-      <p v-if="errorMessage" class="status error">{{ errorMessage }}</p>
+      <p v-if="status" class="mt-4 text-sm font-semibold text-[#16A34A]">{{ status }}</p>
+      <p v-if="errorMessage" class="mt-4 text-sm font-semibold text-[#F04452]">{{ errorMessage }}</p>
     </section>
 
-    <section class="panel verification-panel">
-      <div class="panel-heading">
-        <ImageIcon :size="18" />
-        <h2>압축 결과</h2>
+    <section class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
+      <div class="mb-5 flex items-center gap-2">
+        <ImageIcon :size="18" class="text-[#16A34A]" />
+        <h2 class="text-lg font-semibold text-[#191F28]">압축 결과</h2>
       </div>
 
-      <div v-if="previewUrl" class="photo-preview">
-        <img :src="previewUrl" alt="압축된 인증 사진 미리보기" />
+      <div v-if="previewUrl" class="overflow-hidden rounded-2xl border border-[#E5E8EB] bg-[#F9FAFB]">
+        <img class="block max-h-[520px] w-full object-contain" :src="previewUrl" alt="압축된 인증 사진 미리보기" />
       </div>
-      <p v-else class="empty">아직 준비된 인증 사진이 없습니다.</p>
+      <p v-else class="rounded-2xl border border-dashed border-[#E5E8EB] bg-[#F9FAFB] px-5 py-10 text-center text-[15px] text-[#8B95A1]">
+        아직 준비된 인증 사진이 없습니다.
+      </p>
 
-      <dl class="compression-stats">
-        <div>
-          <dt>원본</dt>
-          <dd>{{ formatBytes(originalSize) }}</dd>
+      <dl class="mt-5 grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl border border-[#E5E8EB] bg-[#F9FAFB] p-4">
+          <dt class="text-sm font-semibold text-[#8B95A1]">원본</dt>
+          <dd class="mt-1 text-base font-bold text-[#191F28]">{{ formatBytes(originalSize) }}</dd>
         </div>
-        <div>
-          <dt>압축본</dt>
-          <dd>{{ formatBytes(compressedSize) }}</dd>
+        <div class="rounded-xl border border-[#E5E8EB] bg-[#F9FAFB] p-4">
+          <dt class="text-sm font-semibold text-[#8B95A1]">압축본</dt>
+          <dd class="mt-1 text-base font-bold text-[#191F28]">{{ formatBytes(compressedSize) }}</dd>
         </div>
-        <div>
-          <dt>절감</dt>
-          <dd>{{ compressionRatio || '-' }}</dd>
+        <div class="rounded-xl border border-[#E5E8EB] bg-[#F9FAFB] p-4">
+          <dt class="text-sm font-semibold text-[#8B95A1]">절감</dt>
+          <dd class="mt-1 text-base font-bold text-[#191F28]">{{ compressionRatio || '-' }}</dd>
         </div>
       </dl>
     </section>

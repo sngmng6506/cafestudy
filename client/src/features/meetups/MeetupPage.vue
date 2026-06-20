@@ -3,8 +3,6 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { CalendarDays, ExternalLink, MapPin, Plus, RefreshCw } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
-
 const meetups = ref([]);
 const loading = ref(true);
 const status = reactive({ type: 'idle', message: '' });
@@ -45,7 +43,6 @@ async function createMeetup() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-user-id': DEMO_USER_ID,
       },
       body: JSON.stringify({
         title: form.title.trim(),
@@ -105,78 +102,98 @@ function mapQuery(meetup) {
 </script>
 
 <template>
-  <section class="workspace">
-    <form class="panel create-panel" @submit.prevent="createMeetup">
-      <div class="panel-heading">
-        <Plus :size="18" />
-        <h2>모임 개설</h2>
+  <section class="grid gap-5 lg:grid-cols-[minmax(300px,380px)_1fr]">
+    <form class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm" @submit.prevent="createMeetup">
+      <div class="mb-5 flex items-center gap-2">
+        <Plus :size="18" class="text-[#16A34A]" />
+        <h2 class="text-lg font-semibold text-[#191F28]">모임 개설</h2>
       </div>
 
-      <label>
+      <label class="mb-4 grid gap-2 text-sm font-semibold text-[#191F28]">
         제목
-        <input v-model="form.title" placeholder="예: 토요일 AI 논문 읽기" required />
+        <input
+          v-model="form.title"
+          class="h-12 rounded-xl border border-[#E5E8EB] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#8B95A1] focus:border-[#16A34A]"
+          placeholder="예: 토요일 AI 논문 읽기"
+          required
+        />
       </label>
 
-      <label>
+      <label class="mb-4 grid gap-2 text-sm font-semibold text-[#191F28]">
         카페명
-        <input v-model="form.cafeName" placeholder="예: 강남 커피랩" required />
+        <input
+          v-model="form.cafeName"
+          class="h-12 rounded-xl border border-[#E5E8EB] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#8B95A1] focus:border-[#16A34A]"
+          placeholder="예: 강남 커피랩"
+          required
+        />
       </label>
 
-      <label>
+      <label class="mb-4 grid gap-2 text-sm font-semibold text-[#191F28]">
         위치
-        <input v-model="form.location" placeholder="예: 강남역 11번 출구" required />
+        <input
+          v-model="form.location"
+          class="h-12 rounded-xl border border-[#E5E8EB] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#8B95A1] focus:border-[#16A34A]"
+          placeholder="예: 강남역 11번 출구"
+          required
+        />
       </label>
 
-      <label>
+      <label class="mb-5 grid gap-2 text-sm font-semibold text-[#191F28]">
         일정
-        <input v-model="form.scheduledAt" type="datetime-local" required />
+        <input
+          v-model="form.scheduledAt"
+          class="h-12 rounded-xl border border-[#E5E8EB] px-4 text-[15px] font-medium outline-none transition focus:border-[#16A34A]"
+          type="datetime-local"
+          required
+        />
       </label>
 
-      <button class="primary-button" type="submit">
+      <button class="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#16A34A] text-[15px] font-semibold text-white transition hover:opacity-90" type="submit">
         <Plus :size="17" />
         개설
       </button>
 
-      <p v-if="status.message" class="status" :class="status.type">
+      <p v-if="status.message" class="mt-4 text-sm font-semibold" :class="status.type === 'error' ? 'text-[#F04452]' : 'text-[#16A34A]'">
         {{ status.message }}
       </p>
     </form>
 
-    <section class="panel list-panel">
-      <div class="panel-heading split">
-        <div class="heading-title">
-          <CalendarDays :size="18" />
-          <h2>공개 모임</h2>
+    <section class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
+      <div class="mb-5 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <CalendarDays :size="18" class="text-[#16A34A]" />
+          <h2 class="text-lg font-semibold text-[#191F28]">공개 모임</h2>
         </div>
-        <button class="icon-button compact" type="button" aria-label="새로고침" @click="loadMeetups">
+        <button class="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E5E8EB] text-[#8B95A1] transition hover:text-[#191F28]" type="button" aria-label="새로고침" @click="loadMeetups">
           <RefreshCw :size="17" />
         </button>
       </div>
 
-      <p v-if="loading" class="empty">불러오는 중입니다.</p>
-      <p v-else-if="sortedMeetups.length === 0" class="empty">
+      <p v-if="loading" class="py-6 text-[15px] text-[#8B95A1]">불러오는 중입니다.</p>
+      <p v-else-if="sortedMeetups.length === 0" class="py-6 text-[15px] text-[#8B95A1]">
         아직 개설된 모임이 없습니다.
       </p>
-      <div v-else class="meetup-list">
-        <article v-for="meetup in sortedMeetups" :key="meetup.id" class="meetup-card">
+      <div v-else class="divide-y divide-[#E5E8EB]">
+        <article v-for="meetup in sortedMeetups" :key="meetup.id" class="grid gap-3 py-5 first:pt-0 last:pb-0">
           <div>
-            <h3>{{ meetup.title }}</h3>
-            <p class="cafe">{{ meetup.cafeName }}</p>
+            <h3 class="text-base font-semibold text-[#191F28]">{{ meetup.title }}</h3>
+            <p class="mt-1 text-[15px] font-medium text-[#8B95A1]">{{ meetup.cafeName }}</p>
           </div>
-          <div class="meta-row">
+          <div class="flex items-center gap-2 text-sm font-medium text-[#8B95A1]">
             <MapPin :size="15" />
             <span>{{ meetup.location }}</span>
           </div>
-          <div class="meta-row">
+          <div class="flex items-center gap-2 text-sm font-medium text-[#8B95A1]">
             <CalendarDays :size="15" />
             <time :datetime="meetup.scheduledAt">{{ formatDate(meetup.scheduledAt) }}</time>
           </div>
-          <div class="map-actions">
-            <a :href="naverMapUrl(meetup)" target="_blank" rel="noreferrer">
+          <div class="flex flex-wrap gap-2">
+            <a class="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#E5E8EB] px-3 text-sm font-semibold text-[#16A34A] transition hover:bg-[#F9FAFB]" :href="naverMapUrl(meetup)" target="_blank" rel="noreferrer">
               네이버지도
               <ExternalLink :size="14" />
             </a>
-            <a :href="googleMapUrl(meetup)" target="_blank" rel="noreferrer">
+            <a class="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#E5E8EB] px-3 text-sm font-semibold text-[#16A34A] transition hover:bg-[#F9FAFB]" :href="googleMapUrl(meetup)" target="_blank" rel="noreferrer">
               구글맵
               <ExternalLink :size="14" />
             </a>

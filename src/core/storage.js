@@ -78,8 +78,8 @@ export function createStorage(env) {
 
 function readStorageConfig(env) {
   return {
-    bucket: firstValue(env, ['S3_BUCKET', 'S3_BUCKET_NAME', 'BUCKET_NAME', 'RAILWAY_BUCKET_NAME']),
-    endpoint: firstValue(env, ['S3_ENDPOINT', 'S3_ENDPOINT_URL', 'AWS_ENDPOINT_URL_S3', 'RAILWAY_S3_ENDPOINT']),
+    bucket: firstValue(env, ['S3_BUCKET', 'S3_BUCKET_NAME', 'AWS_S3_BUCKET_NAME', 'BUCKET_NAME', 'RAILWAY_BUCKET_NAME']),
+    endpoint: firstValue(env, ['S3_ENDPOINT', 'S3_ENDPOINT_URL', 'AWS_ENDPOINT_URL', 'AWS_ENDPOINT_URL_S3', 'RAILWAY_S3_ENDPOINT']),
     region: firstValue(env, ['S3_REGION', 'AWS_REGION', 'AWS_DEFAULT_REGION']) ?? 'auto',
     accessKeyId: firstValue(env, ['S3_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID']),
     secretAccessKey: firstValue(env, ['S3_SECRET_ACCESS_KEY', 'AWS_SECRET_ACCESS_KEY']),
