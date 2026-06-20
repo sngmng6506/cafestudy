@@ -290,6 +290,11 @@ The first implementation slice should prove the system works end to end:
 4. Expose the database connection as `DATABASE_URL` to the Web Service.
 5. Configure the service start command after the app scaffold exists.
 6. Add required environment variables in Railway, not in source control.
+7. Run database migrations after `DATABASE_URL` is connected:
+
+```text
+npm run db:migrate
+```
 
 Never commit production secrets.
 
