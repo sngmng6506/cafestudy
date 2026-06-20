@@ -9,6 +9,17 @@ export async function createApp(ctx) {
   app.use(cors());
   app.use(express.json({ limit: '1mb' }));
 
+  app.get('/', (_req, res) => {
+    res.json(ok({
+      name: 'cafestudy API',
+      status: 'ok',
+      endpoints: {
+        health: '/health',
+        meetups: '/api/meetups',
+      },
+    }));
+  });
+
   app.get('/health', (_req, res) => {
     res.json(ok({ status: 'ok' }));
   });

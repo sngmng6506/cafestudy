@@ -46,3 +46,14 @@ test('GET /health returns the shared API response shape', async () => {
     error: null,
   });
 });
+
+test('GET / returns basic API metadata', async () => {
+  const response = await fetch(`${baseUrl}/`);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.error, null);
+  assert.equal(body.data.name, 'cafestudy API');
+  assert.equal(body.data.endpoints.health, '/health');
+  assert.equal(body.data.endpoints.meetups, '/api/meetups');
+});
