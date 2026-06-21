@@ -37,6 +37,8 @@ http://localhost:5173
 
 Backend API는 `http://localhost:3000`에서 실행됩니다. Vite가 `/api` 요청을 backend로 proxy합니다.
 
+아니면 >> https://cafestudy-production.up.railway.app/
+
 ## Environment
 
 `.env`는 git에 올라가지 않습니다. .env 값 공유는 메세지 주세요 
@@ -141,14 +143,8 @@ npm run db:migrate
 ## Design
 
 디자인 기준은 [DESIGN_GUIDE.md](./DESIGN_GUIDE.md)를 따릅니다.
+수정해도 ㄱㅊ 
 
-핵심:
-
-- minimal UI
-- Pretendard
-- Tailwind CSS
-- accent color: `#16A34A`
-- avoid heavy shadows and excessive colors
 
 ## Deployment
 
