@@ -1,11 +1,12 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { Camera, Image as ImageIcon, RotateCcw } from '@lucide/vue';
+import { Camera, History, Image as ImageIcon, RotateCcw } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { compressImage } from '../../shared/image-compression.js';
 
 const photoInput = ref(null);
 const meetups = ref([]);
+const myVerifications = ref([]);
 const selectedMeetupId = ref('');
 const compressedFile = ref(null);
 const previewUrl = ref('');
@@ -14,6 +15,29 @@ const status = ref('');
 const errorMessage = ref('');
 const submitting = ref(false);
 const showSuccessEffect = ref(false);
+
+// Only meetups I host can be verified.
+const hostMeetups = computed(() =>
+  [...meetups.value]
+    .filter((meetup) => meetup.isHost)
+    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt)),
+);
+const selectedMeetup = computed(
+  () => hostMeetups.value.find((meetup) => meetup.id === selectedMeetupId.value) ?? null,
+);
+const verifiedIds = computed(() => new Set(myVerifications.value.map((v) => v.meetupId)));
+const alreadyVerified = computed(() =>
+  selectedMeetup.value ? verifiedIds.value.has(selectedMeetup.value.id) : false,
+);
+const notStarted = computed(() => (selectedMeetup.value ? selectedMeetup.value.state !== 'done' : false));
+const canVerify = computed(() => !!selectedMeetup.value && !notStarted.value && !alreadyVerified.value);
+
+const gateMessage = computed(() => {
+  if (!selectedMeetup.value) return '';
+  if (notStarted.value) return '이 모임은 아직 시작 전이에요. 모임 시작 시간 이후에 인증할 수 있어요.';
+  if (alreadyVerified.value) return '이미 인증한 모임이에요. (중복 인증 불가)';
+  return '';
+});
 
 const compressedSize = computed(() => compressedFile.value?.size ?? 0);
 const compressionRatio = computed(() => {
@@ -28,15 +52,27 @@ onBeforeUnmount(() => {
 
 onMounted(() => {
   void loadMeetups();
+  void loadMyVerifications();
 });
 
 async function loadMeetups() {
   try {
     const body = await apiFetch('/api/meetups');
     meetups.value = body.data;
-    selectedMeetupId.value = body.data[0]?.id ?? '';
+    if (!selectedMeetupId.value) {
+      selectedMeetupId.value = hostMeetups.value[0]?.id ?? '';
+    }
   } catch (error) {
     errorMessage.value = error.message;
+  }
+}
+
+async function loadMyVerifications() {
+  try {
+    const body = await apiFetch('/api/verifications');
+    myVerifications.value = body.data;
+  } catch {
+    // verification history is non-critical; ignore load errors
   }
 }
 
@@ -78,11 +114,18 @@ function resetPhoto() {
 async function submitVerification() {
   errorMessage.value = '';
 
-  if (!selectedMeetupId.value) {
+  if (!selectedMeetup.value) {
     errorMessage.value = '인증할 모임을 선택하세요.';
     return;
   }
-
+  if (notStarted.value) {
+    errorMessage.value = '모임 시작 시간 이후에 인증할 수 있어요.';
+    return;
+  }
+  if (alreadyVerified.value) {
+    errorMessage.value = '이미 인증한 모임이에요.';
+    return;
+  }
   if (!compressedFile.value) {
     errorMessage.value = '인증 사진을 먼저 촬영하세요.';
     return;
@@ -94,9 +137,7 @@ async function submitVerification() {
   try {
     const upload = await apiFetch('/api/verifications/upload-url', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         meetupId: selectedMeetupId.value,
         contentType: compressedFile.value.type,
@@ -105,9 +146,7 @@ async function submitVerification() {
 
     const uploadResponse = await fetch(upload.data.uploadUrl, {
       method: 'PUT',
-      headers: {
-        'Content-Type': compressedFile.value.type,
-      },
+      headers: { 'Content-Type': compressedFile.value.type },
       body: compressedFile.value,
     });
 
@@ -117,17 +156,20 @@ async function submitVerification() {
 
     await apiFetch('/api/verifications', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         meetupId: selectedMeetupId.value,
         photoUrl: upload.data.photoUrl,
       }),
     });
 
+    // Clear the photo but keep the success message.
+    clearPreviewUrl();
+    compressedFile.value = null;
+    originalSize.value = 0;
     status.value = '인증이 완료되어 10점이 지급되었습니다.';
     triggerSuccessEffect();
+    await loadMyVerifications();
   } catch (error) {
     errorMessage.value = error.message;
     status.value = '';
@@ -155,6 +197,10 @@ function formatBytes(bytes) {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
+
+function formatDate(value) {
+  return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+}
 </script>
 
 <template>
@@ -165,80 +211,91 @@ function formatBytes(bytes) {
         <h2 class="text-lg font-semibold text-[#191F28]">사진 인증</h2>
       </div>
 
-      <p class="mb-5 text-[15px] leading-7 text-[#8B95A1]">
-        모바일에서는 사진 촬영 버튼을 누르면 카메라가 우선 열립니다.
-        원본은 저장하지 않고 압축본만 업로드합니다.
+      <p v-if="hostMeetups.length === 0" class="rounded-2xl border border-dashed border-[#E5E8EB] bg-[#F9FAFB] px-5 py-10 text-center text-[15px] text-[#8B95A1]">
+        아직 개설한 모임이 없어요. 모임 탭에서 모임을 먼저 만들면 인증할 수 있어요.
       </p>
 
-      <label class="mb-4 grid gap-2 text-sm font-semibold text-[#191F28]">
-        모임
-        <select
-          v-model="selectedMeetupId"
-          class="h-12 rounded-xl border border-[#E5E8EB] bg-white px-4 text-[15px] font-medium outline-none transition focus:border-[#16A34A]"
+      <template v-else>
+        <p class="mb-5 text-[15px] leading-7 text-[#8B95A1]">
+          내가 연 모임의 현장 사진을 올려 인증하세요. 모임 시작 시간 이후에 가능하고,
+          원본 대신 압축본만 업로드합니다.
+        </p>
+
+        <label class="mb-1 grid gap-2 text-sm font-semibold text-[#191F28]">
+          내가 연 모임
+          <select
+            v-model="selectedMeetupId"
+            class="h-12 rounded-xl border border-[#E5E8EB] bg-white px-4 text-[15px] font-medium outline-none transition focus:border-[#16A34A]"
+          >
+            <option value="" disabled>모임을 선택하세요</option>
+            <option v-for="meetup in hostMeetups" :key="meetup.id" :value="meetup.id">
+              {{ meetup.title }}
+            </option>
+          </select>
+        </label>
+
+        <p v-if="gateMessage" class="mb-4 mt-1 text-sm font-semibold text-[#8B95A1]">{{ gateMessage }}</p>
+        <div v-else class="mb-4"></div>
+
+        <input
+          ref="photoInput"
+          class="visually-hidden"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          @change="handlePhotoChange"
+        />
+
+        <button
+          class="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#16A34A] text-[15px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          type="button"
+          :disabled="!canVerify"
+          @click="openCamera"
         >
-          <option value="" disabled>모임을 선택하세요</option>
-          <option v-for="meetup in meetups" :key="meetup.id" :value="meetup.id">
-            {{ meetup.title }}
-          </option>
-        </select>
-      </label>
+          <Camera :size="18" />
+          사진 촬영
+        </button>
 
-      <input
-        ref="photoInput"
-        class="visually-hidden"
-        type="file"
-        accept="image/*"
-        capture="environment"
-        @change="handlePhotoChange"
-      />
+        <button
+          v-if="compressedFile"
+          class="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#E5E8EB] bg-white text-[15px] font-semibold text-[#191F28] transition hover:bg-[#F9FAFB]"
+          type="button"
+          @click="resetPhoto"
+        >
+          <RotateCcw :size="16" />
+          다시 촬영
+        </button>
 
-      <button class="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#16A34A] text-[15px] font-semibold text-white transition hover:opacity-90" type="button" @click="openCamera">
-        <Camera :size="18" />
-        사진 촬영
-      </button>
+        <button
+          class="flex h-12 w-full items-center justify-center rounded-xl bg-[#16A34A] text-[15px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          type="button"
+          :disabled="submitting || !compressedFile || !canVerify"
+          @click="submitVerification"
+        >
+          인증 제출
+        </button>
 
-      <button
-        v-if="compressedFile"
-        class="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#E5E8EB] bg-white text-[15px] font-semibold text-[#191F28] transition hover:bg-[#F9FAFB]"
-        type="button"
-        @click="resetPhoto"
-      >
-        <RotateCcw :size="16" />
-        다시 촬영
-      </button>
+        <div v-if="showSuccessEffect" class="success-burst" aria-hidden="true">
+          <span v-for="index in 12" :key="index" />
+        </div>
 
-      <button
-        class="flex h-12 w-full items-center justify-center rounded-xl bg-[#16A34A] text-[15px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        type="button"
-        :disabled="submitting || !compressedFile || !selectedMeetupId"
-        @click="submitVerification"
-      >
-        인증 제출
-      </button>
-
-      <div v-if="showSuccessEffect" class="success-burst" aria-hidden="true">
-        <span v-for="index in 12" :key="index" />
-      </div>
-
-      <div v-if="status" class="mt-4 rounded-2xl border border-[#E5E8EB] bg-[#F9FAFB] p-4">
-        <p class="text-sm font-semibold text-[#16A34A]">{{ status }}</p>
-        <p v-if="showSuccessEffect" class="mt-1 text-2xl font-bold text-[#191F28]">+10 포인트</p>
-      </div>
-      <p v-if="errorMessage" class="mt-4 text-sm font-semibold text-[#F04452]">{{ errorMessage }}</p>
+        <div v-if="status" class="mt-4 rounded-2xl border border-[#E5E8EB] bg-[#F9FAFB] p-4">
+          <p class="text-sm font-semibold text-[#16A34A]">{{ status }}</p>
+          <p v-if="showSuccessEffect" class="mt-1 text-2xl font-bold text-[#191F28]">+10 포인트</p>
+        </div>
+        <p v-if="errorMessage" class="mt-4 text-sm font-semibold text-[#F04452]">{{ errorMessage }}</p>
+      </template>
     </section>
 
-    <section class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
+    <section v-if="previewUrl" class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
       <div class="mb-5 flex items-center gap-2">
         <ImageIcon :size="18" class="text-[#16A34A]" />
         <h2 class="text-lg font-semibold text-[#191F28]">압축 결과</h2>
       </div>
 
-      <div v-if="previewUrl" class="overflow-hidden rounded-2xl border border-[#E5E8EB] bg-[#F9FAFB]">
+      <div class="overflow-hidden rounded-2xl border border-[#E5E8EB] bg-[#F9FAFB]">
         <img class="block max-h-[520px] w-full object-contain" :src="previewUrl" alt="압축된 인증 사진 미리보기" />
       </div>
-      <p v-else class="rounded-2xl border border-dashed border-[#E5E8EB] bg-[#F9FAFB] px-5 py-10 text-center text-[15px] text-[#8B95A1]">
-        아직 준비된 인증 사진이 없습니다.
-      </p>
 
       <dl class="mt-5 grid grid-cols-3 gap-3">
         <div class="rounded-xl border border-[#E5E8EB] bg-[#F9FAFB] p-4">
@@ -254,6 +311,39 @@ function formatBytes(bytes) {
           <dd class="mt-1 text-base font-bold text-[#191F28]">{{ compressionRatio || '-' }}</dd>
         </div>
       </dl>
+    </section>
+
+    <section class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
+      <div class="mb-5 flex items-center gap-2">
+        <History :size="18" class="text-[#16A34A]" />
+        <h2 class="text-lg font-semibold text-[#191F28]">인증 내역</h2>
+      </div>
+
+      <p v-if="myVerifications.length === 0" class="py-6 text-[15px] text-[#8B95A1]">
+        아직 인증한 모임이 없어요.
+      </p>
+      <ul v-else class="grid gap-3">
+        <li
+          v-for="verification in myVerifications"
+          :key="verification.id"
+          class="flex items-center gap-3 rounded-xl border border-[#E5E8EB] bg-[#F9FAFB] p-3"
+        >
+          <img
+            v-if="verification.photoViewUrl"
+            :src="verification.photoViewUrl"
+            class="h-14 w-14 shrink-0 rounded-lg object-cover"
+            alt="인증 사진"
+          />
+          <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-[#E5E8EB] text-[#8B95A1]" v-else>
+            <ImageIcon :size="18" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-[15px] font-semibold text-[#191F28]">{{ verification.meetupTitle }}</p>
+            <p class="mt-0.5 text-sm font-medium text-[#8B95A1]">{{ formatDate(verification.createdAt) }}</p>
+          </div>
+          <strong class="shrink-0 text-sm font-bold text-[#16A34A]">+{{ verification.pointsAwarded }}</strong>
+        </li>
+      </ul>
     </section>
   </section>
 </template>

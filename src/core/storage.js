@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'node:crypto';
 
@@ -72,6 +72,17 @@ export function createStorage(env) {
         photoUrl: this.objectUrl(objectKey),
         expiresIn: DEFAULT_UPLOAD_TTL_SECONDS,
       };
+    },
+
+    async createDownloadUrl(objectKey) {
+      if (!configured) return null;
+
+      const command = new GetObjectCommand({
+        Bucket: config.bucket,
+        Key: objectKey,
+      });
+
+      return getSignedUrl(client, command, { expiresIn: 600 });
     },
   };
 }

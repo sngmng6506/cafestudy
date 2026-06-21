@@ -6,6 +6,15 @@ export function createVerificationRouter(ctx) {
   const router = Router();
   const verificationService = createVerificationService(ctx);
 
+  router.get('/', ctx.auth.requireUser, async (req, res, next) => {
+    try {
+      const verifications = await verificationService.listMyVerifications(req.user.id);
+      sendOk(res, verifications);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/upload-url', ctx.auth.requireUser, async (req, res, next) => {
     try {
       const result = await verificationService.createUploadUrl({

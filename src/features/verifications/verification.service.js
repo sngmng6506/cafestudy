@@ -16,7 +16,7 @@ export function createVerificationService({ db, storage }) {
         throwValidationError('Only jpeg, png, and webp images are allowed');
       }
 
-      await ensureHost(meetupId, userId);
+      await ensureCanVerify(meetupId, userId);
 
       return storage.createUploadUrl({
         prefix: `verifications/${meetupId}/${userId}`,
@@ -33,7 +33,7 @@ export function createVerificationService({ db, storage }) {
         throwValidationError('photoUrl is required');
       }
 
-      await ensureHost(meetupId, userId);
+      await ensureCanVerify(meetupId, userId);
 
       try {
         return await queries.createVerificationWithPoints({
@@ -53,31 +53,52 @@ export function createVerificationService({ db, storage }) {
         throw error;
       }
     },
+
+    async listMyVerifications(userId) {
+      const rows = await queries.listByUser(userId);
+      return Promise.all(
+        rows.map(async (row) => ({
+          ...row,
+          photoViewUrl: await resolvePhotoUrl(row.photoUrl),
+        })),
+      );
+    },
   };
 
-  // Only the meetup's host may verify it.
-  async function ensureHost(meetupId, userId) {
-    const meetup = await queries.getMeetupHost(meetupId);
+  // Only the host may verify, and only once the meetup has started.
+  async function ensureCanVerify(meetupId, userId) {
+    const meetup = await queries.getMeetupForVerify(meetupId);
 
     if (!meetup) {
-      const error = new Error('모임을 찾을 수 없습니다.');
-      error.statusCode = 404;
-      error.code = 'MEETUP_NOT_FOUND';
-      throw error;
+      throwError(404, 'MEETUP_NOT_FOUND', '모임을 찾을 수 없습니다.');
     }
-
     if (meetup.hostId !== userId) {
-      const error = new Error('모임 개설자만 인증할 수 있습니다.');
-      error.statusCode = 403;
-      error.code = 'NOT_MEETUP_HOST';
-      throw error;
+      throwError(403, 'NOT_MEETUP_HOST', '모임 개설자만 인증할 수 있습니다.');
+    }
+    if (new Date(meetup.scheduledAt).getTime() > Date.now()) {
+      throwError(400, 'MEETUP_NOT_STARTED', '모임 시작 시간 이후에 인증할 수 있습니다.');
+    }
+  }
+
+  async function resolvePhotoUrl(photoUrl) {
+    if (!photoUrl) return null;
+    if (/^https?:\/\//.test(photoUrl)) return photoUrl;
+
+    try {
+      return await storage.createDownloadUrl(photoUrl);
+    } catch {
+      return null;
     }
   }
 }
 
 function throwValidationError(message) {
+  throwError(400, 'VALIDATION_ERROR', message);
+}
+
+function throwError(statusCode, code, message) {
   const error = new Error(message);
-  error.statusCode = 400;
-  error.code = 'VALIDATION_ERROR';
+  error.statusCode = statusCode;
+  error.code = code;
   throw error;
 }
