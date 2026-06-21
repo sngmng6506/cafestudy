@@ -39,6 +39,19 @@ export function createMeetupService({ db }) {
       return { meetupId, joined: true, participantCount };
     },
 
+    async cancelMeetup({ meetupId, userId }) {
+      const meetup = await queries.getMeetupById(meetupId);
+      if (!meetup) {
+        throwError(404, 'MEETUP_NOT_FOUND', '모임을 찾을 수 없습니다.');
+      }
+      if (meetup.hostId !== userId) {
+        throwError(403, 'NOT_MEETUP_HOST', '모임 개설자만 취소할 수 있습니다.');
+      }
+
+      await queries.cancelMeetup(meetupId);
+      return { meetupId, cancelled: true };
+    },
+
     async leaveMeetup({ meetupId, userId }) {
       const meetup = await queries.getMeetupById(meetupId);
       if (meetup && meetup.hostId === userId) {

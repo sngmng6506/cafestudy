@@ -152,3 +152,32 @@ test('leaveMeetup returns joined=false and the new count for a participant', asy
   const result = await service.leaveMeetup({ meetupId: 'm1', userId: 'u2' });
   assert.deepEqual(result, { meetupId: 'm1', joined: false, participantCount: 1 });
 });
+
+test('cancelMeetup soft-cancels for the host', async () => {
+  const service = createMeetupService({
+    db: participationDb({ meetup: { id: 'm1', hostId: 'u1', status: 'open' }, count: 1 }),
+  });
+
+  const result = await service.cancelMeetup({ meetupId: 'm1', userId: 'u1' });
+  assert.deepEqual(result, { meetupId: 'm1', cancelled: true });
+});
+
+test('cancelMeetup rejects a non-host with 403', async () => {
+  const service = createMeetupService({
+    db: participationDb({ meetup: { id: 'm1', hostId: 'u1', status: 'open' }, count: 1 }),
+  });
+
+  await assert.rejects(
+    () => service.cancelMeetup({ meetupId: 'm1', userId: 'someone-else' }),
+    (err) => err.statusCode === 403 && err.code === 'NOT_MEETUP_HOST',
+  );
+});
+
+test('cancelMeetup returns 404 when the meetup is missing', async () => {
+  const service = createMeetupService({ db: participationDb({ meetup: null, count: 0 }) });
+
+  await assert.rejects(
+    () => service.cancelMeetup({ meetupId: 'x', userId: 'u1' }),
+    (err) => err.statusCode === 404 && err.code === 'MEETUP_NOT_FOUND',
+  );
+});

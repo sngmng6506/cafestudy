@@ -77,6 +77,10 @@ export function createMeetupQueries(db) {
       return result.rows[0];
     },
 
+    async cancelMeetup(meetupId) {
+      await db.query(`UPDATE meetups SET status = 'closed' WHERE id = $1`, [meetupId]);
+    },
+
     async addParticipant(meetupId, userId) {
       await db.query(
         `

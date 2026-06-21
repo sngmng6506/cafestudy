@@ -95,6 +95,22 @@ async function toggleJoin(meetup) {
   }
 }
 
+async function cancelMeetup(meetup) {
+  if (!window.confirm('이 모임을 취소할까요? 목록과 캘린더에서 사라집니다.')) return;
+
+  pendingId.value = meetup.id;
+  actionError.value = '';
+
+  try {
+    await apiFetch(`/api/meetups/${meetup.id}`, { method: 'DELETE' });
+    meetups.value = meetups.value.filter((m) => m.id !== meetup.id);
+  } catch (error) {
+    actionError.value = error.message;
+  } finally {
+    pendingId.value = '';
+  }
+}
+
 function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
@@ -236,12 +252,17 @@ function googleMapUrl(meetup) {
           </div>
           <div class="flex items-center justify-between gap-3">
             <span class="text-sm font-medium text-[#8B95A1]">참여 {{ meetup.participantCount }}/{{ meetup.capacity }}명</span>
-            <span
-              v-if="meetup.isHost"
-              class="rounded-xl bg-[#F9FAFB] px-3 py-1.5 text-sm font-semibold text-[#8B95A1]"
-            >
-              개설자
-            </span>
+            <div v-if="meetup.isHost" class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-[#8B95A1]">개설자</span>
+              <button
+                class="h-9 shrink-0 rounded-xl border border-[#F04452] px-3 text-sm font-semibold text-[#F04452] transition hover:bg-[#FFF1F2] disabled:opacity-50"
+                type="button"
+                :disabled="pendingId === meetup.id"
+                @click="cancelMeetup(meetup)"
+              >
+                모임 취소
+              </button>
+            </div>
             <button
               v-else-if="meetup.joined"
               class="h-9 shrink-0 rounded-xl border border-[#E5E8EB] px-4 text-sm font-semibold text-[#191F28] transition hover:bg-[#F9FAFB] disabled:opacity-50"
@@ -349,12 +370,17 @@ function googleMapUrl(meetup) {
               </div>
               <div v-if="meetup.state !== 'done'" class="flex items-center justify-between gap-3">
                 <span class="text-sm font-medium text-[#8B95A1]">참여 {{ meetup.participantCount }}/{{ meetup.capacity }}명</span>
-                <span
-                  v-if="meetup.isHost"
-                  class="rounded-xl border border-[#E5E8EB] bg-white px-3 py-1.5 text-sm font-semibold text-[#8B95A1]"
-                >
-                  개설자
-                </span>
+                <div v-if="meetup.isHost" class="flex items-center gap-2">
+                  <span class="text-sm font-semibold text-[#8B95A1]">개설자</span>
+                  <button
+                    class="h-9 shrink-0 rounded-xl border border-[#F04452] bg-white px-3 text-sm font-semibold text-[#F04452] transition hover:bg-[#FFF1F2] disabled:opacity-50"
+                    type="button"
+                    :disabled="pendingId === meetup.id"
+                    @click="cancelMeetup(meetup)"
+                  >
+                    모임 취소
+                  </button>
+                </div>
                 <button
                   v-else-if="meetup.joined"
                   class="h-9 shrink-0 rounded-xl border border-[#E5E8EB] bg-white px-4 text-sm font-semibold text-[#191F28] transition hover:bg-[#F9FAFB] disabled:opacity-50"

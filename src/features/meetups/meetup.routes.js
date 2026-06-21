@@ -32,6 +32,15 @@ export function createMeetupRouter(ctx) {
     }
   });
 
+  router.delete('/:id', ctx.auth.requireUser, async (req, res, next) => {
+    try {
+      const result = await meetupService.cancelMeetup({ meetupId: req.params.id, userId: req.user.id });
+      sendOk(res, result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/:id/join', ctx.auth.requireUser, async (req, res, next) => {
     try {
       const result = await meetupService.joinMeetup({ meetupId: req.params.id, userId: req.user.id });
