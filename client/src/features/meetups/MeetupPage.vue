@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { CalendarDays, ExternalLink, MapPin, Plus } from '@lucide/vue';
+import { CalendarDays, ExternalLink, MapPin, Plus, Search, X } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 
 const meetups = ref([]);
@@ -23,6 +23,41 @@ const sortedMeetups = computed(() => {
 
 // Meetups can only be created at least 30 minutes from now.
 const minScheduledAt = computed(() => toLocalInputValue(new Date(Date.now() + 30 * 60 * 1000)));
+
+const showSearch = ref(false);
+const searchQuery = ref('');
+const searchResults = ref([]);
+const searching = ref(false);
+const searchError = ref('');
+
+function openPlaceSearch() {
+  searchQuery.value = '';
+  searchResults.value = [];
+  searchError.value = '';
+  showSearch.value = true;
+}
+
+async function runPlaceSearch() {
+  const query = searchQuery.value.trim();
+  if (!query) return;
+
+  searching.value = true;
+  searchError.value = '';
+
+  try {
+    const body = await apiFetch(`/api/places/search?q=${encodeURIComponent(query)}`);
+    searchResults.value = body.data;
+  } catch (error) {
+    searchError.value = error.message;
+  } finally {
+    searching.value = false;
+  }
+}
+
+function selectPlace(place) {
+  form.location = place.roadAddress ? `${place.placeName} (${place.roadAddress})` : place.placeName;
+  showSearch.value = false;
+}
 
 onMounted(() => {
   void loadMeetups();
@@ -54,6 +89,11 @@ async function createMeetup() {
   const capacity = Number(form.capacity);
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100) {
     setStatus('error', '최대 참가 인원은 1~100 사이로 입력해주세요.');
+    return;
+  }
+
+  if (!form.location) {
+    setStatus('error', '위치(주소)를 검색해서 선택해주세요.');
     return;
   }
 
@@ -150,15 +190,19 @@ function mapQuery(meetup) {
         ></textarea>
       </label>
 
-      <label class="mb-4 grid gap-2 text-sm font-semibold text-[#191F28]">
+      <div class="mb-4 grid gap-2 text-sm font-semibold text-[#191F28]">
         위치
-        <input
-          v-model="form.location"
-          class="h-12 rounded-xl border border-[#E5E8EB] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#8B95A1] focus:border-[#16A34A]"
-          placeholder="예: 강남역 11번 출구"
-          required
-        />
-      </label>
+        <button
+          type="button"
+          class="flex h-12 items-center justify-between gap-2 rounded-xl border border-[#E5E8EB] px-4 text-[15px] font-medium transition hover:border-[#16A34A]"
+          @click="openPlaceSearch"
+        >
+          <span :class="form.location ? 'text-[#191F28]' : 'text-[#8B95A1]'">
+            {{ form.location || '카페·장소를 검색하세요' }}
+          </span>
+          <Search :size="16" class="shrink-0 text-[#8B95A1]" />
+        </button>
+      </div>
 
       <label class="mb-4 grid gap-2 text-sm font-semibold text-[#191F28]">
         일정
@@ -193,6 +237,61 @@ function mapQuery(meetup) {
         {{ status.message }}
       </p>
     </form>
+
+    <div
+      v-if="showSearch"
+      class="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      @click.self="showSearch = false"
+    >
+      <div class="absolute inset-0 bg-[#191F28]/30" @click="showSearch = false"></div>
+      <div class="relative z-10 flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-sm sm:rounded-2xl">
+        <div class="flex items-center justify-between border-b border-[#E5E8EB] px-4 py-3">
+          <span class="text-[15px] font-semibold text-[#191F28]">장소 검색</span>
+          <button
+            type="button"
+            class="text-[#8B95A1] transition hover:text-[#191F28]"
+            aria-label="닫기"
+            @click="showSearch = false"
+          >
+            <X :size="18" />
+          </button>
+        </div>
+        <form class="flex gap-2 p-4" @submit.prevent="runPlaceSearch">
+          <input
+            v-model="searchQuery"
+            class="h-11 flex-1 rounded-xl border border-[#E5E8EB] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#8B95A1] focus:border-[#16A34A]"
+            placeholder="예: 강남 스타벅스"
+          />
+          <button
+            type="submit"
+            class="h-11 shrink-0 rounded-xl bg-[#16A34A] px-4 text-sm font-semibold text-white transition hover:opacity-90"
+          >
+            검색
+          </button>
+        </form>
+        <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+          <p v-if="searching" class="py-6 text-center text-[15px] text-[#8B95A1]">검색 중입니다.</p>
+          <p v-else-if="searchError" class="py-6 text-center text-[15px] font-semibold text-[#F04452]">
+            {{ searchError }}
+          </p>
+          <p v-else-if="searchResults.length === 0" class="py-6 text-center text-[15px] text-[#8B95A1]">
+            카페·장소 이름으로 검색해보세요.
+          </p>
+          <ul v-else class="divide-y divide-[#E5E8EB]">
+            <li v-for="(place, index) in searchResults" :key="index">
+              <button
+                type="button"
+                class="w-full py-3 text-left transition hover:opacity-80"
+                @click="selectPlace(place)"
+              >
+                <p class="text-[15px] font-semibold text-[#191F28]">{{ place.placeName }}</p>
+                <p class="mt-0.5 text-sm text-[#8B95A1]">{{ place.roadAddress || place.address }}</p>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
 
     <section class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
       <div class="mb-5 flex items-center gap-2">
