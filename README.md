@@ -1,6 +1,6 @@
 # CafeStudy
 
-카페 스터디 모임 플랫폼 MVP. 모임을 만들고, 사진으로 인증하고, 포인트 랭킹으로 이어갑니다.
+카페 스터디 모임 플랫폼 MVP. 
 
 - **백엔드**: Express (Node 22, ESM)
 - **프론트**: Vue 3 + Vite + Tailwind
