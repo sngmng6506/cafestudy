@@ -1,29 +1,23 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
-import { CalendarDays, ExternalLink, MapPin, Plus, Search, X } from '@lucide/vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { Plus, Search, X } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 
-const meetups = ref([]);
-const loading = ref(true);
 const status = reactive({ type: 'idle', message: '' });
 const form = reactive({
   title: '',
   description: '',
   location: '',
+  lat: null,
+  lng: null,
   scheduledAt: getDefaultScheduledAt(),
   capacity: 6,
-});
-
-// Only upcoming meetups are listed here; past ones become "완료" and live in the home calendar.
-const sortedMeetups = computed(() => {
-  return [...meetups.value]
-    .filter((meetup) => meetup.state !== 'done')
-    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
 });
 
 // Meetups can only be created at least 30 minutes from now.
 const minScheduledAt = computed(() => toLocalInputValue(new Date(Date.now() + 30 * 60 * 1000)));
 
+// --- Place search (NAVER, proxied via backend) ---
 const showSearch = ref(false);
 const searchQuery = ref('');
 const searchResults = ref([]);
@@ -56,26 +50,69 @@ async function runPlaceSearch() {
 
 function selectPlace(place) {
   form.location = place.roadAddress ? `${place.placeName} (${place.roadAddress})` : place.placeName;
+  form.lat = place.lat ?? null;
+  form.lng = place.lng ?? null;
   showSearch.value = false;
 }
 
-onMounted(() => {
-  void loadMeetups();
-});
+// --- Map preview (Leaflet, lazy-loaded) ---
+const mapEl = ref(null);
+let leaflet = null;
+let map = null;
+let marker = null;
 
-async function loadMeetups() {
-  loading.value = true;
-  setStatus('idle', '');
-
-  try {
-    const body = await apiFetch('/api/meetups');
-    meetups.value = body.data;
-  } catch (error) {
-    setStatus('error', error.message);
-  } finally {
-    loading.value = false;
+async function ensureLeaflet() {
+  if (!leaflet) {
+    const mod = await import('leaflet');
+    await import('leaflet/dist/leaflet.css');
+    leaflet = mod.default;
   }
+  return leaflet;
 }
+
+async function renderMap() {
+  if (form.lat == null || form.lng == null) {
+    if (map) {
+      map.remove();
+      map = null;
+      marker = null;
+    }
+    return;
+  }
+
+  const L = await ensureLeaflet();
+  await nextTick();
+  if (!mapEl.value) return;
+
+  const center = [form.lat, form.lng];
+  if (!map) {
+    map = L.map(mapEl.value, { zoomControl: true }).setView(center, 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(map);
+    marker = L.circleMarker(center, {
+      radius: 8,
+      color: '#16A34A',
+      fillColor: '#16A34A',
+      fillOpacity: 0.9,
+      weight: 2,
+    }).addTo(map);
+  } else {
+    map.setView(center, 16);
+    marker.setLatLng(center);
+  }
+
+  map.invalidateSize();
+}
+
+watch(() => [form.lat, form.lng], renderMap);
+onBeforeUnmount(() => {
+  if (map) {
+    map.remove();
+    map = null;
+  }
+});
 
 async function createMeetup() {
   setStatus('idle', '');
@@ -98,11 +135,9 @@ async function createMeetup() {
   }
 
   try {
-    const body = await apiFetch('/api/meetups', {
+    await apiFetch('/api/meetups', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: form.title.trim(),
         description: form.description.trim() || null,
@@ -112,13 +147,14 @@ async function createMeetup() {
       }),
     });
 
-    meetups.value = [body.data, ...meetups.value];
     form.title = '';
     form.description = '';
     form.location = '';
+    form.lat = null;
+    form.lng = null;
     form.scheduledAt = getDefaultScheduledAt();
     form.capacity = 6;
-    setStatus('success', '모임이 생성되었습니다.');
+    setStatus('success', '모임이 생성되었습니다. 홈에서 확인할 수 있어요.');
   } catch (error) {
     setStatus('error', error.message);
   }
@@ -140,25 +176,6 @@ function toLocalInputValue(date) {
   const offset = date.getTimezoneOffset();
   const local = new Date(date.getTime() - offset * 60 * 1000);
   return local.toISOString().slice(0, 16);
-}
-
-function formatDate(value) {
-  return new Intl.DateTimeFormat('ko-KR', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
-
-function naverMapUrl(meetup) {
-  return `https://map.naver.com/p/search/${encodeURIComponent(mapQuery(meetup))}`;
-}
-
-function googleMapUrl(meetup) {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery(meetup))}`;
-}
-
-function mapQuery(meetup) {
-  return meetup.location;
 }
 </script>
 
@@ -202,6 +219,10 @@ function mapQuery(meetup) {
           </span>
           <Search :size="16" class="shrink-0 text-[#8B95A1]" />
         </button>
+      </div>
+
+      <div v-if="form.lat != null" class="mb-4 overflow-hidden rounded-xl border border-[#E5E8EB]">
+        <div ref="mapEl" class="h-44 w-full"></div>
       </div>
 
       <label class="mb-4 grid gap-2 text-sm font-semibold text-[#191F28]">
@@ -292,43 +313,5 @@ function mapQuery(meetup) {
         </div>
       </div>
     </div>
-
-    <section class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
-      <div class="mb-5 flex items-center gap-2">
-        <CalendarDays :size="18" class="text-[#16A34A]" />
-        <h2 class="text-lg font-semibold text-[#191F28]">공개 모임</h2>
-      </div>
-
-      <p v-if="loading" class="py-6 text-[15px] text-[#8B95A1]">불러오는 중입니다.</p>
-      <p v-else-if="sortedMeetups.length === 0" class="py-6 text-[15px] text-[#8B95A1]">
-        아직 개설된 모임이 없습니다.
-      </p>
-      <div v-else class="divide-y divide-[#E5E8EB]">
-        <article v-for="meetup in sortedMeetups" :key="meetup.id" class="grid gap-3 py-5 first:pt-0 last:pb-0">
-          <div>
-            <h3 class="text-base font-semibold text-[#191F28]">{{ meetup.title }}</h3>
-            <p v-if="meetup.description" class="mt-1 whitespace-pre-line text-[15px] font-medium text-[#8B95A1]">{{ meetup.description }}</p>
-          </div>
-          <div class="flex items-center gap-2 text-sm font-medium text-[#8B95A1]">
-            <MapPin :size="15" />
-            <span>{{ meetup.location }}</span>
-          </div>
-          <div class="flex items-center gap-2 text-sm font-medium text-[#8B95A1]">
-            <CalendarDays :size="15" />
-            <time :datetime="meetup.scheduledAt">{{ formatDate(meetup.scheduledAt) }}</time>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <a class="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#E5E8EB] px-3 text-sm font-semibold text-[#16A34A] transition hover:bg-[#F9FAFB]" :href="naverMapUrl(meetup)" target="_blank" rel="noreferrer">
-              네이버지도
-              <ExternalLink :size="14" />
-            </a>
-            <a class="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#E5E8EB] px-3 text-sm font-semibold text-[#16A34A] transition hover:bg-[#F9FAFB]" :href="googleMapUrl(meetup)" target="_blank" rel="noreferrer">
-              구글맵
-              <ExternalLink :size="14" />
-            </a>
-          </div>
-        </article>
-      </div>
-    </section>
   </section>
 </template>

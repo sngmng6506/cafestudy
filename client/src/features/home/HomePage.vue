@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { CalendarDays, ChevronLeft, ChevronRight, MapPin } from '@lucide/vue';
+import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, MapPin } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -155,6 +155,14 @@ function formatDate(value) {
 function formatTime(value) {
   return new Intl.DateTimeFormat('ko-KR', { timeStyle: 'short' }).format(new Date(value));
 }
+
+function naverMapUrl(meetup) {
+  return `https://map.naver.com/p/search/${encodeURIComponent(meetup.location)}`;
+}
+
+function googleMapUrl(meetup) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meetup.location)}`;
+}
 </script>
 
 <template>
@@ -215,6 +223,16 @@ function formatTime(value) {
               <MapPin :size="15" />
               {{ meetup.location }}
             </span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <a class="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#E5E8EB] px-3 text-sm font-semibold text-[#16A34A] transition hover:bg-[#F9FAFB]" :href="naverMapUrl(meetup)" target="_blank" rel="noreferrer">
+              네이버지도
+              <ExternalLink :size="14" />
+            </a>
+            <a class="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#E5E8EB] px-3 text-sm font-semibold text-[#16A34A] transition hover:bg-[#F9FAFB]" :href="googleMapUrl(meetup)" target="_blank" rel="noreferrer">
+              구글맵
+              <ExternalLink :size="14" />
+            </a>
           </div>
           <div class="flex items-center justify-between gap-3">
             <span class="text-sm font-medium text-[#8B95A1]">참여 {{ meetup.participantCount }}/{{ meetup.capacity }}명</span>
