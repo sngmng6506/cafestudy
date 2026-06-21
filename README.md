@@ -38,7 +38,7 @@ Backend API는 `http://localhost:3000`에서 실행됩니다. Vite가 `/api` 요
 
 ## Environment
 
-`.env`는 git에 올라가지 않습니다. 실제 값은 Railway에서 복사해서 로컬 `.env`에 넣습니다.
+`.env`는 git에 올라가지 않습니다. .env 값 공유는 메세지 주세요 
 
 ```env
 NODE_ENV=development
@@ -55,11 +55,6 @@ NAVER_SEARCH_CLIENT_ID=
 NAVER_SEARCH_CLIENT_SECRET=
 ```
 
-주의:
-
-- 로컬 DB 접속은 Railway internal URL이 아니라 public proxy URL을 써야 합니다.
-- `.env`를 수정하면 backend server를 재시작해야 합니다.
-- 현재 로그인은 테스트용 demo user로 동작합니다.
 
 ## Scripts
 
@@ -77,6 +72,7 @@ npm run db:migrate  # apply SQL migrations
 - Meetups: 모임 생성, 장소 검색, 참여/취소
 - Verifications: 사진 촬영, 압축, 업로드, 포인트 지급
 - Ranking: 누적 랭킹, 월간 랭킹
+- 주사위 
 
 ## Project Structure
 
