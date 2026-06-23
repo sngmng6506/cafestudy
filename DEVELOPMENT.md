@@ -59,7 +59,7 @@ Photo storage options, to be decided separately:
 
 - Backend: Express on Node.js
 - Database: Railway PostgreSQL
-- Frontend: React SPA
+- Frontend: Vue
 - File storage: object storage, not PostgreSQL
 - Real-time: not used in MVP
 
