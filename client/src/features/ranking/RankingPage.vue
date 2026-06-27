@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { ChevronLeft, ChevronRight, Trophy } from '@lucide/vue';
+import { ChevronLeft, ChevronRight, Crown, Trophy } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 
 const now = new Date();
@@ -67,29 +67,29 @@ async function loadRanking() {
 
 <template>
   <section class="grid gap-5">
-    <section class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
+    <div class="mb-1">
+      <h1 class="text-[22px] font-bold leading-snug text-[#191F28]">랭킹</h1>
+      <p class="mt-1 text-[14px] text-[#8B95A1]">포인트 기반 순위</p>
+    </div>
+
+    <section class="rounded-xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
       <div class="mb-5 flex items-center gap-2">
         <Trophy :size="19" class="text-[#16A34A]" />
-        <div>
-          <h2 class="text-lg font-semibold text-[#191F28]">{{ title }}</h2>
-          <p class="mt-1 text-sm font-medium text-[#8B95A1]">
-            인증으로 쌓인 포인트를 기준으로 정렬합니다.
-          </p>
-        </div>
+        <p class="text-[14px] text-[#8B95A1]">인증으로 쌓인 포인트를 기준으로 정렬합니다.</p>
       </div>
 
-      <div class="mb-5 grid grid-cols-2 rounded-2xl border border-[#E5E8EB] bg-[#F9FAFB] p-1">
+      <div class="mb-5 grid grid-cols-2 rounded-xl border border-[#E5E8EB] bg-[#F9FAFB] p-1">
         <button
-          class="h-11 rounded-xl text-[15px] font-semibold transition"
-          :class="mode === 'monthly' ? 'bg-white text-[#191F28] shadow-sm' : 'text-[#8B95A1]'"
+          class="h-11 rounded-lg text-[15px] font-semibold transition"
+          :class="mode === 'monthly' ? 'bg-[#16A34A] text-white shadow-sm' : 'text-[#8B95A1]'"
           type="button"
           @click="switchMode('monthly')"
         >
           월간
         </button>
         <button
-          class="h-11 rounded-xl text-[15px] font-semibold transition"
-          :class="mode === 'all-time' ? 'bg-white text-[#191F28] shadow-sm' : 'text-[#8B95A1]'"
+          class="h-11 rounded-lg text-[15px] font-semibold transition"
+          :class="mode === 'all-time' ? 'bg-[#16A34A] text-white shadow-sm' : 'text-[#8B95A1]'"
           type="button"
           @click="switchMode('all-time')"
         >
@@ -99,7 +99,7 @@ async function loadRanking() {
 
       <div v-if="mode === 'monthly'" class="mb-5 flex items-center justify-center gap-2">
         <button
-          class="flex h-9 w-9 items-center justify-center rounded-xl text-[#8B95A1] transition hover:bg-[#F9FAFB] hover:text-[#191F28]"
+          class="flex h-9 w-9 items-center justify-center rounded-lg text-[#8B95A1] transition hover:bg-[#F9FAFB] hover:text-[#191F28]"
           type="button"
           aria-label="이전 달"
           @click="shiftMonth(-1)"
@@ -108,7 +108,7 @@ async function loadRanking() {
         </button>
         <span class="min-w-[100px] text-center text-[15px] font-semibold text-[#191F28]">{{ monthLabel }}</span>
         <button
-          class="flex h-9 w-9 items-center justify-center rounded-xl text-[#8B95A1] transition hover:bg-[#F9FAFB] hover:text-[#191F28] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#8B95A1]"
+          class="flex h-9 w-9 items-center justify-center rounded-lg text-[#8B95A1] transition hover:bg-[#F9FAFB] hover:text-[#191F28] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#8B95A1]"
           type="button"
           aria-label="다음 달"
           :disabled="isCurrentMonth"
@@ -122,29 +122,44 @@ async function loadRanking() {
       <p v-else-if="errorMessage" class="py-8 text-center text-[15px] font-semibold text-[#F04452]">
         {{ errorMessage }}
       </p>
-      <p v-else-if="rankings.length === 0" class="py-8 text-center text-[15px] text-[#8B95A1]">
-        {{ emptyMessage }}
-      </p>
+      <div v-else-if="rankings.length === 0" class="py-12 text-center">
+        <p class="text-[14px] text-[#191F28]">이번 달 기록이 없습니다.</p>
+      </div>
 
       <ol v-else class="divide-y divide-[#E5E8EB]">
         <li
           v-for="user in rankings"
           :key="user.id"
-          class="flex items-center gap-4 py-4 first:pt-0 last:pb-0"
+          class="flex min-h-[56px] items-center gap-4 py-3 first:pt-0 last:pb-0"
         >
           <span
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
+            v-if="user.rank === 1"
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#16A34A] text-white"
+          >
+            <Crown :size="16" />
+          </span>
+          <span
+            v-else
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
             :class="user.rank <= 3 ? 'bg-[#16A34A] text-white' : 'bg-[#F9FAFB] text-[#8B95A1]'"
           >
             {{ user.rank }}
           </span>
 
           <div class="min-w-0 flex-1">
-            <p class="truncate text-[15px] font-semibold text-[#191F28]">{{ user.nickname }}</p>
-            <p class="mt-1 text-sm font-medium text-[#8B95A1]">스터디 인증 포인트</p>
+            <p
+              class="truncate text-[#191F28]"
+              :class="user.rank === 1 ? 'text-[17px] font-bold' : user.rank <= 3 ? 'text-[15px] font-semibold' : 'text-[14px] font-medium'"
+            >
+              {{ user.nickname }}
+            </p>
+            <p class="mt-0.5 text-[12px] font-medium text-[#8B95A1]">스터디 인증 포인트</p>
           </div>
 
-          <strong class="shrink-0 text-base font-bold text-[#191F28]">
+          <strong
+            class="shrink-0 font-bold"
+            :class="user.rank === 1 ? 'text-[17px] text-[#16A34A]' : 'text-base text-[#191F28]'"
+          >
             {{ user.points }}점
           </strong>
         </li>

@@ -39,8 +39,8 @@ function selectFeature(name) {
       <button
         v-for="feature in primaryFeatures"
         :key="feature.name"
-        class="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] font-semibold transition"
-        :class="feature.name === activeFeatureName ? 'text-[#16A34A]' : 'text-[#8B95A1] hover:text-[#191F28]'"
+        class="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition"
+        :class="feature.name === activeFeatureName ? 'font-bold text-[#16A34A]' : 'font-medium text-[#8B95A1] hover:text-[#191F28]'"
         type="button"
         @click="selectFeature(feature.name)"
       >
@@ -50,8 +50,8 @@ function selectFeature(name) {
 
       <button
         v-if="hasOverflow"
-        class="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] font-semibold transition"
-        :class="overflowActive || moreOpen ? 'text-[#16A34A]' : 'text-[#8B95A1] hover:text-[#191F28]'"
+        class="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition"
+        :class="overflowActive || moreOpen ? 'font-bold text-[#16A34A]' : 'font-medium text-[#8B95A1] hover:text-[#191F28]'"
         type="button"
         aria-haspopup="menu"
         :aria-expanded="moreOpen"
@@ -66,11 +66,11 @@ function selectFeature(name) {
     <div v-if="moreOpen && hasOverflow" class="fixed inset-0 z-40" @click="moreOpen = false">
       <div class="absolute inset-0 bg-[#191F28]/20"></div>
       <div class="absolute bottom-20 left-1/2 w-full max-w-md -translate-x-1/2 px-2" @click.stop>
-        <div class="grid gap-1 rounded-2xl border border-[#E5E8EB] bg-white p-2 shadow-sm" role="menu">
+        <div class="grid gap-1 rounded-xl border border-[#E5E8EB] bg-white p-2 shadow-sm" role="menu">
           <button
             v-for="feature in overflowFeatures"
             :key="feature.name"
-            class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-semibold transition"
+            class="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-[15px] font-semibold transition"
             :class="feature.name === activeFeatureName ? 'bg-[#16A34A] text-white' : 'text-[#191F28] hover:bg-[#F9FAFB]'"
             type="button"
             role="menuitem"
