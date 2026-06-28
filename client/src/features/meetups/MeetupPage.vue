@@ -1,10 +1,12 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { Plus, Search, X } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
+import { useToast } from '../../shared/useToast.js';
 
-const status = reactive({ type: 'idle', message: '' });
-const form = reactive({
+const toast = useToast();
+
+const form = ref({
   title: '',
   description: '',
   location: '',
@@ -14,10 +16,9 @@ const form = reactive({
   capacity: 6,
 });
 
-// Meetups can only be created at least 30 minutes from now.
 const minScheduledAt = computed(() => toLocalInputValue(new Date(Date.now() + 30 * 60 * 1000)));
 
-// --- Place search (NAVER, proxied via backend) ---
+// --- Place search ---
 const showSearch = ref(false);
 const searchQuery = ref('');
 const searchResults = ref([]);
@@ -49,9 +50,11 @@ async function runPlaceSearch() {
 }
 
 function selectPlace(place) {
-  form.location = place.roadAddress ? `${place.placeName} (${place.roadAddress})` : place.placeName;
-  form.lat = place.lat ?? null;
-  form.lng = place.lng ?? null;
+  form.value.location = place.roadAddress
+    ? `${place.placeName} (${place.roadAddress})`
+    : place.placeName;
+  form.value.lat = place.lat ?? null;
+  form.value.lng = place.lng ?? null;
   showSearch.value = false;
 }
 
@@ -71,7 +74,7 @@ async function ensureLeaflet() {
 }
 
 async function renderMap() {
-  if (form.lat == null || form.lng == null) {
+  if (form.value.lat == null || form.value.lng == null) {
     if (map) {
       map.remove();
       map = null;
@@ -84,7 +87,7 @@ async function renderMap() {
   await nextTick();
   if (!mapEl.value) return;
 
-  const center = [form.lat, form.lng];
+  const center = [form.value.lat, form.value.lng];
   if (!map) {
     map = L.map(mapEl.value, { zoomControl: true }).setView(center, 16);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -106,7 +109,7 @@ async function renderMap() {
   map.invalidateSize();
 }
 
-watch(() => [form.lat, form.lng], renderMap);
+watch(() => [form.value.lat, form.value.lng], renderMap);
 onBeforeUnmount(() => {
   if (map) {
     map.remove();
@@ -115,22 +118,20 @@ onBeforeUnmount(() => {
 });
 
 async function createMeetup() {
-  setStatus('idle', '');
-
-  const scheduled = new Date(form.scheduledAt);
+  const scheduled = new Date(form.value.scheduledAt);
   if (Number.isNaN(scheduled.getTime()) || scheduled.getTime() < Date.now() + 30 * 60 * 1000) {
-    setStatus('error', '모임은 지금부터 30분 이후 시간으로만 개설할 수 있습니다.');
+    toast.error('모임은 지금부터 30분 이후 시간으로만 개설할 수 있습니다.');
     return;
   }
 
-  const capacity = Number(form.capacity);
+  const capacity = Number(form.value.capacity);
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100) {
-    setStatus('error', '최대 참가 인원은 1~100 사이로 입력해주세요.');
+    toast.error('최대 참가 인원은 1~100 사이로 입력해주세요.');
     return;
   }
 
-  if (!form.location) {
-    setStatus('error', '위치(주소)를 검색해서 선택해주세요.');
+  if (!form.value.location) {
+    toast.error('위치(주소)를 검색해서 선택해주세요.');
     return;
   }
 
@@ -139,30 +140,26 @@ async function createMeetup() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: form.title.trim(),
-        description: form.description.trim() || null,
-        location: form.location.trim(),
-        scheduledAt: new Date(form.scheduledAt).toISOString(),
-        capacity: Number(form.capacity),
+        title: form.value.title.trim(),
+        description: form.value.description.trim() || null,
+        location: form.value.location.trim(),
+        scheduledAt: new Date(form.value.scheduledAt).toISOString(),
+        capacity: Number(form.value.capacity),
       }),
     });
 
-    form.title = '';
-    form.description = '';
-    form.location = '';
-    form.lat = null;
-    form.lng = null;
-    form.scheduledAt = getDefaultScheduledAt();
-    form.capacity = 6;
-    setStatus('success', '모임이 생성되었습니다. 홈에서 확인할 수 있어요.');
-  } catch (error) {
-    setStatus('error', error.message);
-  }
-}
+    form.value.title = '';
+    form.value.description = '';
+    form.value.location = '';
+    form.value.lat = null;
+    form.value.lng = null;
+    form.value.scheduledAt = getDefaultScheduledAt();
+    form.value.capacity = 6;
 
-function setStatus(type, message) {
-  status.type = type;
-  status.message = message;
+    toast.success('모임이 생성되었습니다.');
+  } catch (error) {
+    toast.error(error.message);
+  }
 }
 
 function getDefaultScheduledAt() {
@@ -201,7 +198,7 @@ function toLocalInputValue(date) {
         내용
         <textarea
           v-model="form.description"
-          class="min-h-[88px] rounded-lg border border-[#E5E8EB] px-4 py-3 text-[15px] font-medium leading-7 outline-none transition placeholder:text-[#8B95A1] focus:border-[#16A34A]"
+          class="min-h-[88px] rounded-lg border border-[#E5E8EB] px-4 py-3 text-[15px] font-medium outline-none transition placeholder:text-[#8B95A1] focus:border-[#16A34A]"
           placeholder="호스트가 무엇을 할지 간단히 적어주세요 (예: 알고리즘 문제 풀이, 토익 단어 암기)"
           rows="3"
         ></textarea>
@@ -249,20 +246,16 @@ function toLocalInputValue(date) {
         <span class="text-[12px] font-medium text-[#8B95A1]">개설자(나) 포함 인원입니다.</span>
       </label>
 
-      <button class="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#16A34A] text-[15px] font-semibold text-white transition hover:opacity-90" type="submit">
+      <button
+        class="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#16A34A] text-[15px] font-semibold text-white transition hover:opacity-90"
+        type="submit"
+      >
         <Plus :size="17" />
         개설
       </button>
-
-      <p
-        v-if="status.message"
-        class="mt-4 font-semibold"
-        :class="status.type === 'error' ? 'text-[12px] text-[#F04452]' : 'text-[14px] text-[#16A34A]'"
-      >
-        {{ status.message }}
-      </p>
     </form>
 
+    <!-- 장소 검색 모달 -->
     <div
       v-if="showSearch"
       class="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
@@ -317,5 +310,6 @@ function toLocalInputValue(date) {
         </div>
       </div>
     </div>
+
   </section>
 </template>

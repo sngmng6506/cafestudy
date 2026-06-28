@@ -118,7 +118,20 @@ async function loadRanking() {
         </button>
       </div>
 
-      <p v-if="loading" class="py-8 text-center text-[15px] text-[#8B95A1]">불러오는 중입니다.</p>
+      <ol v-if="loading" class="divide-y divide-[#E5E8EB] animate-pulse">
+        <li
+          v-for="n in 5"
+          :key="n"
+          class="flex min-h-[56px] items-center gap-4 py-3 first:pt-0 last:pb-0"
+        >
+          <div class="h-9 w-9 shrink-0 rounded-lg bg-[#F1F3F5]"></div>
+          <div class="flex-1 space-y-2">
+            <div class="h-4 w-2/3 rounded bg-[#F1F3F5]"></div>
+            <div class="h-3 w-1/3 rounded bg-[#F1F3F5]"></div>
+          </div>
+          <div class="h-5 w-10 shrink-0 rounded bg-[#F1F3F5]"></div>
+        </li>
+      </ol>
       <p v-else-if="errorMessage" class="py-8 text-center text-[15px] font-semibold text-[#F04452]">
         {{ errorMessage }}
       </p>

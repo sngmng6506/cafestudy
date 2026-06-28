@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { MoreHorizontal } from '@lucide/vue';
 import { features } from './features/index.js';
+import ToastContainer from './shared/ToastContainer.vue';
 
 // Features flagged `primary` are pinned to the bottom bar; everything else
 // (extra features contributors add later) collects in the "더보기" sheet, so the
@@ -61,6 +62,8 @@ function selectFeature(name) {
         더보기
       </button>
     </nav>
+
+    <ToastContainer />
 
     <!-- 더보기 sheet -->
     <div v-if="moreOpen && hasOverflow" class="fixed inset-0 z-40" @click="moreOpen = false">

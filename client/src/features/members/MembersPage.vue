@@ -1,9 +1,10 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { Search, Users } from '@lucide/vue';
+import { Crown, Search, Users } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 
 const members = ref([]);
+const rankData = ref({});
 const loading = ref(true);
 const errorMessage = ref('');
 const query = ref('');
@@ -18,8 +19,16 @@ const filtered = computed(() => {
 
 onMounted(async () => {
   try {
-    const body = await apiFetch('/api/members');
-    members.value = body.data;
+    const [membersBody, rankingBody] = await Promise.all([
+      apiFetch('/api/members'),
+      apiFetch('/api/ranking/all-time').catch(() => ({ data: [] })),
+    ]);
+    members.value = membersBody.data;
+    const map = {};
+    for (const entry of rankingBody.data) {
+      map[entry.id] = { rank: entry.rank, points: entry.points };
+    }
+    rankData.value = map;
   } catch (err) {
     errorMessage.value = err.message;
   } finally {
@@ -44,6 +53,14 @@ function avatarColor(name) {
   for (const c of name) code += c.charCodeAt(0);
   return AVATAR_COLORS[code % AVATAR_COLORS.length];
 }
+
+function avatarRingClass(memberId) {
+  const rank = rankData.value[memberId]?.rank;
+  if (rank === 1) return 'ring-2 ring-[#16A34A]';
+  if (rank === 2) return 'ring-2 ring-[#8B95A1]';
+  if (rank === 3) return 'ring-2 ring-[#F59E0B]';
+  return '';
+}
 </script>
 
 <template>
@@ -67,8 +84,23 @@ function avatarColor(name) {
       />
     </div>
 
-    <!-- 로딩 -->
-    <p v-if="loading" class="py-12 text-center text-[15px] text-[#8B95A1]">불러오는 중입니다.</p>
+    <!-- 스켈레톤 -->
+    <section v-if="loading" class="rounded-xl border border-[#E5E8EB] bg-white shadow-sm">
+      <ul class="divide-y divide-[#E5E8EB]">
+        <li
+          v-for="n in 6"
+          :key="n"
+          class="flex animate-pulse items-center gap-3 px-4 py-3 first:pt-4 last:pb-4"
+        >
+          <div class="h-10 w-10 shrink-0 rounded-full bg-[#F1F3F5]"></div>
+          <div class="flex-1 space-y-2">
+            <div class="h-4 w-1/2 rounded bg-[#F1F3F5]"></div>
+            <div class="h-3 w-3/4 rounded bg-[#F1F3F5]"></div>
+          </div>
+          <div class="h-5 w-10 rounded bg-[#F1F3F5]"></div>
+        </li>
+      </ul>
+    </section>
 
     <!-- 에러 -->
     <p v-else-if="errorMessage" class="py-12 text-center text-[15px] font-semibold text-[#F04452]">
@@ -93,13 +125,39 @@ function avatarColor(name) {
         >
           <span
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[15px] font-bold"
-            :class="avatarColor(member.name)"
+            :class="[avatarColor(member.name), avatarRingClass(member.id)]"
           >
             {{ initials(member.name) }}
           </span>
           <div class="min-w-0 flex-1">
             <p class="truncate text-[15px] font-semibold text-[#191F28]">{{ member.name }}</p>
             <p v-if="member.bio" class="truncate text-[13px] text-[#8B95A1]">{{ member.bio }}</p>
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            <span
+              v-if="rankData[member.id]"
+              class="text-[12px] font-bold text-[#16A34A]"
+            >
+              {{ rankData[member.id].points }}pt
+            </span>
+            <span
+              v-if="rankData[member.id]?.rank === 1"
+              class="flex h-6 w-6 items-center justify-center rounded-full bg-[#16A34A]"
+            >
+              <Crown :size="12" class="text-white" />
+            </span>
+            <span
+              v-else-if="rankData[member.id]?.rank === 2"
+              class="flex h-6 w-6 items-center justify-center rounded-full bg-[#8B95A1] text-[11px] font-bold text-white"
+            >
+              2
+            </span>
+            <span
+              v-else-if="rankData[member.id]?.rank === 3"
+              class="flex h-6 w-6 items-center justify-center rounded-full bg-[#F59E0B] text-[11px] font-bold text-white"
+            >
+              3
+            </span>
           </div>
         </li>
       </ul>

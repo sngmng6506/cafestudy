@@ -1,27 +1,36 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { Camera, History, Image as ImageIcon } from '@lucide/vue';
+import { Camera, History, Image as ImageIcon, MapPin } from '@lucide/vue';
+import { useMeetups, formatDate } from '../../shared/useMeetups.js';
+import { useToast } from '../../shared/useToast.js';
 import { apiFetch } from '../../shared/api.js';
 import { compressImage } from '../../shared/image-compression.js';
 
+const toast = useToast();
+const { meetups, loadMeetups } = useMeetups();
+
 const photoInput = ref(null);
-const meetups = ref([]);
 const myVerifications = ref([]);
 const selectedMeetupId = ref('');
 const compressedFile = ref(null);
 const previewUrl = ref('');
 const originalSize = ref(0);
 const status = ref('');
-const errorMessage = ref('');
 const submitting = ref(false);
 const showSuccessEffect = ref(false);
 
-// Only meetups I host can be verified.
 const hostMeetups = computed(() =>
   [...meetups.value]
     .filter((meetup) => meetup.isHost)
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt)),
 );
+
+const joinedMeetups = computed(() =>
+  [...meetups.value]
+    .filter((m) => m.joined && !m.isHost)
+    .sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt)),
+);
+
 const selectedMeetup = computed(
   () => hostMeetups.value.find((meetup) => meetup.id === selectedMeetupId.value) ?? null,
 );
@@ -29,7 +38,9 @@ const verifiedIds = computed(() => new Set(myVerifications.value.map((v) => v.me
 const alreadyVerified = computed(() =>
   selectedMeetup.value ? verifiedIds.value.has(selectedMeetup.value.id) : false,
 );
-const notStarted = computed(() => (selectedMeetup.value ? selectedMeetup.value.state !== 'done' : false));
+const notStarted = computed(() =>
+  selectedMeetup.value ? selectedMeetup.value.state !== 'done' : false,
+);
 const canVerify = computed(() => !!selectedMeetup.value && !notStarted.value && !alreadyVerified.value);
 
 const gateMessage = computed(() => {
@@ -50,22 +61,13 @@ onBeforeUnmount(() => {
   clearPreviewUrl();
 });
 
-onMounted(() => {
-  void loadMeetups();
+onMounted(async () => {
+  await loadMeetups();
+  if (!selectedMeetupId.value) {
+    selectedMeetupId.value = hostMeetups.value[0]?.id ?? '';
+  }
   void loadMyVerifications();
 });
-
-async function loadMeetups() {
-  try {
-    const body = await apiFetch('/api/meetups');
-    meetups.value = body.data;
-    if (!selectedMeetupId.value) {
-      selectedMeetupId.value = hostMeetups.value[0]?.id ?? '';
-    }
-  } catch (error) {
-    errorMessage.value = error.message;
-  }
-}
 
 async function loadMyVerifications() {
   try {
@@ -95,7 +97,7 @@ async function handlePhotoChange(event) {
     previewUrl.value = URL.createObjectURL(nextFile);
     status.value = '압축본이 준비되었습니다.';
   } catch (error) {
-    errorMessage.value = error.message;
+    toast.error(error.message);
     status.value = '';
   } finally {
     event.target.value = '';
@@ -107,27 +109,24 @@ function resetPhoto() {
   compressedFile.value = null;
   originalSize.value = 0;
   status.value = '';
-  errorMessage.value = '';
   showSuccessEffect.value = false;
 }
 
 async function submitVerification() {
-  errorMessage.value = '';
-
   if (!selectedMeetup.value) {
-    errorMessage.value = '인증할 모임을 선택하세요.';
+    toast.error('인증할 모임을 선택하세요.');
     return;
   }
   if (notStarted.value) {
-    errorMessage.value = '모임 시작 시간 이후에 인증할 수 있어요.';
+    toast.error('모임 시작 시간 이후에 인증할 수 있어요.');
     return;
   }
   if (alreadyVerified.value) {
-    errorMessage.value = '이미 인증한 모임이에요.';
+    toast.error('이미 인증한 모임이에요.');
     return;
   }
   if (!compressedFile.value) {
-    errorMessage.value = '인증 사진을 먼저 촬영하세요.';
+    toast.error('인증 사진을 먼저 촬영하세요.');
     return;
   }
 
@@ -163,15 +162,15 @@ async function submitVerification() {
       }),
     });
 
-    // Clear the photo but keep the success message.
     clearPreviewUrl();
     compressedFile.value = null;
     originalSize.value = 0;
-    status.value = '인증이 완료되어 10점이 지급되었습니다.';
+    status.value = '';
+    toast.success('인증이 완료되었습니다. +10점');
     triggerSuccessEffect();
     await loadMyVerifications();
   } catch (error) {
-    errorMessage.value = error.message;
+    toast.error(error.message);
     status.value = '';
   } finally {
     submitting.value = false;
@@ -197,10 +196,6 @@ function formatBytes(bytes) {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
-
-function formatDate(value) {
-  return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
-}
 </script>
 
 <template>
@@ -216,11 +211,45 @@ function formatDate(value) {
         <h2 class="text-lg font-semibold text-[#191F28]">사진 인증</h2>
       </div>
 
-      <div v-if="hostMeetups.length === 0" class="py-12 text-center">
-        <p class="text-[14px] text-[#191F28]">인증할 모임이 없습니다.</p>
-        <p class="mt-1 text-[13px] text-[#8B95A1]">모임 탭에서 먼저 모임을 개설하세요.</p>
+      <!-- 비호스트: 인증 안내 + 참여 모임 목록 -->
+      <div v-if="hostMeetups.length === 0" class="space-y-4 py-2">
+        <div class="rounded-xl border border-[#DCFCE7] bg-[#F1F8F4] p-4">
+          <div class="mb-2 flex items-center gap-2">
+            <Camera :size="15" class="text-[#16A34A]" />
+            <p class="text-[13px] font-bold text-[#16A34A]">인증 시스템 안내</p>
+          </div>
+          <p class="text-[13px] leading-relaxed text-[#191F28]">
+            호스트가 모임 현장 사진을 업로드하여 출석을 인증합니다.
+            인증이 완료되면 <strong>10포인트</strong>가 지급됩니다.
+          </p>
+          <p class="mt-2 text-[12px] text-[#8B95A1]">
+            정기모임 5회 이상 참여 시 호스트 권한을 받을 수 있어요.
+          </p>
+        </div>
+
+        <div v-if="joinedMeetups.length > 0">
+          <p class="mb-2 text-[13px] font-semibold text-[#191F28]">내가 참여한 모임</p>
+          <ul class="grid gap-2">
+            <li
+              v-for="meetup in joinedMeetups"
+              :key="meetup.id"
+              class="rounded-lg border border-[#E5E8EB] bg-[#F9FAFB] p-3"
+            >
+              <p class="text-[14px] font-semibold text-[#191F28]">{{ meetup.title }}</p>
+              <p class="mt-0.5 text-[12px] text-[#8B95A1]">{{ formatDate(meetup.scheduledAt) }}</p>
+              <div class="mt-1 flex items-center gap-1.5">
+                <MapPin :size="11" class="shrink-0 text-[#8B95A1]" />
+                <span class="text-[12px] text-[#8B95A1]">{{ meetup.location }}</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <p v-else class="text-[13px] text-[#8B95A1]">
+          아직 참여한 모임이 없습니다. 모임 탭에서 모임에 참여해 보세요.
+        </p>
       </div>
 
+      <!-- 호스트: 인증 폼 -->
       <template v-else>
         <p class="mb-5 text-[15px] leading-7 text-[#8B95A1]">
           내가 연 모임의 현장 사진을 올려 인증하세요. 모임 시작 시간 이후에 가능하고,
@@ -284,11 +313,10 @@ function formatDate(value) {
           <span v-for="index in 12" :key="index" />
         </div>
 
-        <div v-if="status" class="mt-4 rounded-xl border border-[#E5E8EB] bg-[#F9FAFB] p-4">
-          <p class="text-sm font-semibold text-[#16A34A]">{{ status }}</p>
+        <div v-if="status || showSuccessEffect" class="mt-4 rounded-xl border border-[#E5E8EB] bg-[#F9FAFB] p-4">
+          <p v-if="status" class="text-sm font-semibold text-[#16A34A]">{{ status }}</p>
           <p v-if="showSuccessEffect" class="mt-1 text-2xl font-bold text-[#191F28]">+10 포인트</p>
         </div>
-        <p v-if="errorMessage" class="mt-4 text-sm font-semibold text-[#F04452]">{{ errorMessage }}</p>
       </template>
     </section>
 
@@ -335,7 +363,10 @@ function formatDate(value) {
             class="h-14 w-14 shrink-0 rounded-lg object-cover"
             alt="인증 사진"
           />
-          <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-[#E5E8EB] text-[#8B95A1]" v-else>
+          <div
+            v-else
+            class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-[#E5E8EB] text-[#8B95A1]"
+          >
             <ImageIcon :size="18" />
           </div>
           <div class="min-w-0 flex-1">
