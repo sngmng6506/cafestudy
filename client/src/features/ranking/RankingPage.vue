@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { ChevronLeft, ChevronRight, Crown, Trophy } from '@lucide/vue';
+import { ChevronLeft, ChevronRight, Crown, Dices, Trophy } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 
 const now = new Date();
@@ -10,6 +10,9 @@ const mode = ref('monthly');
 const rankings = ref([]);
 const loading = ref(true);
 const errorMessage = ref('');
+
+const diceRanking = ref([]);
+const diceLoading = ref(true);
 const cursor = ref({ ...CURRENT });
 
 const title = computed(() => (mode.value === 'monthly' ? '월간 랭킹' : '누적 랭킹'));
@@ -25,7 +28,20 @@ const emptyMessage = computed(() =>
 
 onMounted(() => {
   void loadRanking();
+  void loadDiceRanking();
 });
+
+async function loadDiceRanking() {
+  diceLoading.value = true;
+  try {
+    const body = await apiFetch('/api/dice/ranking');
+    diceRanking.value = body.data;
+  } catch {
+    diceRanking.value = [];
+  } finally {
+    diceLoading.value = false;
+  }
+}
 
 async function switchMode(nextMode) {
   mode.value = nextMode;
@@ -174,6 +190,49 @@ async function loadRanking() {
             class="shrink-0 font-bold"
             :class="user.rank === 1 ? 'text-[17px] text-[#03C75A]' : 'text-base text-[#333333]'"
           >
+            {{ user.points }}점
+          </strong>
+        </li>
+      </ol>
+    </section>
+
+    <!-- 주사위 TOP 5 -->
+    <section class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm">
+      <div class="mb-5 flex items-center gap-2">
+        <Dices :size="18" class="text-[#03C75A]" />
+        <h3 class="text-[15px] font-semibold text-[#333333]">주사위 TOP 5</h3>
+      </div>
+
+      <ol v-if="diceLoading" class="divide-y divide-[#dadce0] animate-pulse">
+        <li v-for="n in 5" :key="n" class="flex min-h-[52px] items-center gap-4 py-3 first:pt-0 last:pb-0">
+          <div class="h-8 w-8 shrink-0 rounded-lg bg-[#f5f6f7]"></div>
+          <div class="h-4 flex-1 rounded bg-[#f5f6f7]"></div>
+          <div class="h-4 w-12 shrink-0 rounded bg-[#f5f6f7]"></div>
+        </li>
+      </ol>
+
+      <div v-else-if="diceRanking.length === 0" class="py-8 text-center">
+        <p class="text-[15px] text-[#333333]">아직 주사위를 굴린 사람이 없습니다.</p>
+        <p class="mt-1 text-[13px] text-[#5f6368]">더보기 → 주사위에서 굴려보세요!</p>
+      </div>
+
+      <ol v-else class="divide-y divide-[#dadce0]">
+        <li
+          v-for="user in diceRanking"
+          :key="user.id"
+          class="flex min-h-[52px] items-center gap-4 py-3 first:pt-0 last:pb-0"
+        >
+          <span
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold"
+            :class="user.rank === 1 ? 'bg-[#03C75A] text-white' : user.rank <= 3 ? 'bg-[#03C75A]/15 text-[#02b350]' : 'bg-[#f5f6f7] text-[#5f6368]'"
+          >
+            <Crown v-if="user.rank === 1" :size="14" />
+            <template v-else>{{ user.rank }}</template>
+          </span>
+
+          <p class="min-w-0 flex-1 truncate text-[14px] font-medium text-[#333333]">{{ user.nickname }}</p>
+
+          <strong class="shrink-0 text-[14px] font-bold" :class="user.rank === 1 ? 'text-[#03C75A]' : 'text-[#333333]'">
             {{ user.points }}점
           </strong>
         </li>

@@ -1,13 +1,14 @@
 <script setup>
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { Dices } from '@lucide/vue';
+import { apiFetch } from '../../shared/api.js';
+import { useCurrentUser } from '../../shared/useCurrentUser.js';
 
-// Throwaway demo feature: a real-looking 3D dice via CSS transforms (no libs).
-// It has no `primary` flag in the registry, so it lands in the 더보기 sheet.
+const { currentUserId } = useCurrentUser();
+
 const SIZE = 112;
 const HALF = SIZE / 2;
 
-// 3x3 pip slots filled per value (slots 0..8, left-to-right, top-to-bottom).
 const PIPS = {
   1: [4],
   2: [0, 8],
@@ -17,8 +18,6 @@ const PIPS = {
   6: [0, 2, 3, 5, 6, 8],
 };
 
-// The six faces of the cube: which value they show + their placement transform.
-// Opposite faces sum to 7, like a real die.
 const FACES = [
   { value: 1, transform: `translateZ(${HALF}px)` },
   { value: 6, transform: `rotateY(180deg) translateZ(${HALF}px)` },
@@ -28,7 +27,6 @@ const FACES = [
   { value: 5, transform: `rotateX(-90deg) translateZ(${HALF}px)` },
 ];
 
-// Cube rotation (inverse of each face transform) that brings a value to the front.
 const REST = {
   1: { x: 0, y: 0 },
   2: { x: -90, y: 0 },
@@ -42,27 +40,55 @@ const result = ref(1);
 const rolling = ref(false);
 const rotX = ref(0);
 const rotY = ref(0);
+const myPoints = ref(null);
+const lastEarned = ref(null);
+const apiPending = ref(false);
+const rollError = ref('');
 
-// Spin counters only ever increase, so the cube always tumbles forward and
-// settles on a multiple of 360 plus the target face — landing on the right value.
 let spinX = 0;
 let spinY = 0;
+
+onMounted(async () => {
+  if (currentUserId.value) {
+    try {
+      const body = await apiFetch('/api/dice/my-points');
+      myPoints.value = body.data.points;
+    } catch {
+      // 포인트 로드 실패는 무시
+    }
+  }
+});
 
 function rand(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
 
-function roll() {
-  if (rolling.value) return;
-  rolling.value = true;
+async function roll() {
+  if (rolling.value || apiPending.value) return;
 
-  const value = rand(1, 6);
-  const rest = REST[value];
+  lastEarned.value = null;
+  rollError.value = '';
+  rolling.value = true;
+  apiPending.value = true;
+
+  let serverValue = rand(1, 6);
+  try {
+    const body = await apiFetch('/api/dice/roll', { method: 'POST' });
+    serverValue = body.data.value;
+    myPoints.value = body.data.totalPoints;
+    lastEarned.value = body.data.earned;
+  } catch (err) {
+    rollError.value = err.message ?? '포인트 적립에 실패했습니다.';
+  } finally {
+    apiPending.value = false;
+  }
+
+  const rest = REST[serverValue];
   spinX += rand(3, 5);
   spinY += rand(4, 6);
   rotX.value = rest.x + 360 * spinX;
   rotY.value = rest.y + 360 * spinY;
-  result.value = value;
+  result.value = serverValue;
 
   setTimeout(() => {
     rolling.value = false;
@@ -76,16 +102,12 @@ function isFilled(value, slot) {
 
 <template>
   <section class="grid gap-5">
-    <section class="rounded-2xl border border-[#dadce0] bg-white p-6 shadow-sm">
-      <div class="mb-4 flex items-center gap-2">
-        <Dices :size="18" class="text-[#03C75A]" />
-        <h3 class="text-lg font-semibold text-[#333333]">주사위</h3>
-      </div>
-      <p class="mb-8 text-[15px] leading-7 text-[#5f6368]">
-        더보기로 들어가는 예시 기능입니다. 레지스트리에 <code>primary</code> 플래그가 없으면
-        핵심 탭을 밀어내지 않고 여기로 모입니다.
-      </p>
+    <div class="mb-1 pr-32">
+      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">주사위</h1>
+      <p class="mt-1 text-[14px] text-[#5f6368]">굴릴수록 포인트가 쌓입니다</p>
+    </div>
 
+    <section class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm">
       <div class="flex flex-col items-center gap-8 pb-2">
         <div class="scene">
           <div
@@ -102,18 +124,33 @@ function isFilled(value, slot) {
           <div class="floor-shadow" :class="{ rolling }"></div>
         </div>
 
-        <p class="text-[15px] font-semibold text-[#5f6368]">
-          결과 <span class="ml-1 text-lg text-[#333333]">{{ rolling ? '…' : result }}</span>
-        </p>
+        <!-- 결과 + 획득 포인트 -->
+        <div class="flex flex-col items-center gap-1">
+          <p class="text-[15px] font-semibold text-[#5f6368]">
+            결과 <span class="ml-1 text-lg text-[#333333]">{{ rolling ? '…' : result }}</span>
+          </p>
+          <p v-if="lastEarned !== null && !rolling" class="text-[13px] font-semibold text-[#03C75A]">
+            +{{ lastEarned }}점 획득!
+          </p>
+          <p v-else-if="rollError && !rolling" class="text-[13px] font-semibold text-[#e74c3c]">
+            {{ rollError }}
+          </p>
+        </div>
+
+        <!-- 내 누적 주사위 포인트 -->
+        <div v-if="myPoints !== null" class="w-full rounded-lg bg-[#f5f6f7] px-4 py-3 text-center">
+          <p class="text-[13px] text-[#5f6368]">내 주사위 포인트</p>
+          <p class="mt-0.5 text-[22px] font-bold text-[#333333]">{{ myPoints }}<span class="ml-1 text-[14px] font-medium text-[#5f6368]">점</span></p>
+        </div>
 
         <button
           class="focus-ring flex h-12 w-full items-center justify-center gap-2 rounded bg-[#03C75A] text-[15px] font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-50"
           type="button"
-          :disabled="rolling"
+          :disabled="rolling || apiPending"
           @click="roll"
         >
           <Dices :size="18" />
-          굴리기
+          {{ rolling ? '굴리는 중…' : '굴리기' }}
         </button>
       </div>
     </section>
@@ -139,8 +176,6 @@ function isFilled(value, slot) {
 
 .face {
   position: absolute;
-  /* Faces are grown 2px past the cube edges so neighbours overlap, hiding the
-     tiny gaps that rounded corners would otherwise leave at each cube vertex. */
   inset: -2px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
