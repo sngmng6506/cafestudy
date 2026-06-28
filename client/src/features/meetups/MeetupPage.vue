@@ -96,8 +96,8 @@ async function renderMap() {
     }).addTo(map);
     marker = L.circleMarker(center, {
       radius: 8,
-      color: '#16A34A',
-      fillColor: '#16A34A',
+      color: '#03C75A',
+      fillColor: '#03C75A',
       fillOpacity: 0.9,
       weight: 2,
     }).addTo(map);
@@ -178,79 +178,79 @@ function toLocalInputValue(date) {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1">
-      <h1 class="text-[22px] font-bold leading-snug text-[#191F28]">모임 개설</h1>
-      <p class="mt-1 text-[14px] text-[#8B95A1]">새 모임을 만들어보세요</p>
+    <div class="mb-1 pr-32">
+      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">모임 개설</h1>
+      <p class="mt-1 text-[14px] text-[#5f6368]">새 모임을 만들어보세요</p>
     </div>
 
-    <form class="rounded-xl border border-[#E5E8EB] bg-white p-6 shadow-sm" @submit.prevent="createMeetup">
-      <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#191F28]">
+    <form class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm" @submit.prevent="createMeetup">
+      <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#333333]">
         제목
         <input
           v-model="form.title"
-          class="h-12 rounded-lg border border-[#E5E8EB] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#8B95A1] focus:border-[#16A34A]"
+          class="h-12 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
           placeholder="예: 토요일 AI 논문 읽기"
           required
         />
       </label>
 
-      <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#191F28]">
+      <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#333333]">
         내용
         <textarea
           v-model="form.description"
-          class="min-h-[88px] rounded-lg border border-[#E5E8EB] px-4 py-3 text-[15px] font-medium outline-none transition placeholder:text-[#8B95A1] focus:border-[#16A34A]"
+          class="min-h-[88px] rounded-lg border border-[#dadce0] px-4 py-3 text-[15px] font-medium outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
           placeholder="호스트가 무엇을 할지 간단히 적어주세요 (예: 알고리즘 문제 풀이, 토익 단어 암기)"
           rows="3"
         ></textarea>
       </label>
 
-      <div class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#191F28]">
+      <div class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#333333]">
         위치
         <button
           type="button"
-          class="flex h-12 items-center justify-between gap-2 rounded-lg border border-[#E5E8EB] px-4 text-[15px] font-medium transition hover:border-[#16A34A]"
+          class="focus-ring flex h-12 items-center justify-between gap-2 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium transition hover:border-[#03C75A]"
           @click="openPlaceSearch"
         >
-          <span :class="form.location ? 'text-[#191F28]' : 'text-[#8B95A1]'">
+          <span :class="form.location ? 'text-[#333333]' : 'text-[#5f6368]'">
             {{ form.location || '카페·장소를 검색하세요' }}
           </span>
-          <Search :size="16" class="shrink-0 text-[#8B95A1]" />
+          <Search :size="16" class="shrink-0 text-[#5f6368]" />
         </button>
       </div>
 
-      <div v-if="form.lat != null" class="mb-4 overflow-hidden rounded-lg border border-[#E5E8EB]">
+      <div v-if="form.lat != null" class="mb-4 overflow-hidden rounded-lg border border-[#dadce0]">
         <div ref="mapEl" class="h-44 w-full"></div>
       </div>
 
-      <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#191F28]">
+      <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#333333]">
         일정
         <input
           v-model="form.scheduledAt"
-          class="h-12 rounded-lg border border-[#E5E8EB] px-4 text-[15px] font-medium outline-none transition focus:border-[#16A34A]"
+          class="h-12 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition focus:border-[#03C75A]"
           type="datetime-local"
           :min="minScheduledAt"
           required
         />
       </label>
 
-      <label class="mb-5 grid gap-1.5 text-[13px] font-medium text-[#191F28]">
+      <label class="mb-5 grid gap-1.5 text-[13px] font-medium text-[#333333]">
         최대 참가 인원
         <input
           v-model.number="form.capacity"
-          class="h-12 rounded-lg border border-[#E5E8EB] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#8B95A1] focus:border-[#16A34A]"
+          class="h-12 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
           type="number"
           min="1"
           max="100"
           required
         />
-        <span class="text-[12px] font-medium text-[#8B95A1]">개설자(나) 포함 인원입니다.</span>
+        <span class="text-[12px] font-medium text-[#5f6368]">개설자(나) 포함 인원입니다.</span>
       </label>
 
       <button
-        class="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#16A34A] text-[15px] font-semibold text-white transition hover:opacity-90"
+        class="focus-ring flex h-12 w-full items-center justify-center gap-2 rounded bg-[#03C75A] text-[15px] font-semibold text-white transition hover:bg-[#02b350]"
         type="submit"
       >
-        <Plus :size="17" />
+        <Plus :size="18" />
         개설
       </button>
     </form>
@@ -261,13 +261,13 @@ function toLocalInputValue(date) {
       class="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
       @click.self="showSearch = false"
     >
-      <div class="absolute inset-0 bg-[#191F28]/30" @click="showSearch = false"></div>
+      <div class="absolute inset-0 bg-[#333333]/30" @click="showSearch = false"></div>
       <div class="relative z-10 flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-t-xl bg-white shadow-sm sm:rounded-xl">
-        <div class="flex items-center justify-between border-b border-[#E5E8EB] px-4 py-3">
-          <span class="text-[15px] font-semibold text-[#191F28]">장소 검색</span>
+        <div class="flex items-center justify-between border-b border-[#dadce0] px-4 py-3">
+          <span class="text-[15px] font-semibold text-[#333333]">장소 검색</span>
           <button
             type="button"
-            class="text-[#8B95A1] transition hover:text-[#191F28]"
+            class="text-[#5f6368] transition hover:text-[#333333]"
             aria-label="닫기"
             @click="showSearch = false"
           >
@@ -277,33 +277,33 @@ function toLocalInputValue(date) {
         <form class="flex gap-2 p-4" @submit.prevent="runPlaceSearch">
           <input
             v-model="searchQuery"
-            class="h-11 flex-1 rounded-lg border border-[#E5E8EB] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#8B95A1] focus:border-[#16A34A]"
+            class="h-11 flex-1 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
             placeholder="예: 강남 스타벅스"
           />
           <button
             type="submit"
-            class="h-11 shrink-0 rounded-lg bg-[#16A34A] px-4 text-sm font-semibold text-white transition hover:opacity-90"
+            class="focus-ring h-11 shrink-0 rounded bg-[#03C75A] px-4 text-sm font-semibold text-white transition hover:bg-[#02b350]"
           >
             검색
           </button>
         </form>
         <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-          <p v-if="searching" class="py-6 text-center text-[15px] text-[#8B95A1]">검색 중입니다.</p>
-          <p v-else-if="searchError" class="py-6 text-center text-[15px] font-semibold text-[#F04452]">
+          <p v-if="searching" class="py-6 text-center text-[15px] text-[#5f6368]">검색 중입니다.</p>
+          <p v-else-if="searchError" class="py-6 text-center text-[15px] font-semibold text-[#e74c3c]">
             {{ searchError }}
           </p>
-          <p v-else-if="searchResults.length === 0" class="py-6 text-center text-[15px] text-[#8B95A1]">
+          <p v-else-if="searchResults.length === 0" class="py-6 text-center text-[15px] text-[#5f6368]">
             카페·장소 이름으로 검색해보세요.
           </p>
-          <ul v-else class="divide-y divide-[#E5E8EB]">
+          <ul v-else class="divide-y divide-[#dadce0]">
             <li v-for="(place, index) in searchResults" :key="index">
               <button
                 type="button"
                 class="w-full py-3 text-left transition hover:opacity-80"
                 @click="selectPlace(place)"
               >
-                <p class="text-[15px] font-semibold text-[#191F28]">{{ place.placeName }}</p>
-                <p class="mt-0.5 text-sm text-[#8B95A1]">{{ place.roadAddress || place.address }}</p>
+                <p class="text-[15px] font-semibold text-[#333333]">{{ place.placeName }}</p>
+                <p class="mt-0.5 text-sm text-[#5f6368]">{{ place.roadAddress || place.address }}</p>
               </button>
             </li>
           </ul>

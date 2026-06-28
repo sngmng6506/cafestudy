@@ -76,12 +76,12 @@ function isFilled(value, slot) {
 
 <template>
   <section class="grid gap-5">
-    <section class="rounded-2xl border border-[#E5E8EB] bg-white p-6 shadow-sm">
+    <section class="rounded-2xl border border-[#dadce0] bg-white p-6 shadow-sm">
       <div class="mb-4 flex items-center gap-2">
-        <Dices :size="18" class="text-[#16A34A]" />
-        <h3 class="text-lg font-semibold text-[#191F28]">주사위</h3>
+        <Dices :size="18" class="text-[#03C75A]" />
+        <h3 class="text-lg font-semibold text-[#333333]">주사위</h3>
       </div>
-      <p class="mb-8 text-[15px] leading-7 text-[#8B95A1]">
+      <p class="mb-8 text-[15px] leading-7 text-[#5f6368]">
         더보기로 들어가는 예시 기능입니다. 레지스트리에 <code>primary</code> 플래그가 없으면
         핵심 탭을 밀어내지 않고 여기로 모입니다.
       </p>
@@ -102,12 +102,12 @@ function isFilled(value, slot) {
           <div class="floor-shadow" :class="{ rolling }"></div>
         </div>
 
-        <p class="text-[15px] font-semibold text-[#8B95A1]">
-          결과 <span class="ml-1 text-lg text-[#191F28]">{{ rolling ? '…' : result }}</span>
+        <p class="text-[15px] font-semibold text-[#5f6368]">
+          결과 <span class="ml-1 text-lg text-[#333333]">{{ rolling ? '…' : result }}</span>
         </p>
 
         <button
-          class="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#16A34A] text-[15px] font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          class="focus-ring flex h-12 w-full items-center justify-center gap-2 rounded bg-[#03C75A] text-[15px] font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-50"
           type="button"
           :disabled="rolling"
           @click="roll"
@@ -147,7 +147,7 @@ function isFilled(value, slot) {
   grid-template-rows: repeat(3, 1fr);
   gap: 4px;
   padding: 14px;
-  border: 1px solid #e5e8eb;
+  border: 1px solid #dadce0;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: inset 0 0 14px rgba(25, 31, 40, 0.08);
@@ -163,7 +163,7 @@ function isFilled(value, slot) {
   width: 17px;
   height: 17px;
   border-radius: 9999px;
-  background: #191f28;
+  background: #333333;
   box-shadow: inset 0 -2px 2px rgba(25, 31, 40, 0.35);
 }
 

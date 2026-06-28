@@ -5,7 +5,8 @@ import { useToast } from './useToast.js';
 const { toasts, dismiss } = useToast();
 
 const ICONS = { success: CheckCircle, error: AlertCircle, info: Info };
-const BG = { success: 'bg-[#16A34A]', error: 'bg-[#F04452]', info: 'bg-[#191F28]' };
+// Naver toasts are always neutral dark — only the icon carries semantic color.
+const ICON_COLOR = { success: 'text-[#03C75A]', error: 'text-[#e74c3c]', info: 'text-white' };
 </script>
 
 <template>
@@ -17,11 +18,10 @@ const BG = { success: 'bg-[#16A34A]', error: 'bg-[#F04452]', info: 'bg-[#191F28]
       <div
         v-for="toast in toasts"
         :key="toast.id"
-        class="pointer-events-auto flex items-center gap-3 rounded-xl px-4 py-3 text-white shadow-md"
-        :class="BG[toast.type]"
+        class="pointer-events-auto flex items-center gap-3 rounded-lg bg-[#333333] px-4 py-3 text-white shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
         role="alert"
       >
-        <component :is="ICONS[toast.type]" :size="18" class="shrink-0" />
+        <component :is="ICONS[toast.type]" :size="18" class="shrink-0" :class="ICON_COLOR[toast.type]" />
         <span class="flex-1 text-[14px] font-semibold">{{ toast.message }}</span>
         <button
           type="button"

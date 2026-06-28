@@ -18,10 +18,23 @@ export function createMembersQueries(db) {
           VALUES ${values.join(', ')}
           ON CONFLICT (name, source_url)
           DO UPDATE SET bio = EXCLUDED.bio, updated_at = now()
-          RETURNING id
+          RETURNING id, name
         `,
         params,
       );
+
+      if (result.rows.length > 0) {
+        const userValues = result.rows.map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2}, 'somoim', 0)`);
+        const userParams = result.rows.flatMap(({ id, name }) => [id, name]);
+        await client.query(
+          `
+            INSERT INTO users (id, nickname, oauth_provider, total_points)
+            VALUES ${userValues.join(', ')}
+            ON CONFLICT (id) DO UPDATE SET nickname = EXCLUDED.nickname
+          `,
+          userParams,
+        );
+      }
 
       return result.rowCount;
     },

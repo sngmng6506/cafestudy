@@ -13,32 +13,32 @@ const emit = defineEmits(['toggle-join', 'cancel']);
 
 <template>
   <!-- Compact (calendar) variant -->
-  <li v-if="compact" class="grid gap-2 rounded-lg border border-[#E5E8EB] bg-[#F9FAFB] p-3">
+  <li v-if="compact" class="grid gap-2 rounded-lg border border-[#dadce0] bg-[#f5f6f7] p-3">
     <div>
-      <p class="flex items-center gap-2 text-[15px] font-semibold text-[#191F28]">
+      <p class="flex items-center gap-2 text-[15px] font-semibold text-[#333333]">
         {{ meetup.title }}
         <span
           v-if="meetup.state === 'done'"
-          class="rounded bg-[#F1F3F5] px-1.5 py-0.5 text-xs font-semibold text-[#8B95A1]"
+          class="rounded bg-[#f5f6f7] px-1.5 py-0.5 text-xs font-semibold text-[#5f6368]"
         >
           완료
         </span>
       </p>
-      <p class="mt-1 text-sm font-medium text-[#8B95A1]">{{ formatTime(meetup.scheduledAt) }}</p>
+      <p class="mt-1 text-sm font-medium text-[#5f6368]">{{ formatTime(meetup.scheduledAt) }}</p>
       <p
         v-if="meetup.description"
-        class="mt-0.5 whitespace-pre-line text-sm font-medium text-[#8B95A1]"
+        class="mt-0.5 whitespace-pre-line text-sm font-medium text-[#5f6368]"
       >
         {{ meetup.description }}
       </p>
     </div>
     <div v-if="meetup.state !== 'done'" class="flex items-center gap-3">
-      <span class="text-sm font-medium text-[#8B95A1]">
+      <span class="text-sm font-medium text-[#5f6368]">
         참여 {{ meetup.participantCount }}/{{ meetup.capacity }}명
       </span>
       <span
         class="inline-flex h-6 items-center rounded-full px-2.5 text-[12px] font-semibold"
-        :class="meetup.participantCount >= meetup.capacity ? 'bg-[#F1F3F5] text-[#8B95A1]' : 'bg-[#DCFCE7] text-[#16A34A]'"
+        :class="meetup.participantCount >= meetup.capacity ? 'bg-[#f5f6f7] text-[#5f6368]' : 'border border-[#03C75A] bg-white text-[#03C75A]'"
       >
         {{ meetup.participantCount >= meetup.capacity ? '마감' : '모집중' }}
       </span>
@@ -47,17 +47,17 @@ const emit = defineEmits(['toggle-join', 'cancel']);
 
   <!-- Normal (list) variant -->
   <li v-else class="flex flex-col gap-2.5 py-4 first:pt-0 last:pb-0">
-    <h4 class="text-[17px] font-bold text-[#191F28]">{{ meetup.title }}</h4>
-    <p class="text-[12px] text-[#8B95A1]">
+    <h4 class="text-[17px] font-bold tracking-[-0.34px] text-[#333333]">{{ meetup.title }}</h4>
+    <p class="text-[12px] text-[#5f6368]">
       <time :datetime="meetup.scheduledAt">{{ formatDate(meetup.scheduledAt) }}</time>
     </p>
     <div class="flex items-center gap-1.5">
-      <MapPin :size="13" class="shrink-0 text-[#8B95A1]" />
-      <span class="text-[13px] text-[#8B95A1]">{{ meetup.location }}</span>
+      <MapPin :size="16" class="shrink-0 text-[#5f6368]" />
+      <span class="text-[13px] text-[#5f6368]">{{ meetup.location }}</span>
     </div>
     <div class="flex items-center gap-2">
       <span
-        class="inline-flex h-7 items-center rounded-full bg-[#F1F3F5] px-3 text-[12px] font-medium text-[#8B95A1]"
+        class="inline-flex h-7 items-center rounded-full bg-[#f5f6f7] px-3 text-[12px] font-medium text-[#5f6368]"
       >
         {{ meetup.participantCount }}/{{ meetup.capacity }}명
       </span>
@@ -65,8 +65,8 @@ const emit = defineEmits(['toggle-join', 'cancel']);
         class="inline-flex h-7 items-center rounded-full px-3 text-[12px] font-semibold"
         :class="
           meetup.participantCount >= meetup.capacity
-            ? 'bg-[#F1F3F5] text-[#8B95A1]'
-            : 'bg-[#DCFCE7] text-[#16A34A]'
+            ? 'bg-[#f5f6f7] text-[#5f6368]'
+            : 'border border-[#03C75A] bg-white text-[#03C75A]'
         "
       >
         {{ meetup.participantCount >= meetup.capacity ? '마감' : '모집중' }}
@@ -74,28 +74,28 @@ const emit = defineEmits(['toggle-join', 'cancel']);
     </div>
     <div class="mt-auto flex flex-wrap items-center gap-2">
       <a
-        class="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#E5E8EB] px-3 text-sm font-semibold text-[#16A34A] transition hover:bg-[#F9FAFB]"
+        class="focus-ring inline-flex h-9 items-center justify-center gap-1.5 rounded border border-[#dadce0] px-3 text-sm font-semibold text-[#03C75A] transition hover:bg-[#f5f6f7]"
         :href="naverMapUrl(meetup)"
         target="_blank"
         rel="noreferrer"
       >
         네이버지도
-        <ExternalLink :size="14" />
+        <ExternalLink :size="16" />
       </a>
       <a
-        class="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#E5E8EB] px-3 text-sm font-semibold text-[#16A34A] transition hover:bg-[#F9FAFB]"
+        class="focus-ring inline-flex h-9 items-center justify-center gap-1.5 rounded border border-[#dadce0] px-3 text-sm font-semibold text-[#03C75A] transition hover:bg-[#f5f6f7]"
         :href="googleMapUrl(meetup)"
         target="_blank"
         rel="noreferrer"
       >
         구글맵
-        <ExternalLink :size="14" />
+        <ExternalLink :size="16" />
       </a>
       <div class="ml-auto flex items-center gap-2">
         <div v-if="meetup.isHost" class="flex items-center gap-2">
-          <span class="text-sm font-semibold text-[#8B95A1]">개설자</span>
+          <span class="text-sm font-semibold text-[#5f6368]">개설자</span>
           <button
-            class="h-9 shrink-0 rounded-lg border border-[#F04452] px-3 text-sm font-semibold text-[#F04452] transition hover:bg-[#FFF1F2] disabled:opacity-50"
+            class="focus-ring h-9 shrink-0 rounded border border-[#e74c3c] px-3 text-sm font-semibold text-[#e74c3c] transition hover:bg-[#f5f6f7] disabled:opacity-50"
             type="button"
             :disabled="pendingId === meetup.id"
             @click="emit('cancel', meetup)"
@@ -105,7 +105,7 @@ const emit = defineEmits(['toggle-join', 'cancel']);
         </div>
         <button
           v-else-if="meetup.joined"
-          class="h-9 shrink-0 rounded-lg border border-[#E5E8EB] px-4 text-sm font-semibold text-[#191F28] transition hover:bg-[#F9FAFB] disabled:opacity-50"
+          class="focus-ring h-9 shrink-0 rounded border border-[#dadce0] px-4 text-sm font-semibold text-[#333333] transition hover:bg-[#f5f6f7] disabled:opacity-50"
           type="button"
           :disabled="pendingId === meetup.id"
           @click="emit('toggle-join', meetup)"
@@ -114,7 +114,7 @@ const emit = defineEmits(['toggle-join', 'cancel']);
         </button>
         <button
           v-else
-          class="h-9 shrink-0 rounded-lg bg-[#16A34A] px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          class="focus-ring h-9 shrink-0 rounded bg-[#03C75A] px-4 text-sm font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-50"
           type="button"
           :disabled="pendingId === meetup.id || meetup.participantCount >= meetup.capacity"
           @click="emit('toggle-join', meetup)"

@@ -1,14 +1,20 @@
 @import "tailwindcss";
 
 :root {
+  /* Naver palette — single green accent over achromatic chrome */
   --color-bg: #ffffff;
-  --color-sub-bg: #f9fafb;
-  --color-text: #191f28;
-  --color-muted: #8b95a1;
-  --color-border: #e5e8eb;
-  --color-accent: #16a34a;
-  --color-danger: #f04452;
-  --color-safe: #1b64da;
+  --color-sub-bg: #f5f6f7;
+  --color-text: #333333;
+  --color-muted: #5f6368;
+  --color-caption: #767676;
+  --color-disabled: #999999;
+  --color-border: #dadce0;
+  --color-border-subtle: #e9ebee;
+  --color-accent: #03c75a;
+  --color-accent-hover: #02b350;
+  --color-accent-active: #02a046;
+  --color-danger: #e74c3c;
+  --color-safe: #0068c3;
 
   --text-display: 32px;
   --text-page-title: 22px;
@@ -47,6 +53,12 @@ button {
   letter-spacing: 0;
 }
 
+/* Shared keyboard-focus ring — Naver brand green, applied to interactive chrome */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #03c75a;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -69,7 +81,7 @@ button {
   width: 7px;
   height: 7px;
   border-radius: 9999px;
-  background: #16a34a;
+  background: #03c75a;
   opacity: 0;
   animation: success-burst 900ms ease-out forwards;
 }
