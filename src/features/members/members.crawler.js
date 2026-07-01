@@ -219,11 +219,14 @@ export async function crawlMembers(url) {
     const faceByName = new Map();
     for (const { src, name } of memberFaces) {
       const faceId = extractFaceId(src);
-      if (faceId && name && !faceByName.has(name)) faceByName.set(name, faceId);
+      if (faceId && name && !faceByName.has(name)) {
+        faceByName.set(name, { faceId, avatarUrl: src });
+      }
     }
     const membersWithFace = members.map((m) => ({
       ...m,
-      face_id: faceByName.get(m.name) ?? null,
+      face_id: faceByName.get(m.name)?.faceId ?? null,
+      avatar_url: faceByName.get(m.name)?.avatarUrl ?? null,
     }));
 
     // 정모 정규화 + 참가자 이름 매핑.

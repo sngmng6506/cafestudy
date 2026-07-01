@@ -245,7 +245,7 @@ def parse_capacity(text: str):
     return (int(m.group(1)), int(m.group(2)))
 
 
-def extract_member_faces(driver) -> Dict[str, str]:
+def extract_member_faces(driver) -> Dict[str, Dict[str, str]]:
     """멤버/운영진 얼굴(1n.png) <-> 이름 매핑 테이블 생성."""
     face_by_name = {}
     faces = driver.find_elements(By.CSS_SELECTOR, 'img[src*="1n.png"]')
@@ -264,7 +264,7 @@ def extract_member_faces(driver) -> Dict[str, str]:
             ]
             name = text_lines[0] if text_lines else None
             if name and name not in face_by_name:
-                face_by_name[name] = face_id
+                face_by_name[name] = {"face_id": face_id, "avatar_url": src}
         except Exception:
             continue
     return face_by_name
@@ -368,9 +368,11 @@ def crawl_all_members(url: str) -> Dict[str, Any]:
         crawl_year = datetime.now().year
         face_by_name = extract_member_faces(driver)
         for m in members:
-            m["face_id"] = face_by_name.get(m["name"])
+            face = face_by_name.get(m["name"], {})
+            m["face_id"] = face.get("face_id")
+            m["avatar_url"] = face.get("avatar_url")
 
-        member_by_face_id = {fid: name for name, fid in face_by_name.items()}
+        member_by_face_id = {face["face_id"]: name for name, face in face_by_name.items() if face.get("face_id")}
         events = extract_events(driver, member_by_face_id, crawl_year)
 
         return {

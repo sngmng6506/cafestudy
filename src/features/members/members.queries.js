@@ -6,34 +6,37 @@ export function createMembersQueries(db) {
       const values = [];
       const params = [sourceUrl];
 
-      members.forEach(({ name, bio, face_id }, i) => {
-        const base = i * 3 + 2;
-        values.push(`($${base}, $${base + 1}, $${base + 2}, $1, now(), now())`);
-        params.push(name, bio ?? '', face_id ?? null);
+      members.forEach(({ name, bio, face_id, avatar_url }, i) => {
+        const base = i * 4 + 2;
+        values.push(`($${base}, $${base + 1}, $${base + 2}, $${base + 3}, $1, now(), now())`);
+        params.push(name, bio ?? '', face_id ?? null, avatar_url ?? null);
       });
 
       const result = await client.query(
         `
-          INSERT INTO somoim_members (name, bio, face_id, source_url, created_at, updated_at)
+          INSERT INTO somoim_members (name, bio, face_id, avatar_url, source_url, created_at, updated_at)
           VALUES ${values.join(', ')}
           ON CONFLICT (name, source_url)
           DO UPDATE SET
             bio = EXCLUDED.bio,
             face_id = COALESCE(EXCLUDED.face_id, somoim_members.face_id),
+            avatar_url = COALESCE(EXCLUDED.avatar_url, somoim_members.avatar_url),
             updated_at = now()
-          RETURNING id, name
+          RETURNING id, name, avatar_url
         `,
         params,
       );
 
       if (result.rows.length > 0) {
-        const userValues = result.rows.map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2}, 'somoim', 0)`);
-        const userParams = result.rows.flatMap(({ id, name }) => [id, name]);
+        const userValues = result.rows.map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3}, 'somoim', 0)`);
+        const userParams = result.rows.flatMap(({ id, name, avatar_url }) => [id, name, avatar_url]);
         await client.query(
           `
-            INSERT INTO users (id, nickname, oauth_provider, total_points)
+            INSERT INTO users (id, nickname, avatar, oauth_provider, total_points)
             VALUES ${userValues.join(', ')}
-            ON CONFLICT (id) DO UPDATE SET nickname = EXCLUDED.nickname
+            ON CONFLICT (id) DO UPDATE SET
+              nickname = EXCLUDED.nickname,
+              avatar = COALESCE(EXCLUDED.avatar, users.avatar)
           `,
           userParams,
         );
@@ -59,7 +62,14 @@ export function createMembersQueries(db) {
     async listMembers() {
       const result = await db.query(
         `
-          SELECT id, name, bio, source_url AS "sourceUrl", created_at AS "createdAt", updated_at AS "updatedAt"
+          SELECT
+            id,
+            name,
+            bio,
+            avatar_url AS "avatarUrl",
+            source_url AS "sourceUrl",
+            created_at AS "createdAt",
+            updated_at AS "updatedAt"
           FROM somoim_members
           ORDER BY name ASC
         `,
