@@ -165,16 +165,29 @@ function extractEventCardsInPage() {
 function extractMemberFacesInPage() {
   const results = [];
   const seen = new Set();
+  const nameRegex = /^[가-힣A-Za-z0-9_.\s]{2,20}$/;
+  const skipWords = new Set([
+    '최근가입',
+    '모임 멤버 더보기',
+    'Image',
+    'member face',
+    'refresh',
+    'Premium Sponsor',
+  ]);
   // 멤버/운영진 카드: 얼굴 이미지(1n.png) + 인접 이름 텍스트.
   const faces = Array.from(document.querySelectorAll('img[src*="1n.png"]'));
   for (const face of faces) {
-    const container = face.closest('div, li, section') || face.parentElement;
-    if (!container) continue;
-    const text = (container.innerText || '')
-      .split('\n')
-      .map((s) => s.replace('Premium Sponsor', '').trim())
-      .filter(Boolean);
-    const name = text[0] || null;
+    let node = face.parentElement;
+    let name = null;
+    for (let i = 0; i < 8 && node; i++) {
+      const text = (node.innerText || '')
+        .split('\n')
+        .map((s) => s.replace('Premium Sponsor', '').trim())
+        .filter(Boolean);
+      name = text.find((line) => nameRegex.test(line) && !skipWords.has(line)) || null;
+      if (name) break;
+      node = node.parentElement;
+    }
     if (name && !seen.has(face.src)) {
       seen.add(face.src);
       results.push({ src: face.src, name });

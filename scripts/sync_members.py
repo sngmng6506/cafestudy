@@ -256,13 +256,26 @@ def extract_member_faces(driver) -> Dict[str, Dict[str, str]]:
             if not face_id:
                 continue
             # 얼굴 이미지의 조상 컨테이너에서 이름 텍스트 추출
-            container = face.find_element(By.XPATH, "./ancestor::div[1]")
-            text_lines = [
-                l.replace("Premium Sponsor", "").strip()
-                for l in container.text.split("\n")
-                if l.strip()
-            ]
-            name = text_lines[0] if text_lines else None
+            name = None
+            container = face
+            for _ in range(8):
+                container = container.find_element(By.XPATH, "./..")
+                text_lines = [
+                    l.replace("Premium Sponsor", "").strip()
+                    for l in container.text.split("\n")
+                    if l.strip()
+                ]
+                name = next(
+                    (
+                        line
+                        for line in text_lines
+                        if re.match(r"^[가-힣A-Za-z0-9_.\s]{2,20}$", line)
+                        and line not in {"최근가입", "모임 멤버 더보기", "Image", "member face", "refresh", "Premium Sponsor"}
+                    ),
+                    None,
+                )
+                if name:
+                    break
             if name and name not in face_by_name:
                 face_by_name[name] = {"face_id": face_id, "avatar_url": src}
         except Exception:
