@@ -39,6 +39,16 @@ export function createMembersRouter(ctx) {
     }
   });
 
+  router.get('/events', async (_req, res) => {
+    try {
+      const events = await service.listEvents();
+      return sendOk(res, events);
+    } catch (err) {
+      console.error('[members/events]', err);
+      return sendFail(res, 'FETCH_FAILED', '정모 목록 조회 실패', 500);
+    }
+  });
+
   router.get('/sync-logs', requireInternalKey, async (_req, res) => {
     try {
       const logs = await service.listSyncLogs();

@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import { normalizeEvent, buildFaceIdMap, extractFaceId } from './members.events.js';
 
 const NAME_REGEX = /^[가-힣A-Za-z0-9_.\s]{2,20}$/;
 const BIO_KEYWORDS = ['안녕하세요', '개발자', '프로그래밍', '하는 일', 'Engineer'];
@@ -96,6 +97,93 @@ async function clickMoreUntilEnd(page, max = 50) {
   }
 }
 
+// 브라우저 컨텍스트에서 실행 (page.evaluate). DOM 의존적이라 여기 정의.
+// 각 정모 카드의 이미지 URL/텍스트를 raw 형태로 뽑는다. 정규화는 Node 쪽에서.
+/* c8 ignore start */
+function extractEventCardsInPage() {
+  // "정모 일정" 헤더 ~ "운영진" 헤더 사이의 DOM 노드만 대상.
+  const headers = Array.from(document.querySelectorAll('h1, h2, h3, div, span'));
+  const startEl = headers.find((el) => /정모\s*일정/.test(el.textContent || ''));
+  if (!startEl) return [];
+
+  // 정모 섹션 루트: "정모 일정" 헤더의 부모 컨테이너에서 카드들을 찾는다.
+  // 카드마다 썸네일 img(s\d.png)와 얼굴 img(1t.png), 아이콘 옆 텍스트가 있다.
+  const scope = startEl.closest('section, div') || document.body;
+
+  // 썸네일(정모 대표 이미지)을 카드 앵커로 사용: URL에 "s1.png"/"s2.png" 패턴.
+  const thumbs = Array.from(scope.querySelectorAll('img')).filter((img) =>
+    /\d{12}s\d+\.png/.test(img.src),
+  );
+
+  return thumbs.map((thumb) => {
+    // 카드 컨테이너 추정: 썸네일의 조상 중 얼굴 이미지를 포함하는 가장 가까운 블록.
+    let card = thumb.parentElement;
+    for (let i = 0; i < 6 && card; i++) {
+      const faces = card.querySelectorAll('img[src*="1t.png"]');
+      if (faces.length > 0) break;
+      card = card.parentElement;
+    }
+    card = card || thumb.parentElement;
+
+    const text = (card.innerText || '').split('\n').map((s) => s.trim()).filter(Boolean);
+
+    // 아이콘 기준 필드 추출: i_clock/i_location2/i_currency 아이콘 다음 텍스트.
+    const iconField = (iconKey) => {
+      const icon = card.querySelector(`img[src*="${iconKey}"]`);
+      if (!icon) return null;
+      // 아이콘의 다음 형제 또는 부모의 다음 텍스트를 찾는다.
+      let node = icon.nextElementSibling || icon.parentElement?.nextElementSibling;
+      const t = node?.textContent?.trim();
+      return t || null;
+    };
+
+    const faceSrcs = Array.from(card.querySelectorAll('img[src*="1t.png"]')).map((i) => i.src);
+
+    // 제목: h3 우선, 없으면 상세 일시 텍스트 앞 라인.
+    const titleEl = card.querySelector('h3');
+    const title = titleEl?.textContent?.trim() || text[0] || null;
+
+    // 상세 일시 텍스트: "7/4(토) 오전 10:00" 패턴.
+    const dateTimeText = text.find((l) => /\d{1,2}\/\d{1,2}\([월화수목금토일]\)/.test(l)) || null;
+
+    // 정원 텍스트: "7/10" 패턴 (얼굴 이미지 뒤).
+    const capacityText = text.find((l) => /^\d+\s*\/\s*\d+$/.test(l)) || null;
+
+    return {
+      thumbnailSrc: thumb.src,
+      title,
+      dateTimeText,
+      location: iconField('i_location2'),
+      cost: iconField('i_currency'),
+      attendeeFaceSrcs: faceSrcs,
+      capacityText,
+    };
+  });
+}
+
+// 멤버 섹션에서 이름<->얼굴 매핑을 뽑는다 (face_id 채우기용).
+function extractMemberFacesInPage() {
+  const results = [];
+  const seen = new Set();
+  // 멤버/운영진 카드: 얼굴 이미지(1n.png) + 인접 이름 텍스트.
+  const faces = Array.from(document.querySelectorAll('img[src*="1n.png"]'));
+  for (const face of faces) {
+    const container = face.closest('div, li, section') || face.parentElement;
+    if (!container) continue;
+    const text = (container.innerText || '')
+      .split('\n')
+      .map((s) => s.replace('Premium Sponsor', '').trim())
+      .filter(Boolean);
+    const name = text[0] || null;
+    if (name && !seen.has(face.src)) {
+      seen.add(face.src);
+      results.push({ src: face.src, name });
+    }
+  }
+  return results;
+}
+/* c8 ignore stop */
+
 export async function crawlMembers(url) {
   const browser = await puppeteer.launch({
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
@@ -123,11 +211,34 @@ export async function crawlMembers(url) {
     const lines = rawText.split('\n').map(cleanText).filter(Boolean);
     const members = parseMembers(lines);
 
+    // DOM 기반 추출: 멤버 얼굴 매핑 + 정모 카드.
+    const memberFaces = await page.evaluate(extractMemberFacesInPage);
+    const rawEventCards = await page.evaluate(extractEventCardsInPage);
+
+    // 이름 -> face_id 매핑을 members 에 병합.
+    const faceByName = new Map();
+    for (const { src, name } of memberFaces) {
+      const faceId = extractFaceId(src);
+      if (faceId && name && !faceByName.has(name)) faceByName.set(name, faceId);
+    }
+    const membersWithFace = members.map((m) => ({
+      ...m,
+      face_id: faceByName.get(m.name) ?? null,
+    }));
+
+    // 정모 정규화 + 참가자 이름 매핑.
+    const memberByFaceId = buildFaceIdMap(membersWithFace);
+    const crawlYear = new Date().getFullYear();
+    const events = rawEventCards.map((card) =>
+      normalizeEvent(card, { crawlYear, memberByFaceId }),
+    );
+
     return {
       url,
       expected_member_count: parseMemberCount(lines),
-      crawled_member_count: members.length,
-      members,
+      crawled_member_count: membersWithFace.length,
+      members: membersWithFace,
+      events,
     };
   } finally {
     await browser.close();

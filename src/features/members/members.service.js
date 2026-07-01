@@ -1,16 +1,26 @@
 export function createMembersService(db, queries) {
   return {
-    async syncMembers({ url, expected_member_count, crawled_member_count, members }) {
+    async syncMembers({ url, expected_member_count, crawled_member_count, members, events }) {
       if (!url || !Array.isArray(members)) {
         throw Object.assign(new Error('url과 members 배열이 필요합니다'), { code: 'INVALID_PAYLOAD' });
       }
 
       let upsertedCount = 0;
+      let eventCount = 0;
       let logId;
 
       try {
         await db.transaction(async (client) => {
           upsertedCount = await queries.upsertMembers(client, members, url);
+
+          // 정모 일정 동기화 (있을 때만).
+          if (Array.isArray(events)) {
+            for (const event of events) {
+              await queries.upsertEvent(client, event, url);
+              eventCount += 1;
+            }
+          }
+
           logId = await queries.insertSyncLog(client, {
             sourceUrl: url,
             expectedCount: expected_member_count,
@@ -28,11 +38,15 @@ export function createMembersService(db, queries) {
         throw err;
       }
 
-      return { upsertedCount, logId };
+      return { upsertedCount, eventCount, logId };
     },
 
     async listMembers() {
       return queries.listMembers();
+    },
+
+    async listEvents() {
+      return queries.listEvents();
     },
 
     async listSyncLogs() {

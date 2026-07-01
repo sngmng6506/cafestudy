@@ -6,18 +6,21 @@ export function createMembersQueries(db) {
       const values = [];
       const params = [sourceUrl];
 
-      members.forEach(({ name, bio }, i) => {
-        const base = i * 2 + 2;
-        values.push(`($${base}, $${base + 1}, $1, now(), now())`);
-        params.push(name, bio ?? '');
+      members.forEach(({ name, bio, face_id }, i) => {
+        const base = i * 3 + 2;
+        values.push(`($${base}, $${base + 1}, $${base + 2}, $1, now(), now())`);
+        params.push(name, bio ?? '', face_id ?? null);
       });
 
       const result = await client.query(
         `
-          INSERT INTO somoim_members (name, bio, source_url, created_at, updated_at)
+          INSERT INTO somoim_members (name, bio, face_id, source_url, created_at, updated_at)
           VALUES ${values.join(', ')}
           ON CONFLICT (name, source_url)
-          DO UPDATE SET bio = EXCLUDED.bio, updated_at = now()
+          DO UPDATE SET
+            bio = EXCLUDED.bio,
+            face_id = COALESCE(EXCLUDED.face_id, somoim_members.face_id),
+            updated_at = now()
           RETURNING id, name
         `,
         params,
@@ -59,6 +62,90 @@ export function createMembersQueries(db) {
           SELECT id, name, bio, source_url AS "sourceUrl", created_at AS "createdAt", updated_at AS "updatedAt"
           FROM somoim_members
           ORDER BY name ASC
+        `,
+      );
+
+      return result.rows;
+    },
+
+    // 정모 하나를 UPSERT 하고, 참가자 목록을 교체(delete + insert)한다.
+    async upsertEvent(client, event, sourceUrl) {
+      const result = await client.query(
+        `
+          INSERT INTO somoim_events
+            (source_url, title, scheduled_at, location, cost, joined_count, capacity, thumbnail_url, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+          ON CONFLICT (source_url, title, scheduled_at)
+          DO UPDATE SET
+            location = EXCLUDED.location,
+            cost = EXCLUDED.cost,
+            joined_count = EXCLUDED.joined_count,
+            capacity = EXCLUDED.capacity,
+            thumbnail_url = EXCLUDED.thumbnail_url,
+            updated_at = now()
+          RETURNING id
+        `,
+        [
+          sourceUrl,
+          event.title,
+          event.scheduledAt,
+          event.location,
+          event.cost,
+          event.joinedCount,
+          event.capacity,
+          event.thumbnailUrl,
+        ],
+      );
+
+      const eventId = result.rows[0].id;
+
+      // 참가자 목록 교체 (재크롤링 시 최신 상태 반영).
+      await client.query(`DELETE FROM somoim_event_attendees WHERE event_id = $1`, [eventId]);
+
+      if (event.attendees.length > 0) {
+        const values = [];
+        const params = [eventId];
+        event.attendees.forEach(({ faceId, name }, i) => {
+          const base = i * 2 + 2;
+          values.push(`($1, $${base}, $${base + 1})`);
+          params.push(faceId, name ?? null);
+        });
+        await client.query(
+          `
+            INSERT INTO somoim_event_attendees (event_id, face_id, member_name)
+            VALUES ${values.join(', ')}
+            ON CONFLICT (event_id, face_id) DO UPDATE SET member_name = EXCLUDED.member_name
+          `,
+          params,
+        );
+      }
+
+      return eventId;
+    },
+
+    async listEvents() {
+      const result = await db.query(
+        `
+          SELECT
+            e.id,
+            e.title,
+            e.scheduled_at AS "scheduledAt",
+            e.location,
+            e.cost,
+            e.joined_count AS "joinedCount",
+            e.capacity,
+            e.thumbnail_url AS "thumbnailUrl",
+            COALESCE(
+              json_agg(
+                json_build_object('faceId', a.face_id, 'name', a.member_name)
+                ORDER BY a.member_name NULLS LAST
+              ) FILTER (WHERE a.id IS NOT NULL),
+              '[]'
+            ) AS attendees
+          FROM somoim_events e
+          LEFT JOIN somoim_event_attendees a ON a.event_id = e.id
+          GROUP BY e.id
+          ORDER BY e.scheduled_at ASC NULLS LAST
         `,
       );
 
