@@ -15,9 +15,17 @@ export function createMeetupQueries(db) {
             m.created_at AS "createdAt",
             COUNT(p.user_id)::int AS "participantCount",
             COALESCE(BOOL_OR(p.user_id = $1), false) AS "joined",
-            (m.host_id = $1) AS "isHost"
+            (m.host_id = $1) AS "isHost",
+            COALESCE(
+              json_agg(
+                json_build_object('name', u.nickname)
+                ORDER BY u.nickname
+              ) FILTER (WHERE u.id IS NOT NULL),
+              '[]'
+            ) AS attendees
           FROM meetups m
           LEFT JOIN participants p ON p.meetup_id = m.id
+          LEFT JOIN users u ON u.id = p.user_id
           WHERE m.status = 'open'
           GROUP BY m.id
           ORDER BY m.scheduled_at ASC, m.created_at DESC
