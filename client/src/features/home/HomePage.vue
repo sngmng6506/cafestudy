@@ -15,18 +15,22 @@ const infoOpen = ref(false);
 const somoimEvents = ref([]);
 const somoimLoading = ref(false);
 
-const openMeetups = computed(() =>
+const allMeetups = computed(() =>
   [
     ...meetups.value,
     ...somoimEvents.value.map(toMeetupFromSomoimEvent),
   ]
+);
+
+const openMeetups = computed(() =>
+  [...allMeetups.value]
     .filter((meetup) => meetup.state !== 'done')
     .sort((a, b) => sortTime(a.scheduledAt) - sortTime(b.scheduledAt)),
 );
 
 const meetupsByDay = computed(() => {
   const map = {};
-  for (const meetup of meetups.value) {
+  for (const meetup of allMeetups.value) {
     const key = dayKey(new Date(meetup.scheduledAt));
     (map[key] ??= []).push(meetup);
   }
