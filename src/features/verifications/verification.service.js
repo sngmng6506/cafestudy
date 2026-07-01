@@ -63,6 +63,16 @@ export function createVerificationService({ db, storage }) {
         })),
       );
     },
+
+    async listApprovedPhotos() {
+      const rows = await queries.listApprovedPhotos();
+      return Promise.all(
+        rows.map(async (row) => ({
+          ...row,
+          photoViewUrl: await resolvePhotoUrl(row.photoUrl),
+        })),
+      );
+    },
   };
 
   // Only the host may verify, and only once the meetup has started.

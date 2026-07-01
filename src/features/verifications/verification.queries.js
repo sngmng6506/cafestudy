@@ -31,6 +31,27 @@ export function createVerificationQueries(db) {
       return result.rows;
     },
 
+    async listApprovedPhotos() {
+      const result = await db.query(
+        `
+          SELECT
+            v.id,
+            v.meetup_id AS "meetupId",
+            v.photo_url AS "photoUrl",
+            v.points_awarded AS "pointsAwarded",
+            v.created_at AS "createdAt",
+            m.title AS "meetupTitle",
+            m.scheduled_at AS "meetupScheduledAt"
+          FROM verifications v
+          JOIN meetups m ON m.id = v.meetup_id
+          WHERE v.status = 'approved'
+          ORDER BY v.created_at DESC
+        `,
+      );
+
+      return result.rows;
+    },
+
     createVerificationWithPoints({ userId, meetupId, photoUrl, points }) {
       return db.transaction(async (client) => {
         const verificationResult = await client.query(

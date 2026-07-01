@@ -22,15 +22,16 @@ const allMeetups = computed(() =>
   ]
 );
 
+const activeMeetups = computed(() => allMeetups.value.filter((meetup) => meetup.state !== 'done'));
+
 const openMeetups = computed(() =>
-  [...allMeetups.value]
-    .filter((meetup) => meetup.state !== 'done')
+  [...activeMeetups.value]
     .sort((a, b) => sortTime(a.scheduledAt) - sortTime(b.scheduledAt)),
 );
 
 const meetupsByDay = computed(() => {
   const map = {};
-  for (const meetup of allMeetups.value) {
+  for (const meetup of activeMeetups.value) {
     const key = dayKey(new Date(meetup.scheduledAt));
     (map[key] ??= []).push(meetup);
   }

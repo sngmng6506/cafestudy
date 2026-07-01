@@ -15,6 +15,15 @@ export function createVerificationRouter(ctx) {
     }
   });
 
+  router.get('/photos', ctx.auth.requireUser, async (_req, res, next) => {
+    try {
+      const photos = await verificationService.listApprovedPhotos();
+      sendOk(res, photos);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/upload-url', ctx.auth.requireUser, async (req, res, next) => {
     try {
       const result = await verificationService.createUploadUrl({

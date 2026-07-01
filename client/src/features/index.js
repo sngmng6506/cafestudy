@@ -7,6 +7,7 @@ import DicePage from './dice/DicePage.vue';
 import MembersPage from './members/MembersPage.vue';
 import CafesPage from './cafes/CafesPage.vue';
 import UpdatesPage from './updates/UpdatesPage.vue';
+import MeetupHistoryPage from './history/MeetupHistoryPage.vue';
 
 // `primary: true` pins a feature to the bottom tab bar. Features without it
 // (extra/non-core features contributors add later) collect in the "더보기" sheet,
@@ -65,6 +66,13 @@ export const features = [
     order: 110,
     icon: Coffee,
     component: CafesPage,
+  },
+  {
+    name: 'meetup-history',
+    label: '모임 이력',
+    order: 115,
+    icon: CalendarDays,
+    component: MeetupHistoryPage,
   },
   {
     name: 'updates',
