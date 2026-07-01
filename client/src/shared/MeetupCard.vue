@@ -72,6 +72,9 @@ const emit = defineEmits(['toggle-join', 'cancel']);
         {{ meetup.participantCount >= meetup.capacity ? '마감' : '모집중' }}
       </span>
     </div>
+    <p v-if="meetup.attendees?.length" class="text-[13px] leading-relaxed text-[#5f6368]">
+      참석 {{ meetup.attendees.join(', ') }}
+    </p>
     <div class="mt-auto flex flex-wrap items-center gap-2">
       <a
         class="focus-ring inline-flex h-9 items-center justify-center gap-1.5 rounded border border-[#dadce0] px-3 text-sm font-semibold text-[#03C75A] transition hover:bg-[#f5f6f7]"

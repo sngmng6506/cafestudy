@@ -144,7 +144,7 @@ export function createMembersQueries(db) {
             e.thumbnail_url AS "thumbnailUrl",
             COALESCE(
               json_agg(
-                json_build_object('faceId', a.face_id, 'name', a.member_name)
+                json_build_object('name', a.member_name)
                 ORDER BY a.member_name NULLS LAST
               ) FILTER (WHERE a.id IS NOT NULL),
               '[]'

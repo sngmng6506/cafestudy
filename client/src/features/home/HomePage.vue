@@ -149,6 +149,7 @@ function toMeetupFromSomoimEvent(event) {
     scheduledAt,
     capacity,
     participantCount,
+    attendees: (event.attendees ?? []).map((attendee) => attendee.name).filter(Boolean),
     joined: false,
     isHost: false,
     readonly: true,
