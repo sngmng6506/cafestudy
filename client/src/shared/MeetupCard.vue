@@ -92,7 +92,8 @@ const emit = defineEmits(['toggle-join', 'cancel']);
         <ExternalLink :size="16" />
       </a>
       <div class="ml-auto flex items-center gap-2">
-        <div v-if="meetup.isHost" class="flex items-center gap-2">
+        <span v-if="meetup.readonly" class="text-sm font-semibold text-[#5f6368]">외부 동기화</span>
+        <div v-else-if="meetup.isHost" class="flex items-center gap-2">
           <span class="text-sm font-semibold text-[#5f6368]">개설자</span>
           <button
             class="focus-ring h-9 shrink-0 rounded border border-[#e74c3c] px-3 text-sm font-semibold text-[#e74c3c] transition hover:bg-[#f5f6f7] disabled:opacity-50"

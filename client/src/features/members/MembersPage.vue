@@ -125,17 +125,7 @@ function avatarRingClass(memberId) {
           :key="member.id"
           class="flex items-center gap-3 px-4 py-3 first:pt-4 last:pb-4"
         >
-          <img
-            v-if="member.avatarUrl"
-            :src="member.avatarUrl"
-            :alt="member.name"
-            class="h-10 w-10 shrink-0 rounded-full bg-[#f5f6f7] object-cover"
-            :class="avatarRingClass(member.id)"
-            loading="lazy"
-            @error="member.avatarUrl = ''"
-          />
           <span
-            v-else
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[15px] font-bold"
             :class="[avatarColor(member.name), avatarRingClass(member.id)]"
           >

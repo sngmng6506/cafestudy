@@ -22,21 +22,19 @@ export function createMembersQueries(db) {
             face_id = COALESCE(EXCLUDED.face_id, somoim_members.face_id),
             avatar_url = COALESCE(EXCLUDED.avatar_url, somoim_members.avatar_url),
             updated_at = now()
-          RETURNING id, name, avatar_url
+          RETURNING id, name
         `,
         params,
       );
 
       if (result.rows.length > 0) {
-        const userValues = result.rows.map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3}, 'somoim', 0)`);
-        const userParams = result.rows.flatMap(({ id, name, avatar_url }) => [id, name, avatar_url]);
+        const userValues = result.rows.map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2}, 'somoim', 0)`);
+        const userParams = result.rows.flatMap(({ id, name }) => [id, name]);
         await client.query(
           `
-            INSERT INTO users (id, nickname, avatar, oauth_provider, total_points)
+            INSERT INTO users (id, nickname, oauth_provider, total_points)
             VALUES ${userValues.join(', ')}
-            ON CONFLICT (id) DO UPDATE SET
-              nickname = EXCLUDED.nickname,
-              avatar = COALESCE(EXCLUDED.avatar, users.avatar)
+            ON CONFLICT (id) DO UPDATE SET nickname = EXCLUDED.nickname
           `,
           userParams,
         );
@@ -66,7 +64,6 @@ export function createMembersQueries(db) {
             id,
             name,
             bio,
-            avatar_url AS "avatarUrl",
             source_url AS "sourceUrl",
             created_at AS "createdAt",
             updated_at AS "updatedAt"

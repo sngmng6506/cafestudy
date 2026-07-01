@@ -8,7 +8,6 @@ export function createRankingQueries(db) {
           SELECT
             id,
             nickname,
-            avatar,
             total_points AS "points"
           FROM users
           ORDER BY total_points DESC, created_at ASC
@@ -26,7 +25,6 @@ export function createRankingQueries(db) {
           SELECT
             u.id,
             u.nickname,
-            u.avatar,
             COALESCE(SUM(pl.amount), 0)::integer AS "points"
           FROM users u
           JOIN point_logs pl ON pl.user_id = u.id

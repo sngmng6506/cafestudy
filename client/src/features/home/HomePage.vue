@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from '@lucide/vue';
 import { useMeetups, formatDate, formatTime } from '../../shared/useMeetups.js';
 import MeetupCard from '../../shared/MeetupCard.vue';
+import { apiFetch } from '../../shared/api.js';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -11,11 +12,16 @@ const { meetups, loading, pendingId, errorMessage, actionError, loadMeetups, tog
 const viewMonth = ref(startOfMonth(new Date()));
 const selectedDate = ref(null);
 const infoOpen = ref(false);
+const somoimEvents = ref([]);
+const somoimLoading = ref(false);
 
 const openMeetups = computed(() =>
-  [...meetups.value]
+  [
+    ...meetups.value,
+    ...somoimEvents.value.map(toMeetupFromSomoimEvent),
+  ]
     .filter((meetup) => meetup.state !== 'done')
-    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt)),
+    .sort((a, b) => sortTime(a.scheduledAt) - sortTime(b.scheduledAt)),
 );
 
 const meetupsByDay = computed(() => {
@@ -58,6 +64,7 @@ const selectedLabel = computed(() =>
 
 onMounted(() => {
   void loadMeetups();
+  void loadSomoimEvents();
 });
 
 function startOfMonth(date) {
@@ -115,6 +122,42 @@ function shiftMonth(delta) {
     viewMonth.value.getMonth() + delta,
     1,
   );
+}
+
+async function loadSomoimEvents() {
+  somoimLoading.value = true;
+  try {
+    const body = await apiFetch('/api/members/events');
+    somoimEvents.value = body.data ?? [];
+  } catch (_error) {
+    somoimEvents.value = [];
+  } finally {
+    somoimLoading.value = false;
+  }
+}
+
+function toMeetupFromSomoimEvent(event) {
+  const scheduledAt = event.scheduledAt ?? new Date().toISOString();
+  const capacity = Number(event.capacity ?? event.joinedCount ?? 0);
+  const participantCount = Number(event.joinedCount ?? 0);
+
+  return {
+    id: `somoim-${event.id}`,
+    title: event.title,
+    description: event.cost ? `참가비 ${event.cost}` : '',
+    location: event.location ?? '장소 미정',
+    scheduledAt,
+    capacity,
+    participantCount,
+    joined: false,
+    isHost: false,
+    readonly: true,
+    state: new Date(scheduledAt) < new Date() ? 'done' : 'upcoming',
+  };
+}
+
+function sortTime(value) {
+  return value ? new Date(value).getTime() : Number.MAX_SAFE_INTEGER;
 }
 </script>
 
@@ -209,7 +252,7 @@ function shiftMonth(delta) {
         <CalendarDays :size="18" class="text-[#03C75A]" />
         <h3 class="text-lg font-semibold text-[#333333]">지금 열린 모임</h3>
         <span
-          v-if="!loading && !errorMessage"
+          v-if="!loading && !somoimLoading && !errorMessage"
           class="ml-1 rounded-lg bg-[#f5f6f7] px-2 py-0.5 text-sm font-semibold text-[#5f6368]"
         >
           {{ openMeetups.length }}
@@ -221,7 +264,7 @@ function shiftMonth(delta) {
       </p>
 
       <!-- 스켈레톤 -->
-      <ul v-if="loading" class="divide-y divide-[#dadce0]">
+      <ul v-if="loading || somoimLoading" class="divide-y divide-[#dadce0]">
         <li
           v-for="n in 3"
           :key="n"
