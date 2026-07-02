@@ -64,8 +64,9 @@ export function createVerificationService({ db, storage }) {
       );
     },
 
-    async listApprovedPhotos() {
-      const rows = await queries.listApprovedPhotos();
+    // 사진마다 presigned URL을 생성(S3 호출)하므로 상한을 둔다.
+    async listApprovedPhotos(limit = 60) {
+      const rows = await queries.listApprovedPhotos(limit);
       return Promise.all(
         rows.map(async (row) => ({
           ...row,

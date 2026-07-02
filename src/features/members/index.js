@@ -30,8 +30,13 @@ export default {
       try {
         console.log(`[members] 크롤링 시작: ${url}`);
         const result = await crawlMembers(url);
-        const { upsertedCount, logId } = await service.syncMembers(result);
-        console.log(`[members] 동기화 완료: ${upsertedCount}명 upserted (logId: ${logId})`);
+        const { upsertedCount, eventCount, prunedCount, logId } = await service.syncMembers(result);
+        console.log(
+          `[members] 동기화 완료: ${upsertedCount}명 upserted, 정모 ${eventCount}건 (유령 ${prunedCount}건 정리, logId: ${logId})`,
+        );
+        if (eventCount === 0) {
+          console.warn('[members] 정모 0건 — 파싱 실패 가능성, 페이지 구조 변경 여부 확인 필요');
+        }
       } catch (err) {
         console.error('[members] 크롤링/동기화 오류:', err.message);
       } finally {

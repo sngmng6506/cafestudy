@@ -18,7 +18,11 @@ const somoimLoading = ref(false);
 const allMeetups = computed(() =>
   [
     ...meetups.value,
-    ...somoimEvents.value.map(toMeetupFromSomoimEvent),
+    // 날짜 파싱에 실패한(scheduledAt null) 정모는 캘린더/목록에서 제외 —
+    // now()로 대체하면 "오늘 예정"으로 둔갑해 혼란을 준다.
+    ...somoimEvents.value
+      .filter((event) => event.scheduledAt)
+      .map(toMeetupFromSomoimEvent),
   ]
 );
 
@@ -142,9 +146,14 @@ async function loadSomoimEvents() {
 }
 
 function toMeetupFromSomoimEvent(event) {
-  const scheduledAt = event.scheduledAt ?? new Date().toISOString();
+  const scheduledAt = event.scheduledAt;
   const capacity = Number(event.capacity ?? event.joinedCount ?? 0);
   const participantCount = Number(event.joinedCount ?? 0);
+
+  // attendees는 이름 매핑된 참석자만 옴. 참여 인원과 차이나면 "외 N명"으로 보정.
+  const named = (event.attendees ?? []).map((attendee) => attendee.name).filter(Boolean);
+  const unmapped = participantCount - named.length;
+  const attendees = unmapped > 0 ? [...named, `외 ${unmapped}명`] : named;
 
   return {
     id: `somoim-${event.id}`,
@@ -154,7 +163,7 @@ function toMeetupFromSomoimEvent(event) {
     scheduledAt,
     capacity,
     participantCount,
-    attendees: (event.attendees ?? []).map((attendee) => attendee.name).filter(Boolean),
+    attendees,
     joined: false,
     isHost: false,
     readonly: true,

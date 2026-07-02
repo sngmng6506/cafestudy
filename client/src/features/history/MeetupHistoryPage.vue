@@ -26,6 +26,7 @@ const completedMeetups = computed(() => {
         photos: photoMap[meetup.id] ?? [],
       })),
     ...somoimEvents.value
+      .filter((event) => event.scheduledAt)
       .map(toHistoryFromSomoimEvent)
       .filter((meetup) => meetup.state === 'done'),
   ].sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt));
@@ -53,7 +54,10 @@ onMounted(async () => {
 });
 
 function toHistoryFromSomoimEvent(event) {
-  const scheduledAt = event.scheduledAt ?? new Date().toISOString();
+  const scheduledAt = event.scheduledAt;
+  const participantCount = Number(event.joinedCount ?? 0);
+  const named = (event.attendees ?? []).map((attendee) => attendee.name).filter(Boolean);
+  const unmapped = participantCount - named.length;
 
   return {
     id: `somoim-${event.id}`,
@@ -61,9 +65,9 @@ function toHistoryFromSomoimEvent(event) {
     description: event.cost ? `참가비 ${event.cost}` : '',
     location: event.location ?? '장소 미정',
     scheduledAt,
-    participantCount: Number(event.joinedCount ?? 0),
+    participantCount,
     capacity: Number(event.capacity ?? event.joinedCount ?? 0),
-    attendees: (event.attendees ?? []).map((attendee) => attendee.name).filter(Boolean),
+    attendees: unmapped > 0 ? [...named, `외 ${unmapped}명`] : named,
     sourceLabel: '앱 동기화',
     photos: [],
     state: new Date(scheduledAt) < new Date() ? 'done' : 'upcoming',

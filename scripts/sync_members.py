@@ -283,13 +283,18 @@ def extract_member_faces(driver) -> Dict[str, Dict[str, str]]:
     return face_by_name
 
 
-def extract_events(driver, member_by_face_id: Dict[str, str], crawl_year: int) -> List[Dict[str, Any]]:
-    """정모 카드 추출 + 참가자 이름 매핑."""
+def extract_events(driver, member_by_face_id: Dict[str, str], crawl_year: int, group_id: str = "") -> List[Dict[str, Any]]:
+    """정모 카드 추출 + 참가자 이름 매핑.
+
+    group_id: 페이지 URL 마지막 세그먼트. 썸네일 파일명이 group_id로 시작하므로
+    "비슷한 모임" 등 다른 그룹의 정모 카드가 섞이는 것을 막는 필터로 쓴다.
+    """
     events = []
-    # 정모 썸네일(YYYYMMDDHHMMs?.png)을 카드 앵커로 사용
+    # 정모 썸네일(<group_id><YYYYMMDDHHMM>s<n>.png)을 카드 앵커로 사용
     thumbs = [
         img for img in driver.find_elements(By.TAG_NAME, "img")
         if re.search(r"\d{12}s\d+\.png", img.get_attribute("src") or "")
+        and (not group_id or group_id in (img.get_attribute("src") or ""))
     ]
 
     for thumb in thumbs:
@@ -386,7 +391,8 @@ def crawl_all_members(url: str) -> Dict[str, Any]:
             m["avatar_url"] = face.get("avatar_url")
 
         member_by_face_id = {face["face_id"]: name for name, face in face_by_name.items() if face.get("face_id")}
-        events = extract_events(driver, member_by_face_id, crawl_year)
+        group_id = url.rstrip("/").rsplit("/", 1)[-1]
+        events = extract_events(driver, member_by_face_id, crawl_year, group_id)
 
         return {
             "url": url,

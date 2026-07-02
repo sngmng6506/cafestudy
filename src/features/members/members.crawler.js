@@ -99,20 +99,27 @@ async function clickMoreUntilEnd(page, max = 50) {
 
 // 브라우저 컨텍스트에서 실행 (page.evaluate). DOM 의존적이라 여기 정의.
 // 각 정모 카드의 이미지 URL/텍스트를 raw 형태로 뽑는다. 정규화는 Node 쪽에서.
+// groupId: 페이지 URL 마지막 세그먼트. 썸네일 파일명이 groupId로 시작하므로
+// "비슷한 모임" 등 다른 그룹의 정모 카드가 섞이는 것을 막는 필터로 쓴다.
 /* c8 ignore start */
-function extractEventCardsInPage() {
-  // "정모 일정" 헤더 ~ "운영진" 헤더 사이의 DOM 노드만 대상.
-  const headers = Array.from(document.querySelectorAll('h1, h2, h3, div, span'));
-  const startEl = headers.find((el) => /정모\s*일정/.test(el.textContent || ''));
+function extractEventCardsInPage(groupId) {
+  // "정모 일정" 텍스트를 포함하는 요소 중 "가장 깊은" 것을 헤더로 삼는다.
+  // (조상 wrapper div의 textContent에도 매칭되므로, 첫 매치를 쓰면 scope가
+  // 사실상 body 전체가 되어 다른 섹션의 카드가 섞여 들어온다.)
+  const candidates = Array.from(document.querySelectorAll('h1, h2, h3, div, span')).filter(
+    (el) => /정모\s*일정/.test(el.textContent || ''),
+  );
+  const startEl = candidates.find(
+    (el) => !candidates.some((other) => other !== el && el.contains(other)),
+  );
   if (!startEl) return [];
 
-  // 정모 섹션 루트: "정모 일정" 헤더의 부모 컨테이너에서 카드들을 찾는다.
-  // 카드마다 썸네일 img(s\d.png)와 얼굴 img(1t.png), 아이콘 옆 텍스트가 있다.
   const scope = startEl.closest('section, div') || document.body;
 
-  // 썸네일(정모 대표 이미지)을 카드 앵커로 사용: URL에 "s1.png"/"s2.png" 패턴.
-  const thumbs = Array.from(scope.querySelectorAll('img')).filter((img) =>
-    /\d{12}s\d+\.png/.test(img.src),
+  // 썸네일(정모 대표 이미지)을 카드 앵커로 사용: <groupId><YYYYMMDDHHMM>s<n>.png
+  const thumbs = Array.from(scope.querySelectorAll('img')).filter(
+    (img) =>
+      /\d{12}s\d+\.png/.test(img.src) && (!groupId || img.src.includes(groupId)),
   );
 
   return thumbs.map((thumb) => {
@@ -225,8 +232,10 @@ export async function crawlMembers(url) {
     const members = parseMembers(lines);
 
     // DOM 기반 추출: 멤버 얼굴 매핑 + 정모 카드.
+    // groupId = URL 마지막 세그먼트 (썸네일 필터용).
+    const groupId = new URL(url).pathname.split('/').filter(Boolean).pop() ?? '';
     const memberFaces = await page.evaluate(extractMemberFacesInPage);
-    const rawEventCards = await page.evaluate(extractEventCardsInPage);
+    const rawEventCards = await page.evaluate(extractEventCardsInPage, groupId);
 
     // 이름 -> face_id 매핑을 members 에 병합.
     const faceByName = new Map();

@@ -64,6 +64,7 @@ export function createMembersQueries(db) {
             id,
             name,
             bio,
+            avatar_url AS "avatarUrl",
             source_url AS "sourceUrl",
             created_at AS "createdAt",
             updated_at AS "updatedAt"
@@ -75,6 +76,14 @@ export function createMembersQueries(db) {
       return result.rows;
     },
 
+    async getMemberAvatarUrl(memberId) {
+      const result = await db.query(
+        `SELECT avatar_url AS "avatarUrl" FROM somoim_members WHERE id = $1`,
+        [memberId],
+      );
+      return result.rows[0]?.avatarUrl ?? null;
+    },
+
     // 정모 하나를 UPSERT 하고, 참가자 목록을 교체(delete + insert)한다.
     async upsertEvent(client, event, sourceUrl) {
       const result = await client.query(
@@ -82,7 +91,7 @@ export function createMembersQueries(db) {
           INSERT INTO somoim_events
             (source_url, title, scheduled_at, location, cost, joined_count, capacity, thumbnail_url, updated_at)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
-          ON CONFLICT (source_url, title, scheduled_at)
+          ON CONFLICT (source_url, title, COALESCE(scheduled_at, 'epoch'::timestamptz))
           DO UPDATE SET
             location = EXCLUDED.location,
             cost = EXCLUDED.cost,
@@ -130,6 +139,23 @@ export function createMembersQueries(db) {
       return eventId;
     },
 
+    // 이번 크롤링에 없는 "미래" 정모를 삭제한다 (소모임에서 수정/삭제된 유령 행 정리).
+    // 과거 정모는 이력(카페 방문 통계 등) 보존을 위해 남긴다.
+    async pruneStaleFutureEvents(client, sourceUrl, keepIds) {
+      if (keepIds.length === 0) return 0;
+      const placeholders = keepIds.map((_, i) => `$${i + 2}`).join(', ');
+      const result = await client.query(
+        `
+          DELETE FROM somoim_events
+          WHERE source_url = $1
+            AND scheduled_at > now()
+            AND id NOT IN (${placeholders})
+        `,
+        [sourceUrl, ...keepIds],
+      );
+      return result.rowCount;
+    },
+
     async listEvents() {
       const result = await db.query(
         `
@@ -145,8 +171,8 @@ export function createMembersQueries(db) {
             COALESCE(
               json_agg(
                 json_build_object('name', a.member_name)
-                ORDER BY a.member_name NULLS LAST
-              ) FILTER (WHERE a.id IS NOT NULL),
+                ORDER BY a.member_name
+              ) FILTER (WHERE a.id IS NOT NULL AND a.member_name IS NOT NULL),
               '[]'
             ) AS attendees
           FROM somoim_events e
