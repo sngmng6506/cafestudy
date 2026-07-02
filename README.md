@@ -152,6 +152,13 @@ npm run db:migrate
 
 Railway에도 로컬 `.env`와 같은 종류의 환경변수가 필요합니다.
 
+배포 시작 커맨드(`railway.json`)가 서버 기동 전에 `npm run db:migrate`를 자동으로 실행합니다.
+이미 적용된 마이그레이션은 건너뛰므로 매 배포마다 실행돼도 안전합니다. 수동 실행이 필요하면:
+
+```bash
+npm run db:migrate
+```
+
 배포 확인:
 
 ```text

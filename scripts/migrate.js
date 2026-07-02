@@ -8,6 +8,7 @@ const { Pool } = pg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const migrationsDir = path.join(__dirname, '../migrations');
+let lockClient;
 
 if (!process.env.DATABASE_URL) {
   console.error('DATABASE_URL is required to run migrations.');
@@ -19,7 +20,12 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
+// 배포 시작 커맨드에서 매번 실행되므로(이미 적용된 마이그레이션은 skip돼 무해),
+// 롤링 디플로이 등으로 두 프로세스가 동시에 뜰 경우를 대비해 advisory lock으로 직렬화.
+const MIGRATION_LOCK_KEY = 727_2001; // 임의의 고정 정수(앱 전용 네임스페이스)
+
 try {
+  await acquireLock();
   await ensureMigrationsTable();
   const files = (await readdir(migrationsDir))
     .filter((file) => file.endsWith('.sql'))
@@ -36,7 +42,26 @@ try {
     await applyMigration(file);
   }
 } finally {
+  await releaseLock();
   await pool.end();
+}
+
+async function acquireLock() {
+  // pg_advisory_lock은 세션(커넥션) 단위로 유효하므로, pool.query가 아니라
+  // 전용 client를 하나 고정해서 잡고 있어야 한다.
+  lockClient = await pool.connect();
+  console.log('[migrate] advisory lock 대기 중...');
+  await lockClient.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_KEY]);
+  console.log('[migrate] advisory lock 획득');
+}
+
+async function releaseLock() {
+  if (!lockClient) return;
+  try {
+    await lockClient.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]);
+  } finally {
+    lockClient.release();
+  }
 }
 
 async function ensureMigrationsTable() {

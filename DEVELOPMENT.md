@@ -288,9 +288,13 @@ The first implementation slice should prove the system works end to end:
 2. Connect the GitHub repository as a Web Service.
 3. Add a PostgreSQL database in the same Railway project.
 4. Expose the database connection as `DATABASE_URL` to the Web Service.
-5. Configure the service start command after the app scaffold exists.
+5. `railway.json` in the repo sets the deploy start command to
+   `npm run db:migrate && npm start`, so migrations run automatically before
+   every deploy (idempotent — already-applied migrations are skipped).
+   No manual dashboard start-command config needed.
 6. Add required environment variables in Railway, not in source control.
-7. Run database migrations after `DATABASE_URL` is connected:
+7. First deploy after connecting `DATABASE_URL` will run all migrations from
+   scratch. To run migrations manually (e.g. locally against the Railway DB):
 
 ```text
 npm run db:migrate
