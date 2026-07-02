@@ -103,6 +103,12 @@ function isSelected(date) {
   return selectedDate.value && dayKey(date) === dayKey(selectedDate.value);
 }
 
+function dayAriaLabel(date) {
+  const count = countOn(date);
+  const base = `${date.getMonth() + 1}월 ${date.getDate()}일`;
+  return count ? `${base}, 모임 ${count}건` : base;
+}
+
 function cellClass(date) {
   if (isSelected(date)) return 'bg-[#03C75A] text-white';
 
@@ -226,6 +232,8 @@ function sortTime(value) {
           type="button"
           class="focus-ring relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm font-semibold transition"
           :class="cellClass(date)"
+          :aria-label="dayAriaLabel(date)"
+          :aria-pressed="isSelected(date)"
           @click="selectDay(date)"
         >
           {{ date.getDate() }}
@@ -333,6 +341,9 @@ function sortTime(value) {
     </div>
 
     <!-- 모임 안내 (접기/펼치기) -->
+    <!-- TODO(multi-group): 아래 시간/장소/타임라인/모임장 소개는 현재 단일 모임
+         ([홍대] it&ai 스터디) 전용으로 하드코딩됨. 여러 모임을 지원하게 되면
+         모임 설정(meetup_config 등)에서 불러오도록 분리 필요. -->
     <section class="rounded-xl border border-[#dadce0] bg-white shadow-sm">
       <button
         class="flex w-full items-center justify-between px-5 py-4 text-left transition"

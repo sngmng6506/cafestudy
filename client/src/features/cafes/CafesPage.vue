@@ -118,20 +118,25 @@ async function saveComment(cafe) {
           </div>
           <p v-else class="text-[13px] text-[#5f6368]">아직 남겨진 코멘트가 없습니다.</p>
 
-          <form v-if="cafe.canComment" class="flex gap-2" @submit.prevent="saveComment(cafe)">
-            <input
-              v-model="commentInputs[cafe.location]"
-              class="h-10 min-w-0 flex-1 rounded-lg border border-[#dadce0] px-3 text-[14px] outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
-              maxlength="120"
-              placeholder="이 카페에 대한 한줄 코멘트"
-            />
-            <button
-              class="focus-ring h-10 shrink-0 rounded bg-[#03C75A] px-3 text-sm font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-50"
-              type="submit"
-              :disabled="pendingLocation === cafe.location"
-            >
-              저장
-            </button>
+          <form v-if="cafe.canComment" class="grid gap-1" @submit.prevent="saveComment(cafe)">
+            <div class="flex gap-2">
+              <input
+                v-model="commentInputs[cafe.location]"
+                class="h-10 min-w-0 flex-1 rounded-lg border border-[#dadce0] px-3 text-[14px] outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
+                maxlength="120"
+                placeholder="이 카페에 대한 한줄 코멘트"
+              />
+              <button
+                class="focus-ring h-10 shrink-0 rounded bg-[#03C75A] px-3 text-sm font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-50"
+                type="submit"
+                :disabled="pendingLocation === cafe.location"
+              >
+                저장
+              </button>
+            </div>
+            <span class="pr-1 text-right text-[11px] text-[#5f6368]">
+              {{ (commentInputs[cafe.location] ?? '').length }}/120
+            </span>
           </form>
           <p v-else class="text-[12px] text-[#5f6368]">
             참석 이력이 있는 카페에만 코멘트를 남길 수 있습니다.

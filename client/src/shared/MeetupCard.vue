@@ -1,6 +1,8 @@
 <script setup>
-import { ExternalLink, MapPin } from '@lucide/vue';
+import { computed } from 'vue';
+import { ExternalLink, MapPin, Map } from '@lucide/vue';
 import { formatDate, formatTime, naverMapUrl, googleMapUrl } from './useMeetups.js';
+import { avatarColor, initials } from './useAvatar.js';
 
 const props = defineProps({
   meetup: { type: Object, required: true },
@@ -9,14 +11,38 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['toggle-join', 'cancel']);
+
+const isFull = computed(() => props.meetup.participantCount >= props.meetup.capacity);
+
+// 참석자 아바타 스택: 최대 5명까지 얼굴(이니셜) 표시, 나머지는 +N.
+// "외 N명" 문자열은 집계용이므로 스택에서 제외하고 카운트로 환산.
+const attendeeStack = computed(() => {
+  const names = (props.meetup.attendees ?? []).filter((n) => !/^외 \d+명$/.test(n));
+  const extraMatch = (props.meetup.attendees ?? []).find((n) => /^외 (\d+)명$/.test(n));
+  const extra = extraMatch ? Number(extraMatch.match(/\d+/)[0]) : 0;
+
+  const shown = names.slice(0, 5);
+  const overflow = extra + Math.max(0, names.length - shown.length);
+  return { shown, overflow };
+});
 </script>
 
 <template>
   <!-- Compact (calendar) variant -->
-  <li v-if="compact" class="grid gap-2 rounded-lg border border-[#dadce0] bg-[#f5f6f7] p-3">
+  <li
+    v-if="compact"
+    class="grid gap-2 rounded-lg border p-3"
+    :class="meetup.readonly ? 'border-l-[3px] border-l-[#8B5CF6] border-y-[#dadce0] border-r-[#dadce0] bg-[#FAF8FF]' : 'border-[#dadce0] bg-[#f5f6f7]'"
+  >
     <div>
-      <p class="flex items-center gap-2 text-[15px] font-semibold text-[#333333]">
+      <p class="flex flex-wrap items-center gap-1.5 text-[15px] font-semibold text-[#333333]">
         {{ meetup.title }}
+        <span
+          v-if="meetup.readonly"
+          class="rounded bg-[#EDE7FB] px-1.5 py-0.5 text-[11px] font-semibold text-[#7C3AED]"
+        >
+          소모임
+        </span>
         <span
           v-if="meetup.state === 'done'"
           class="rounded bg-[#f5f6f7] px-1.5 py-0.5 text-xs font-semibold text-[#5f6368]"
@@ -38,16 +64,30 @@ const emit = defineEmits(['toggle-join', 'cancel']);
       </span>
       <span
         class="inline-flex h-6 items-center rounded-full px-2.5 text-[12px] font-semibold"
-        :class="meetup.participantCount >= meetup.capacity ? 'bg-[#f5f6f7] text-[#5f6368]' : 'border border-[#03C75A] bg-white text-[#03C75A]'"
+        :class="isFull ? 'bg-[#f5f6f7] text-[#5f6368]' : 'border border-[#03C75A] bg-white text-[#03C75A]'"
       >
-        {{ meetup.participantCount >= meetup.capacity ? '마감' : '모집중' }}
+        {{ isFull ? '마감' : '모집중' }}
       </span>
     </div>
   </li>
 
   <!-- Normal (list) variant -->
-  <li v-else class="flex flex-col gap-2.5 py-4 first:pt-0 last:pb-0">
-    <h4 class="text-[17px] font-bold tracking-[-0.34px] text-[#333333]">{{ meetup.title }}</h4>
+  <li
+    v-else
+    class="flex flex-col gap-2.5 py-4 first:pt-0 last:pb-0"
+    :class="meetup.readonly ? 'border-l-[3px] border-l-[#8B5CF6] -ml-4 pl-4' : ''"
+  >
+    <div class="flex items-start gap-2">
+      <h4 class="min-w-0 flex-1 text-[17px] font-bold tracking-[-0.34px] text-[#333333]">
+        {{ meetup.title }}
+      </h4>
+      <span
+        v-if="meetup.readonly"
+        class="shrink-0 rounded bg-[#EDE7FB] px-2 py-0.5 text-[11px] font-semibold text-[#7C3AED]"
+      >
+        소모임
+      </span>
+    </div>
     <p class="text-[12px] text-[#5f6368]">
       <time :datetime="meetup.scheduledAt">{{ formatDate(meetup.scheduledAt) }}</time>
     </p>
@@ -62,40 +102,68 @@ const emit = defineEmits(['toggle-join', 'cancel']);
         {{ meetup.participantCount }}/{{ meetup.capacity }}명
       </span>
       <span
+        v-if="!meetup.readonly"
         class="inline-flex h-7 items-center rounded-full px-3 text-[12px] font-semibold"
-        :class="
-          meetup.participantCount >= meetup.capacity
-            ? 'bg-[#f5f6f7] text-[#5f6368]'
-            : 'border border-[#03C75A] bg-white text-[#03C75A]'
-        "
+        :class="isFull ? 'bg-[#f5f6f7] text-[#5f6368]' : 'border border-[#03C75A] bg-white text-[#03C75A]'"
       >
-        {{ meetup.participantCount >= meetup.capacity ? '마감' : '모집중' }}
+        {{ isFull ? '마감' : '모집중' }}
       </span>
     </div>
-    <p v-if="meetup.attendees?.length" class="text-[13px] leading-relaxed text-[#5f6368]">
-      참석자: {{ meetup.attendees.join(', ') }}
-    </p>
+
+    <!-- 참석자 아바타 스택 -->
+    <div v-if="attendeeStack.shown.length || attendeeStack.overflow" class="flex items-center gap-2">
+      <div class="flex -space-x-1.5">
+        <span
+          v-for="name in attendeeStack.shown"
+          :key="name"
+          class="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ring-2 ring-white"
+          :class="avatarColor(name)"
+          :title="name"
+        >
+          {{ initials(name) }}
+        </span>
+        <span
+          v-if="attendeeStack.overflow"
+          class="flex h-6 items-center justify-center rounded-full bg-[#f5f6f7] px-2 text-[10px] font-bold text-[#5f6368] ring-2 ring-white"
+        >
+          +{{ attendeeStack.overflow }}
+        </span>
+      </div>
+    </div>
+
     <div class="mt-auto flex flex-wrap items-center gap-2">
+      <!-- 지도: 기본 네이버 버튼 + 구글 아이콘 버튼으로 압축 -->
       <a
         class="focus-ring inline-flex h-9 items-center justify-center gap-1.5 rounded border border-[#dadce0] px-3 text-sm font-semibold text-[#03C75A] transition hover:bg-[#f5f6f7]"
         :href="naverMapUrl(meetup)"
         target="_blank"
         rel="noreferrer"
       >
+        <MapPin :size="16" />
         네이버지도
-        <ExternalLink :size="16" />
       </a>
       <a
-        class="focus-ring inline-flex h-9 items-center justify-center gap-1.5 rounded border border-[#dadce0] px-3 text-sm font-semibold text-[#03C75A] transition hover:bg-[#f5f6f7]"
+        class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded border border-[#dadce0] text-[#5f6368] transition hover:bg-[#f5f6f7]"
         :href="googleMapUrl(meetup)"
         target="_blank"
         rel="noreferrer"
+        aria-label="구글맵에서 보기"
+        title="구글맵"
       >
-        구글맵
-        <ExternalLink :size="16" />
+        <Map :size="16" />
       </a>
+
       <div class="ml-auto flex items-center gap-2">
-        <span v-if="meetup.readonly" class="text-sm font-semibold text-[#5f6368]">앱 동기화</span>
+        <a
+          v-if="meetup.readonly"
+          class="focus-ring inline-flex h-9 items-center justify-center gap-1 rounded bg-[#7C3AED] px-3 text-sm font-semibold text-white transition hover:bg-[#6D28D9]"
+          href="https://www.somoim.co.kr"
+          target="_blank"
+          rel="noreferrer"
+        >
+          소모임에서 신청
+          <ExternalLink :size="14" />
+        </a>
         <div v-else-if="meetup.isHost" class="flex items-center gap-2">
           <span class="text-sm font-semibold text-[#5f6368]">개설자</span>
           <button
@@ -116,14 +184,21 @@ const emit = defineEmits(['toggle-join', 'cancel']);
         >
           참여 취소
         </button>
+        <!-- 마감: 버튼이 아니라 배지로 (누를 수 없음을 명확히) -->
+        <span
+          v-else-if="isFull"
+          class="inline-flex h-9 items-center rounded bg-[#f5f6f7] px-4 text-sm font-semibold text-[#5f6368]"
+        >
+          마감
+        </span>
         <button
           v-else
           class="focus-ring h-9 shrink-0 rounded bg-[#03C75A] px-4 text-sm font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-50"
           type="button"
-          :disabled="pendingId === meetup.id || meetup.participantCount >= meetup.capacity"
+          :disabled="pendingId === meetup.id"
           @click="emit('toggle-join', meetup)"
         >
-          {{ meetup.participantCount >= meetup.capacity ? '마감' : '참여하기' }}
+          참여하기
         </button>
       </div>
     </div>

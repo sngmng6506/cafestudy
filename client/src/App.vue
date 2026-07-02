@@ -5,6 +5,7 @@ import { features } from './features/index.js';
 import ToastContainer from './shared/ToastContainer.vue';
 import MemberSelectModal from './shared/MemberSelectModal.vue';
 import { useCurrentUser } from './shared/useCurrentUser.js';
+import { avatarColor } from './shared/useAvatar.js';
 
 const { currentUserId, currentUserName } = useCurrentUser();
 const memberSelectOpen = ref(false);
@@ -34,20 +35,6 @@ const overflowActive = computed(() =>
 function selectFeature(name) {
   activeFeatureName.value = name;
   moreOpen.value = false;
-}
-
-const AVATAR_COLORS = [
-  'bg-[#03C75A] text-white',
-  'bg-[#0068c3] text-white',
-  'bg-[#8B5CF6] text-white',
-  'bg-[#F59E0B] text-white',
-  'bg-[#EC4899] text-white',
-];
-
-function avatarColor(name) {
-  let code = 0;
-  for (const c of name) code += c.charCodeAt(0);
-  return AVATAR_COLORS[code % AVATAR_COLORS.length];
 }
 </script>
 

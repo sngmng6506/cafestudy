@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { Crown, Search } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
+import { avatarColor, initials } from '../../shared/useAvatar.js';
 
 const members = ref([]);
 const rankData = ref({});
@@ -36,30 +37,35 @@ onMounted(async () => {
   }
 });
 
-function initials(name) {
-  return name.slice(0, 1).toUpperCase();
-}
-
-const AVATAR_COLORS = [
-  'bg-[#03C75A] text-white',
-  'bg-[#0068c3] text-white',
-  'bg-[#8B5CF6] text-white',
-  'bg-[#F59E0B] text-white',
-  'bg-[#EC4899] text-white',
-];
-
-function avatarColor(name) {
-  let code = 0;
-  for (const c of name) code += c.charCodeAt(0);
-  return AVATAR_COLORS[code % AVATAR_COLORS.length];
-}
-
 function avatarRingClass(memberId) {
   const rank = rankData.value[memberId]?.rank;
   if (rank === 1) return 'ring-2 ring-[#03C75A]';
   if (rank === 2) return 'ring-2 ring-[#5f6368]';
   if (rank === 3) return 'ring-2 ring-[#999999]';
   return '';
+}
+
+// 검색어와 매칭되는 부분을 <mark>로 감싸 강조.
+// name/bio는 크롤링된 외부 데이터이므로 원본을 먼저 HTML 이스케이프한 뒤
+// (XSS 방지) 검색어만 <mark>로 감싼다. 검색어의 정규식 특수문자도 이스케이프.
+function escapeHtml(s) {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function highlight(text) {
+  const safe = escapeHtml(text ?? '');
+  const q = query.value.trim();
+  if (!q) return safe;
+  const escaped = escapeHtml(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return safe.replace(
+    new RegExp(`(${escaped})`, 'gi'),
+    '<mark class="bg-[#DFF5E7] text-[#333333]">$1</mark>',
+  );
 }
 </script>
 
@@ -142,8 +148,8 @@ function avatarRingClass(memberId) {
             {{ initials(member.name) }}
           </span>
           <div class="min-w-0 flex-1">
-            <p class="truncate text-[15px] font-semibold text-[#333333]">{{ member.name }}</p>
-            <p v-if="member.bio" class="truncate text-[13px] text-[#5f6368]">{{ member.bio }}</p>
+            <p class="truncate text-[15px] font-semibold text-[#333333]" v-html="highlight(member.name)"></p>
+            <p v-if="member.bio" class="truncate text-[13px] text-[#5f6368]" v-html="highlight(member.bio)"></p>
           </div>
           <div class="flex shrink-0 items-center gap-2">
             <span

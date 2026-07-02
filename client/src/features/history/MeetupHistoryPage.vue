@@ -3,6 +3,15 @@ import { computed, onMounted, ref } from 'vue';
 import { CalendarCheck, Image as ImageIcon, MapPin } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { formatDate } from '../../shared/useMeetups.js';
+import { avatarColor, initials } from '../../shared/useAvatar.js';
+
+function attendeeStackOf(attendees) {
+  const names = (attendees ?? []).filter((n) => !/^외 \d+명$/.test(n));
+  const extraMatch = (attendees ?? []).find((n) => /^외 (\d+)명$/.test(n));
+  const extra = extraMatch ? Number(extraMatch.match(/\d+/)[0]) : 0;
+  const shown = names.slice(0, 5);
+  return { shown, overflow: extra + Math.max(0, names.length - shown.length) };
+}
 
 const meetups = ref([]);
 const somoimEvents = ref([]);
@@ -68,7 +77,7 @@ function toHistoryFromSomoimEvent(event) {
     participantCount,
     capacity: Number(event.capacity ?? event.joinedCount ?? 0),
     attendees: unmapped > 0 ? [...named, `외 ${unmapped}명`] : named,
-    sourceLabel: '앱 동기화',
+    sourceLabel: '소모임',
     photos: [],
     state: new Date(scheduledAt) < new Date() ? 'done' : 'upcoming',
   };
@@ -136,9 +145,26 @@ function toHistoryFromSomoimEvent(event) {
             </span>
           </div>
 
-          <p v-if="meetup.attendees?.length" class="text-[13px] leading-relaxed text-[#5f6368]">
-            참석자: {{ meetup.attendees.join(', ') }}
-          </p>
+          <div v-if="attendeeStackOf(meetup.attendees).shown.length || attendeeStackOf(meetup.attendees).overflow" class="flex items-center gap-2">
+            <span class="text-[12px] font-medium text-[#5f6368]">참석자</span>
+            <div class="flex -space-x-1.5">
+              <span
+                v-for="name in attendeeStackOf(meetup.attendees).shown"
+                :key="name"
+                class="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ring-2 ring-white"
+                :class="avatarColor(name)"
+                :title="name"
+              >
+                {{ initials(name) }}
+              </span>
+              <span
+                v-if="attendeeStackOf(meetup.attendees).overflow"
+                class="flex h-6 items-center justify-center rounded-full bg-[#f5f6f7] px-2 text-[10px] font-bold text-[#5f6368] ring-2 ring-white"
+              >
+                +{{ attendeeStackOf(meetup.attendees).overflow }}
+              </span>
+            </div>
+          </div>
 
           <div v-if="meetup.photos.length" class="grid grid-cols-3 gap-2">
             <img
