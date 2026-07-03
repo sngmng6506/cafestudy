@@ -19,5 +19,4 @@ client/dist/
 client/vite.config.js
 coverage/
 npm-debug.log*
-CLAUDE.md
 .claude/
