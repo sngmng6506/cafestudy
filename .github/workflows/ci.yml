@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      # puppeteer 브라우저 다운로드는 CI에서 불필요(크롤러는 런타임에만 실행).
+      - name: Install dependencies
+        run: npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: '1'
+
+      # DB 없이 도는 단위 테스트. DB 통합 테스트는 DATABASE_URL 없으면 자동 skip.
+      - name: Run tests
+        run: npm test
+
+      # 프론트 빌드가 깨지지 않는지 확인.
+      - name: Build frontend
+        run: npm run build
