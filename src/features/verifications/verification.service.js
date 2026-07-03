@@ -1,4 +1,5 @@
 import { createVerificationQueries } from './verification.queries.js';
+import { throwError, throwValidation, throwConflict } from '../../shared/errors.js';
 
 const VERIFY_POINTS = 10;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -9,11 +10,11 @@ export function createVerificationService({ db, storage }) {
   return {
     async createUploadUrl({ userId, meetupId, contentType }) {
       if (!meetupId) {
-        throwValidationError('meetupId is required');
+        throwValidation('meetupId is required');
       }
 
       if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
-        throwValidationError('Only jpeg, png, and webp images are allowed');
+        throwValidation('Only jpeg, png, and webp images are allowed');
       }
 
       await ensureCanVerify(meetupId, userId);
@@ -26,11 +27,11 @@ export function createVerificationService({ db, storage }) {
 
     async createVerification({ userId, meetupId, photoUrl }) {
       if (!meetupId) {
-        throwValidationError('meetupId is required');
+        throwValidation('meetupId is required');
       }
 
       if (!photoUrl) {
-        throwValidationError('photoUrl is required');
+        throwValidation('photoUrl is required');
       }
 
       await ensureCanVerify(meetupId, userId);
@@ -44,10 +45,7 @@ export function createVerificationService({ db, storage }) {
         });
       } catch (error) {
         if (error.code === '23505') {
-          const conflict = new Error('이미 인증한 모임입니다.');
-          conflict.statusCode = 409;
-          conflict.code = 'DUPLICATE_VERIFICATION';
-          throw conflict;
+          throwConflict('DUPLICATE_VERIFICATION', '이미 인증한 모임입니다.');
         }
 
         throw error;
@@ -101,15 +99,4 @@ export function createVerificationService({ db, storage }) {
       return null;
     }
   }
-}
-
-function throwValidationError(message) {
-  throwError(400, 'VALIDATION_ERROR', message);
-}
-
-function throwError(statusCode, code, message) {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  error.code = code;
-  throw error;
 }

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { sendFail, sendOk } from '../../shared/api-response.js';
+import { sendOk } from '../../shared/api-response.js';
 import { createCafesService } from './cafes.service.js';
 
 export function createCafesRouter(ctx) {
@@ -24,12 +24,6 @@ export function createCafesRouter(ctx) {
       });
       sendOk(res, comment, 201);
     } catch (error) {
-      if (error.code === 'VALIDATION_ERROR') {
-        return sendFail(res, error.code, error.message, 400);
-      }
-      if (error.code === 'COMMENT_NOT_ALLOWED') {
-        return sendFail(res, error.code, error.message, 403);
-      }
       next(error);
     }
   });

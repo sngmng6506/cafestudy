@@ -1,8 +1,9 @@
+import { throwValidation } from '../../shared/errors.js';
 export function createMembersService(db, queries) {
   return {
     async syncMembers({ url, expected_member_count, crawled_member_count, members, events }) {
       if (!url || !Array.isArray(members)) {
-        throw Object.assign(new Error('url과 members 배열이 필요합니다'), { code: 'INVALID_PAYLOAD' });
+        throwValidation('url과 members 배열이 필요합니다');
       }
 
       let upsertedCount = 0;

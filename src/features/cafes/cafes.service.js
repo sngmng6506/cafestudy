@@ -1,4 +1,5 @@
 import { createCafesQueries } from './cafes.queries.js';
+import { throwValidation, throwForbidden } from '../../shared/errors.js';
 
 export function createCafesService(db) {
   const queries = createCafesQueries(db);
@@ -51,18 +52,10 @@ export function createCafesService(db) {
 
       const canComment = await queries.hasVisitedCafe({ userId, location: normalizedLocation });
       if (!canComment) {
-        const error = new Error('참석 이력이 있는 카페에만 코멘트를 남길 수 있습니다.');
-        error.code = 'COMMENT_NOT_ALLOWED';
-        throw error;
+        throwForbidden('COMMENT_NOT_ALLOWED', '참석 이력이 있는 카페에만 코멘트를 남길 수 있습니다.');
       }
 
       return queries.upsertComment({ userId, location: normalizedLocation, body: normalizedBody });
     },
   };
-}
-
-function throwValidation(message) {
-  const error = new Error(message);
-  error.code = 'VALIDATION_ERROR';
-  throw error;
 }

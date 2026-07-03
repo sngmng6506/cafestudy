@@ -1,4 +1,5 @@
 import { createMeetupQueries } from './meetup.queries.js';
+import { throwError } from '../../shared/errors.js';
 
 // A meetup must be scheduled at least this far ahead of "now".
 export const MIN_LEAD_MS = 30 * 60 * 1000;
@@ -95,11 +96,4 @@ function validateMeetupInput(input) {
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > MAX_CAPACITY) {
     throwError(400, 'VALIDATION_ERROR', `최대 참가 인원은 1~${MAX_CAPACITY} 사이로 설정해주세요.`);
   }
-}
-
-function throwError(statusCode, code, message) {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  error.code = code;
-  throw error;
 }

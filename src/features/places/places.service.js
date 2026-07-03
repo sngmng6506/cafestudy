@@ -1,3 +1,5 @@
+import { throwError } from '../../shared/errors.js';
+
 const NAVER_LOCAL_ENDPOINT = 'https://openapi.naver.com/v1/search/local.json';
 
 // Proxies NAVER local (place) search so credentials stay server-side.
@@ -8,10 +10,7 @@ export async function searchPlaces(query, {
   clientSecret = process.env.NAVER_SEARCH_CLIENT_SECRET,
 } = {}) {
   if (!clientId || !clientSecret) {
-    const error = new Error('장소 검색이 설정되지 않았습니다. (NAVER_SEARCH_CLIENT_ID/SECRET)');
-    error.statusCode = 503;
-    error.code = 'PLACES_NOT_CONFIGURED';
-    throw error;
+    throwError(503, 'PLACES_NOT_CONFIGURED', '장소 검색이 설정되지 않았습니다. (NAVER_SEARCH_CLIENT_ID/SECRET)');
   }
 
   const url = `${NAVER_LOCAL_ENDPOINT}?query=${encodeURIComponent(query)}&display=5`;
@@ -23,10 +22,7 @@ export async function searchPlaces(query, {
   });
 
   if (!response.ok) {
-    const error = new Error('장소 검색에 실패했습니다.');
-    error.statusCode = 502;
-    error.code = 'PLACES_SEARCH_FAILED';
-    throw error;
+    throwError(502, 'PLACES_SEARCH_FAILED', '장소 검색에 실패했습니다.');
   }
 
   const body = await response.json();
