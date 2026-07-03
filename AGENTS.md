@@ -75,8 +75,18 @@ git blame <파일>                 # 줄 단위 출처
   + `<name>.queries.js` 계층을 지킨다. routes=HTTP, service=도메인 로직, queries=SQL.
 - `index.js`는 `{ name, basePath, createRoutes(ctx), onLoad?(ctx) }`를 default export.
   `loadFeatures.js`가 자동 등록하므로 app.js를 건드릴 필요 없다.
+
+  ```js
+  export default {
+    name: 'example',
+    basePath: '/api/example',
+    createRoutes: (ctx) => createExampleRouter(ctx),
+  };
+  ```
+
 - `ctx`(= `{ db, auth, storage, config }`)로만 의존성을 받는다. 전역 import 금지 —
   테스트에서 주입 가능해야 한다.
+- 다른 feature를 직접 import하지 않는다. 필요한 공유 의존성은 `ctx`에서 받는다.
 
 ### 응답·에러
 - 응답은 항상 `shared/api-response.js`의 `sendOk`/`sendFail` 형식(`{data, error}`).
@@ -105,6 +115,11 @@ git blame <파일>                 # 줄 단위 출처
 
 ### Frontend
 - 새 화면은 `client/src/features/<name>/`. `features/index.js`에 등록(탭 노출).
+
+  ```js
+  { name: 'example', label: '예시', icon: SomeIcon, component: ExamplePage }
+  ```
+
 - 데이터 로직은 컴포넌트에 직접 쓰지 말고 `shared/`의 composable로 뺀다
   (`useMeetups.js` 참고). 도메인 변환 함수도 `shared/` 순수 함수로.
 - 크롤링/외부 데이터를 `v-html`로 렌더할 때는 반드시 이스케이프(XSS).
