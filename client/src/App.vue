@@ -83,7 +83,7 @@ function selectFeature(name) {
         type="button"
         @click="selectFeature(feature.name)"
       >
-        <component :is="feature.icon" :size="24" />
+        <component :is="feature.icon" :size="20" />
         {{ feature.label }}
       </button>
 
@@ -96,7 +96,7 @@ function selectFeature(name) {
         :aria-expanded="moreOpen"
         @click="moreOpen = !moreOpen"
       >
-        <MoreHorizontal :size="24" />
+        <MoreHorizontal :size="20" />
         더보기
       </button>
     </nav>
