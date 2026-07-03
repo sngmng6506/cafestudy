@@ -37,7 +37,9 @@ http://localhost:5173
 
 Backend API는 `http://localhost:3000`에서 실행됩니다. Vite가 `/api` 요청을 backend로 proxy합니다.
 
-아니면 >> https://cafestudy-production.up.railway.app/
+`main`에 push하면 끝입니다 — Railway가 자동으로 빌드/배포하고, DB 마이그레이션도 배포 스크립트가 알아서 실행합니다. Railway 환경변수는 로컬 `.env`와 같은 값이 필요합니다(팀에 공유 요청). 배포 확인: https://cafestudy-production.up.railway.app/health
+
+로컬 없이 바로 보려면 >> https://cafestudy-production.up.railway.app/
 
 ## Environment
 
@@ -142,7 +144,7 @@ DB 변경은 `migrations/`에 SQL 파일로 추가합니다.
 migrations/20260621_add_example.sql
 ```
 
-적용:
+배포 시 자동 적용됩니다. 로컬에서 미리 확인하고 싶으면:
 
 ```bash
 npm run db:migrate
@@ -153,26 +155,6 @@ npm run db:migrate
 디자인 기준은 [DESIGN_GUIDE.md](./DESIGN_GUIDE.md)를 따릅니다.
 수정해도 ㄱㅊ 
 
-
-## Deployment
-
-`main` branch에 push하면 Railway가 배포합니다.
-
-Railway에도 로컬 `.env`와 같은 종류의 환경변수가 필요합니다.
-
-배포 시작 커맨드(`railway.json`)가 서버 기동 전에 `npm run db:migrate`를 자동으로 실행합니다.
-이미 적용된 마이그레이션은 건너뛰므로 매 배포마다 실행돼도 안전합니다. 수동 실행이 필요하면:
-
-```bash
-npm run db:migrate
-```
-
-배포 확인:
-
-```text
-https://cafestudy-production.up.railway.app/health
-https://cafestudy-production.up.railway.app/api/storage/status
-```
 
 ## More Docs
 
