@@ -71,8 +71,10 @@ git blame <파일>                 # 줄 단위 출처
 
 ### 응답·에러
 - 응답은 항상 `shared/api-response.js`의 `sendOk`/`sendFail` 형식(`{data, error}`).
-- 도메인 에러는 `code`로 구분하고, 라우트에서 HTTP status로 매핑한다.
-  (에러 표준화 리팩터가 예정되어 있으니, 새 코드도 `error.code`를 명확히 던질 것.)
+- 도메인 에러는 `shared/errors.js`의 `throwValidation`/`throwNotFound`/`throwForbidden`/
+  `throwConflict`(또는 `throwError(statusCode, code, message)`)로 던진다. 라우트에서
+  수동으로 status를 매핑하지 않는다 — `next(error)`만 하면 전역 에러 핸들러가
+  `error.statusCode`/`error.code`를 읽어 자동으로 응답한다.
 
 ### 인증 경계 — 중요
 - 현재 `auth.js`는 `x-user-id` 헤더 기반의 **임시** 구현이다. 언젠가 실제 토큰
