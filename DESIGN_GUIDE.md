@@ -664,7 +664,7 @@ Use SVG icons from the chosen icon library instead. Emojis render inconsistently
 
 ### Format Compliance
 
-This document follows the Google Stitch DESIGN.md 9-section format:
+This document follows the Google Stitch design-spec 9-section format:
 1. Visual Theme & Atmosphere
 2. Color Palette & Roles
 3. Typography Rules

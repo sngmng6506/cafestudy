@@ -155,8 +155,17 @@ migrations/20260621_add_example.sql
 수정해도 ㄱㅊ 
 
 
-## More Docs
+## Documentation
 
-- [AGENTS.md](./AGENTS.md): AI 코딩 규칙(커밋 컨벤션, 아키텍처 규칙) — Claude Code, Codex 등 공통
-- [DEVELOPMENT.md](./DEVELOPMENT.md): 데이터 모델, 포인트 규칙 등 제품/설계 결정
-- [DESIGN_GUIDE.md](./DESIGN_GUIDE.md): UI design rules
+문서는 역할별로 나뉘어 있습니다. 필요한 걸 골라 보세요.
+
+| 문서 | 무엇을 담는가 | 언제 보는가 |
+|------|--------------|-------------|
+| [README.md](./README.md) | 시작하기, 현재 기능, 스크립트 | 프로젝트를 처음 볼 때 |
+| [AGENTS.md](./AGENTS.md) | 코딩 규칙 — 커밋 컨벤션, feature 패턴, 에러/인증/마이그레이션 | 코드를 짜거나 커밋하기 전 (AI·사람 공통) |
+| [CLAUDE.md](./CLAUDE.md) | AGENTS.md로의 포인터 | 안 봐도 됨 (Claude Code가 자동으로 AGENTS.md를 읽게 하는 용도) |
+| [DEVELOPMENT.md](./DEVELOPMENT.md) | 데이터 모델, 포인트 규칙, 트랜잭션 요구사항, 설계 한계 | DB나 도메인 로직을 건드리기 전 |
+| [DESIGN_GUIDE.md](./DESIGN_GUIDE.md) | 색상/타이포/컴포넌트 디자인 토큰 | UI를 만들거나 고치기 전 |
+
+규칙이 여러 도구(Claude Code, Codex 등)에 일관되게 적용되도록, AI 코딩 규칙은
+`AGENTS.md` 한 곳에만 둡니다 — 새 규칙은 거기에 추가하세요.
