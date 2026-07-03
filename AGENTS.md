@@ -87,6 +87,10 @@ git blame <파일>                 # 줄 단위 출처
   (migrate.js가 checksum으로 감지 — 적용된 파일이 바뀌면 배포가 에러로 중단된다.)
 - 배포 시 `railway.json`의 startCommand가 `npm run db:migrate`를 자동 실행한다.
   (advisory lock으로 동시 실행은 직렬화됨.)
+- **로컬에서 `npm run db:migrate`를 실행하지 않는다.** 이 프로젝트는 로컬 전용
+  DB가 없어 로컬 `DATABASE_URL`이 보통 팀이 공유하는 Railway DB를 가리킨다.
+  로컬 실행은 "미리보기"가 아니라 PR 머지 전에 운영 DB를 바로 바꾸는 행위다.
+  마이그레이션 SQL 문법만 확인하고 싶으면 파일 내용을 검토하는 것으로 충분하다.
 
 ### Frontend
 - 새 화면은 `client/src/features/<name>/`. `features/index.js`에 등록(탭 노출).

@@ -68,7 +68,7 @@ npm run dev         # backend server
 npm run dev:web     # frontend dev server
 npm test            # tests
 npm run build       # frontend production build
-npm run db:migrate  # apply SQL migrations
+npm run db:migrate  # 배포 파이프라인에서 자동 실행됨 — 로컬에서 직접 돌리지 말 것
 ```
 
 ## Current Features
@@ -144,11 +144,10 @@ DB 변경은 `migrations/`에 SQL 파일로 추가합니다.
 migrations/20260621_add_example.sql
 ```
 
-배포 시 자동 적용됩니다. 로컬에서 미리 확인하고 싶으면:
-
-```bash
-npm run db:migrate
-```
+배포 시 자동 적용됩니다. **로컬에서 `npm run db:migrate`를 직접 돌리지 마세요** —
+로컬 `DATABASE_URL`은 보통 팀이 공유하는 Railway DB를 가리키므로, "미리 확인"이
+아니라 실제 운영 DB에 바로 적용됩니다. PR이 `main`에 머지되면 배포 파이프라인이
+알아서 적용합니다.
 
 ## Design
 
