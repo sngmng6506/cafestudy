@@ -82,6 +82,7 @@ git blame <파일>                 # 줄 단위 출처
 - `migrations/`에 `YYYYMMDD_설명.sql`. 파일명 사전순으로 실행된다.
 - **같은 날 여러 개면 순서가 겹치지 않게** 접미사로 구분 (`_1`, `_2` 또는 시각).
 - 이미 적용된 마이그레이션 파일은 **수정하지 않는다**. 되돌리거나 바꾸려면 새 파일 추가.
+  (migrate.js가 checksum으로 감지 — 적용된 파일이 바뀌면 배포가 에러로 중단된다.)
 - 배포 시 `railway.json`의 startCommand가 `npm run db:migrate`를 자동 실행한다.
   (advisory lock으로 동시 실행은 직렬화됨.)
 
