@@ -46,8 +46,8 @@ Backend API는 `http://localhost:3000`에서 실행됩니다. Vite가 `/api` 요
 `.env`는 git에 올라가지 않습니다. .env 값 공유는 메세지 주세요 
 
 ```env
-NODE_ENV=development
-PORT=3000
+NODE_ENV=
+PORT=
 DATABASE_URL=
 
 AWS_ACCESS_KEY_ID=
