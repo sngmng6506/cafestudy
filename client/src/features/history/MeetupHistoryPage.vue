@@ -4,14 +4,7 @@ import { CalendarCheck, Image as ImageIcon, MapPin } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { formatDate } from '../../shared/useMeetups.js';
 import { avatarColor, initials } from '../../shared/useAvatar.js';
-
-function attendeeStackOf(attendees) {
-  const names = (attendees ?? []).filter((n) => !/^외 \d+명$/.test(n));
-  const extraMatch = (attendees ?? []).find((n) => /^외 (\d+)명$/.test(n));
-  const extra = extraMatch ? Number(extraMatch.match(/\d+/)[0]) : 0;
-  const shown = names.slice(0, 5);
-  return { shown, overflow: extra + Math.max(0, names.length - shown.length) };
-}
+import { somoimEventToMeetup, attendeeStack } from '../../shared/useSomoimEvents.js';
 
 const meetups = ref([]);
 const somoimEvents = ref([]);
@@ -63,24 +56,8 @@ onMounted(async () => {
 });
 
 function toHistoryFromSomoimEvent(event) {
-  const scheduledAt = event.scheduledAt;
-  const participantCount = Number(event.joinedCount ?? 0);
-  const named = (event.attendees ?? []).map((attendee) => attendee.name).filter(Boolean);
-  const unmapped = participantCount - named.length;
-
-  return {
-    id: `somoim-${event.id}`,
-    title: event.title,
-    description: event.cost ? `참가비 ${event.cost}` : '',
-    location: event.location ?? '장소 미정',
-    scheduledAt,
-    participantCount,
-    capacity: Number(event.capacity ?? event.joinedCount ?? 0),
-    attendees: unmapped > 0 ? [...named, `외 ${unmapped}명`] : named,
-    sourceLabel: '소모임',
-    photos: [],
-    state: new Date(scheduledAt) < new Date() ? 'done' : 'upcoming',
-  };
+  // 공통 변환 + 이력 화면 전용 필드(출처 라벨, 사진). 정모엔 인증 사진이 없음.
+  return { ...somoimEventToMeetup(event), sourceLabel: '소모임', photos: [] };
 }
 </script>
 
@@ -145,11 +122,11 @@ function toHistoryFromSomoimEvent(event) {
             </span>
           </div>
 
-          <div v-if="attendeeStackOf(meetup.attendees).shown.length || attendeeStackOf(meetup.attendees).overflow" class="flex items-center gap-2">
+          <div v-if="attendeeStack(meetup.attendees).shown.length || attendeeStack(meetup.attendees).overflow" class="flex items-center gap-2">
             <span class="text-[12px] font-medium text-[#5f6368]">참석자</span>
             <div class="flex -space-x-1.5">
               <span
-                v-for="name in attendeeStackOf(meetup.attendees).shown"
+                v-for="name in attendeeStack(meetup.attendees).shown"
                 :key="name"
                 class="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ring-2 ring-white"
                 :class="avatarColor(name)"
@@ -158,10 +135,10 @@ function toHistoryFromSomoimEvent(event) {
                 {{ initials(name) }}
               </span>
               <span
-                v-if="attendeeStackOf(meetup.attendees).overflow"
+                v-if="attendeeStack(meetup.attendees).overflow"
                 class="flex h-6 items-center justify-center rounded-full bg-[#f5f6f7] px-2 text-[10px] font-bold text-[#5f6368] ring-2 ring-white"
               >
-                +{{ attendeeStackOf(meetup.attendees).overflow }}
+                +{{ attendeeStack(meetup.attendees).overflow }}
               </span>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { ExternalLink, MapPin, Map } from '@lucide/vue';
 import { formatDate, formatTime, naverMapUrl, googleMapUrl } from './useMeetups.js';
 import { avatarColor, initials } from './useAvatar.js';
+import { attendeeStack as buildStack } from './useSomoimEvents.js';
 
 const props = defineProps({
   meetup: { type: Object, required: true },
@@ -14,17 +15,8 @@ const emit = defineEmits(['toggle-join', 'cancel']);
 
 const isFull = computed(() => props.meetup.participantCount >= props.meetup.capacity);
 
-// 참석자 아바타 스택: 최대 5명까지 얼굴(이니셜) 표시, 나머지는 +N.
-// "외 N명" 문자열은 집계용이므로 스택에서 제외하고 카운트로 환산.
-const attendeeStack = computed(() => {
-  const names = (props.meetup.attendees ?? []).filter((n) => !/^외 \d+명$/.test(n));
-  const extraMatch = (props.meetup.attendees ?? []).find((n) => /^외 (\d+)명$/.test(n));
-  const extra = extraMatch ? Number(extraMatch.match(/\d+/)[0]) : 0;
-
-  const shown = names.slice(0, 5);
-  const overflow = extra + Math.max(0, names.length - shown.length);
-  return { shown, overflow };
-});
+// 참석자 아바타 스택 (최대 5명 + 나머지 +N).
+const attendeeStack = computed(() => buildStack(props.meetup.attendees));
 </script>
 
 <template>

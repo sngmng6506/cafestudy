@@ -4,6 +4,7 @@ import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 
 import { useMeetups, formatDate, formatTime } from '../../shared/useMeetups.js';
 import MeetupCard from '../../shared/MeetupCard.vue';
 import { apiFetch } from '../../shared/api.js';
+import { somoimEventToMeetup } from '../../shared/useSomoimEvents.js';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -152,29 +153,8 @@ async function loadSomoimEvents() {
 }
 
 function toMeetupFromSomoimEvent(event) {
-  const scheduledAt = event.scheduledAt;
-  const capacity = Number(event.capacity ?? event.joinedCount ?? 0);
-  const participantCount = Number(event.joinedCount ?? 0);
-
-  // attendees는 이름 매핑된 참석자만 옴. 참여 인원과 차이나면 "외 N명"으로 보정.
-  const named = (event.attendees ?? []).map((attendee) => attendee.name).filter(Boolean);
-  const unmapped = participantCount - named.length;
-  const attendees = unmapped > 0 ? [...named, `외 ${unmapped}명`] : named;
-
-  return {
-    id: `somoim-${event.id}`,
-    title: event.title,
-    description: event.cost ? `참가비 ${event.cost}` : '',
-    location: event.location ?? '장소 미정',
-    scheduledAt,
-    capacity,
-    participantCount,
-    attendees,
-    joined: false,
-    isHost: false,
-    readonly: true,
-    state: new Date(scheduledAt) < new Date() ? 'done' : 'upcoming',
-  };
+  // 공통 변환 + 홈 화면 전용 필드(참여/개설 상태). 정모는 읽기전용이라 모두 false.
+  return { ...somoimEventToMeetup(event), joined: false, isHost: false };
 }
 
 function sortTime(value) {
