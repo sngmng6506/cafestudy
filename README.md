@@ -5,7 +5,6 @@
 
 **▶ 지금 바로 둘러보기: https://cafestudy-production.up.railway.app/**
 
-(스크린샷 대신 라이브 링크로 대체 — 실제 화면을 바로 눌러볼 수 있습니다.)
 
 ## Features
 
