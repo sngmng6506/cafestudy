@@ -3,9 +3,9 @@
 카페 스터디 모임을 만들고, 사진 인증으로 포인트를 쌓고, 랭킹으로 확인하는 웹 서비스입니다.
 여러 명이 AI를 활용해 협업 개발하고 있습니다.
 
-**Live:** https://cafestudy-production.up.railway.app/
+**▶ 지금 바로 둘러보기: https://cafestudy-production.up.railway.app/**
 
-<!-- TODO: 앱 스크린샷 추가 (홈 화면 등) -->
+(스크린샷 대신 라이브 링크로 대체 — 실제 화면을 바로 눌러볼 수 있습니다.)
 
 ## Features
 
