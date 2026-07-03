@@ -65,7 +65,7 @@ async function saveComment(cafe) {
       <p class="mt-1 text-[14px] text-[#5f6368]">완료된 모임이 있었던 카페와 한줄 코멘트를 모아봅니다.</p>
     </div>
 
-    <section class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm">
+    <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
         <Coffee :size="18" class="text-[#03C75A]" />
         <h2 class="text-lg font-semibold text-[#333333]">카페 이력</h2>

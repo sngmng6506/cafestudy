@@ -171,7 +171,7 @@ function sortTime(value) {
     </div>
 
     <!-- 모임 캘린더 -->
-    <section class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm">
+    <section class="surface-card">
       <div class="mb-4 flex items-center justify-between gap-2">
         <h3 class="text-lg font-semibold text-[#333333]">모임 캘린더</h3>
         <div class="flex items-center gap-1">
@@ -250,7 +250,7 @@ function sortTime(value) {
     </section>
 
     <!-- 지금 열린 모임 -->
-    <section class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm">
+    <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
         <CalendarDays :size="18" class="text-[#03C75A]" />
         <h3 class="text-lg font-semibold text-[#333333]">지금 열린 모임</h3>
@@ -324,7 +324,7 @@ function sortTime(value) {
     <!-- TODO(multi-group): 아래 시간/장소/타임라인/모임장 소개는 현재 단일 모임
          ([홍대] it&ai 스터디) 전용으로 하드코딩됨. 여러 모임을 지원하게 되면
          모임 설정(meetup_config 등)에서 불러오도록 분리 필요. -->
-    <section class="rounded-xl border border-[#dadce0] bg-white shadow-sm">
+    <section class="surface-card surface-card--flush">
       <button
         class="flex w-full items-center justify-between px-5 py-4 text-left transition"
         type="button"

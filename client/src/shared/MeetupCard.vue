@@ -56,7 +56,7 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
       </span>
       <span
         class="inline-flex h-6 items-center rounded-full px-2.5 text-[12px] font-semibold"
-        :class="isFull ? 'bg-[#f5f6f7] text-[#5f6368]' : 'border border-[#03C75A] bg-white text-[#03C75A]'"
+        :class="isFull ? 'bg-[#f5f6f7] text-[#5f6368]' : 'bg-[#e9f8ef] text-[#03883f]'"
       >
         {{ isFull ? '마감' : '모집중' }}
       </span>
@@ -96,7 +96,7 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
       <span
         v-if="!meetup.readonly"
         class="inline-flex h-7 items-center rounded-full px-3 text-[12px] font-semibold"
-        :class="isFull ? 'bg-[#f5f6f7] text-[#5f6368]' : 'border border-[#03C75A] bg-white text-[#03C75A]'"
+        :class="isFull ? 'bg-[#f5f6f7] text-[#5f6368]' : 'bg-[#e9f8ef] text-[#03883f]'"
       >
         {{ isFull ? '마감' : '모집중' }}
       </span>
@@ -126,7 +126,7 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
     <div class="mt-auto flex flex-wrap items-center gap-2">
       <!-- 지도: 기본 네이버 버튼 + 구글 아이콘 버튼으로 압축 -->
       <a
-        class="focus-ring inline-flex h-9 items-center justify-center gap-1.5 rounded border border-[#dadce0] px-3 text-sm font-semibold text-[#03C75A] transition hover:bg-[#f5f6f7]"
+        class="focus-ring inline-flex h-9 items-center justify-center gap-1.5 rounded-[10px] border border-[#dadce0] px-3 text-sm font-semibold text-[#03C75A] transition hover:bg-[#f5f6f7]"
         :href="naverMapUrl(meetup)"
         target="_blank"
         rel="noreferrer"
@@ -135,7 +135,7 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
         네이버지도
       </a>
       <a
-        class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded border border-[#dadce0] text-[#5f6368] transition hover:bg-[#f5f6f7]"
+        class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#dadce0] text-[#5f6368] transition hover:bg-[#f5f6f7]"
         :href="googleMapUrl(meetup)"
         target="_blank"
         rel="noreferrer"
@@ -148,7 +148,7 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
       <div class="ml-auto flex items-center gap-2">
         <a
           v-if="meetup.readonly"
-          class="focus-ring inline-flex h-9 items-center justify-center gap-1 rounded bg-[#7C3AED] px-3 text-sm font-semibold text-white transition hover:bg-[#6D28D9]"
+          class="focus-ring inline-flex h-9 items-center justify-center gap-1 rounded-[10px] bg-[#7C3AED] px-3 text-sm font-semibold text-white transition hover:bg-[#6D28D9]"
           href="https://www.somoim.co.kr"
           target="_blank"
           rel="noreferrer"
@@ -159,7 +159,7 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
         <div v-else-if="meetup.isHost" class="flex items-center gap-2">
           <span class="text-sm font-semibold text-[#5f6368]">개설자</span>
           <button
-            class="focus-ring h-9 shrink-0 rounded border border-[#e74c3c] px-3 text-sm font-semibold text-[#e74c3c] transition hover:bg-[#f5f6f7] disabled:opacity-50"
+            class="focus-ring h-9 shrink-0 rounded-[10px] border border-[#e74c3c] px-3 text-sm font-semibold text-[#e74c3c] transition hover:bg-[#f5f6f7] disabled:opacity-50"
             type="button"
             :disabled="pendingId === meetup.id"
             @click="emit('cancel', meetup)"
@@ -169,7 +169,7 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
         </div>
         <button
           v-else-if="meetup.joined"
-          class="focus-ring h-9 shrink-0 rounded border border-[#dadce0] px-4 text-sm font-semibold text-[#333333] transition hover:bg-[#f5f6f7] disabled:opacity-50"
+          class="focus-ring h-9 shrink-0 rounded-[10px] border border-[#dadce0] px-4 text-sm font-semibold text-[#333333] transition hover:bg-[#f5f6f7] disabled:opacity-50"
           type="button"
           :disabled="pendingId === meetup.id"
           @click="emit('toggle-join', meetup)"
@@ -179,13 +179,13 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
         <!-- 마감: 버튼이 아니라 배지로 (누를 수 없음을 명확히) -->
         <span
           v-else-if="isFull"
-          class="inline-flex h-9 items-center rounded bg-[#f5f6f7] px-4 text-sm font-semibold text-[#5f6368]"
+          class="inline-flex h-9 items-center rounded-[10px] bg-[#f5f6f7] px-4 text-sm font-semibold text-[#5f6368]"
         >
           마감
         </span>
         <button
           v-else
-          class="focus-ring h-9 shrink-0 rounded bg-[#03C75A] px-4 text-sm font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-50"
+          class="focus-ring h-9 shrink-0 rounded-[10px] bg-[#03C75A] px-4 text-sm font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-50"
           type="button"
           :disabled="pendingId === meetup.id"
           @click="emit('toggle-join', meetup)"

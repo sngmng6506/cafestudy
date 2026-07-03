@@ -91,7 +91,7 @@ function highlight(text) {
     </div>
 
     <!-- 스켈레톤 -->
-    <section v-if="loading" class="rounded-xl border border-[#dadce0] bg-white shadow-sm">
+    <section v-if="loading" class="surface-card surface-card--flush">
       <ul class="divide-y divide-[#dadce0]">
         <li
           v-for="n in 6"
@@ -124,7 +124,7 @@ function highlight(text) {
     </div>
 
     <!-- 멤버 목록 -->
-    <section v-else class="rounded-xl border border-[#dadce0] bg-white shadow-sm">
+    <section v-else class="surface-card surface-card--flush">
       <ul class="divide-y divide-[#dadce0]">
         <li
           v-for="member in filtered"

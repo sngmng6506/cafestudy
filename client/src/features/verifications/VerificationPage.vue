@@ -205,7 +205,7 @@ function formatBytes(bytes) {
       <p class="mt-1 text-[14px] text-[#5f6368]">모임 현장 사진을 업로드하세요</p>
     </div>
 
-    <section class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm">
+    <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
         <Camera :size="18" class="text-[#03C75A]" />
         <h2 class="text-lg font-semibold text-[#333333]">사진 인증</h2>
@@ -320,7 +320,7 @@ function formatBytes(bytes) {
       </template>
     </section>
 
-    <section v-if="previewUrl" class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm">
+    <section v-if="previewUrl" class="surface-card">
       <div class="mb-5 flex items-center gap-2">
         <ImageIcon :size="18" class="text-[#03C75A]" />
         <h2 class="text-lg font-semibold text-[#333333]">압축 정보</h2>
@@ -342,7 +342,7 @@ function formatBytes(bytes) {
       </dl>
     </section>
 
-    <section class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm">
+    <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
         <History :size="18" class="text-[#03C75A]" />
         <h2 class="text-lg font-semibold text-[#333333]">인증 내역</h2>

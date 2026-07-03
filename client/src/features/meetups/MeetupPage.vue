@@ -183,7 +183,7 @@ function toLocalInputValue(date) {
       <p class="mt-1 text-[14px] text-[#5f6368]">새 모임을 만들어보세요</p>
     </div>
 
-    <form class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm" @submit.prevent="createMeetup">
+    <form class="surface-card" @submit.prevent="createMeetup">
       <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#333333]">
         제목
         <input

@@ -88,7 +88,7 @@ async function loadRanking() {
       <p class="mt-1 text-[14px] text-[#5f6368]">포인트 기반 순위</p>
     </div>
 
-    <section class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm">
+    <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
         <Trophy :size="18" class="text-[#03C75A]" />
         <p class="text-[14px] text-[#5f6368]">인증으로 쌓인 포인트를 기준으로 정렬합니다.</p>
@@ -197,7 +197,7 @@ async function loadRanking() {
     </section>
 
     <!-- 주사위 TOP 5 -->
-    <section class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm">
+    <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
         <Dices :size="18" class="text-[#03C75A]" />
         <h3 class="text-[15px] font-semibold text-[#333333]">주사위 TOP 5</h3>

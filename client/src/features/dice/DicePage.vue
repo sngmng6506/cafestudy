@@ -107,7 +107,7 @@ function isFilled(value, slot) {
       <p class="mt-1 text-[14px] text-[#5f6368]">굴릴수록 포인트가 쌓입니다</p>
     </div>
 
-    <section class="rounded-xl border border-[#dadce0] bg-white p-6 shadow-sm">
+    <section class="surface-card">
       <div class="flex flex-col items-center gap-8 pb-2">
         <div class="scene">
           <div
