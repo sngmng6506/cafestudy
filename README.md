@@ -82,30 +82,8 @@ npm run db:migrate  # apply SQL migrations
 
 ## Changelog
 
-최근 주요 변경만 정리합니다. 전체 이력은 `git log`를 참고하세요
-(커밋 규칙은 [CLAUDE.md](./CLAUDE.md) 참고 — `Why:`에 변경 배경이 남아있습니다).
-
-### 2026-07-02 — 협업 확장 기반 정비
-- **커밋 컨벤션 도입**: AI가 커밋할 때 `Why:`/`Decision:`을 남기도록 [CLAUDE.md](./CLAUDE.md) 추가.
-  git history만으로 "왜 이렇게 바뀌었는지" 추적 가능하게.
-- **에러 처리 표준화**: feature마다 제각각이던 에러 던지기 방식(4가지)을
-  `shared/errors.js`로 통합. 라우트는 `next(error)`로 통일, HTTP status 매핑 자동화.
-- **마이그레이션 안전장치**: 이미 적용된 마이그레이션 파일이 나중에 수정되면
-  checksum으로 감지해 배포를 중단시킴(협업 중 흔한 실수 방지).
-- **프론트 도메인 로직 통합**: 소모임 정모 변환/아바타 스택 계산이 여러 화면에
-  복붙돼 있던 것을 `shared/useSomoimEvents.js`로 통합.
-- **CI 추가**: PR/push마다 GitHub Actions로 테스트+빌드 자동 검증.
-- **UI/UX 개선**: 소모임 정모 카드를 앱 자체 모임과 시각적으로 구분(배지+보더),
-  참석자를 아바타 스택으로 표시, 캘린더 접근성(aria-label) 보강, 아바타 색상
-  WCAG AA 대비 충족, 카페 코멘트 글자수 카운터 등.
-
-### 2026-07-01 — 소모임 정모 크롤링
-- 소모임(somoim.co.kr) 페이지에서 멤버 목록뿐 아니라 **정모 일정**(제목/일시/장소/
-  비용/참가인원)까지 크롤링하도록 확장.
-- 정모 참석자를 얼굴 이미지 UUID로 멤버와 매핑(`face_id`), 이름 미매핑 시 null 허용.
-- 배포 파이프라인(`railway.json`)에 `db:migrate` 자동 실행 + advisory lock으로
-  동시 배포 시 마이그레이션 경합 방지.
-- NULL 날짜 정모 중복 증식, 유령 정모(수정/삭제 미반영) 등 초기 버그 수정.
+최근 주요 변경은 `git log`를 참고하세요.
+(커밋 규칙은 [AGENTS.md](./AGENTS.md) 참고 — `Why:`에 변경 배경이 남아있습니다.)
 
 ## Project Structure
 
@@ -198,6 +176,6 @@ https://cafestudy-production.up.railway.app/api/storage/status
 
 ## More Docs
 
-- [CLAUDE.md](./CLAUDE.md): AI 코딩 규칙(커밋 컨벤션, 아키텍처 규칙)
+- [AGENTS.md](./AGENTS.md): AI 코딩 규칙(커밋 컨벤션, 아키텍처 규칙) — Claude Code, Codex 등 공통
 - [DEVELOPMENT.md](./DEVELOPMENT.md): product scope, architecture, collaboration rules
 - [DESIGN_GUIDE.md](./DESIGN_GUIDE.md): UI design rules
