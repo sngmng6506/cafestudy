@@ -113,6 +113,22 @@ Naver does not chase the design-system-as-art-piece aesthetics of Apple or Strip
 ### Brand-color usage discipline
 Naver Green appears on three roles only: (1) the brand mark itself, (2) the search-input border + search button, and (3) primary action accents (active tab underline, primary CTA backgrounds, "더보기" link color). It is never used as a hero background, never as a card fill, never tinted with opacity to "soften" — the brand book explicitly forbids gradient, line-rendering, color shift, and opacity adjustments on the green.
 
+### App-Specific Extensions (CafeStudy)
+
+CafeStudy가 Naver 브랜드 팔레트 밖에서 실제로 쓰는 색. 순수 Naver 브랜드 문서엔
+없지만 이 앱의 실제 컴포넌트(`client/src/shared/`, `client/src/features/`)에서
+확인된 값이므로 여기 함께 관리한다.
+
+- **소모임(외부 크롤링) 액센트 — Purple**: `#7C3AED`(배지 텍스트/CTA 배경),
+  `#6D28D9`(CTA hover), `#8B5CF6`(아바타 팔레트 5번째), `#EDE7FB`(배지 배경),
+  `#FAF8FF`(카드 배경 tint). Naver Green과 확실히 구분되는 색으로, "이건 앱이
+  아니라 소모임에서 가져온 읽기전용 데이터"임을 시각적으로 표시하는 용도.
+  일반 UI 요소엔 쓰지 않는다 — 오직 이 출처 구분 목적으로만.
+- **유저 아바타 팔레트** (`client/src/shared/useAvatar.js`, 이름 해시 기반 5색
+  순환): `#03A150`(green), `#0068c3`(blue), `#7C3AED`(purple), `#B45309`(amber),
+  `#BE185D`(pink). 전부 흰 텍스트 기준 WCAG AA(4.5:1) 대비를 충족하도록 조정된
+  값이다 — 임의로 밝은 색으로 바꾸지 않는다(대비 미달 시 접근성 회귀).
+
 ## 3. Typography Rules
 
 ### Font Family
