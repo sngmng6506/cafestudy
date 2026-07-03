@@ -1,371 +1,110 @@
-# Study Meetup MVP Development Notes
+# Development Notes
 
-## Product Scope
+`AGENTS.md`(커밋 컨벤션, feature 패턴, 에러/인증/마이그레이션 규칙)와 겹치지 않는,
+**살아있는 제품/데이터 설계 결정만** 남깁니다. 코딩 규칙을 찾는 중이면 `AGENTS.md`로.
 
-IT/AI study meetup web platform MVP.
+## 데이터 모델
 
-The MVP includes only three product features:
-
-1. Meetup creation
-2. Photo verification with point rewards
-3. Point ranking: all-time and monthly
-
-Explicitly out of scope for MVP:
-
-- Notifications
-- Real-time push
-- Payment
-- Advanced search/filtering
-- Comments
-- Chat
-
-## Current Architecture Decision
-
-Use Railway as the main deployment platform.
-
-GitHub repository:
-
-```text
-https://github.com/sngmng6506/cafestudy.git
-```
-
-Recommended Railway project layout:
-
-```text
-Railway Project
-├─ Web Service
-│  └─ GitHub repository deployment
-│     Express API
-│
-└─ PostgreSQL
-   └─ Railway PostgreSQL database
-```
-
-The Express app should connect to the database with:
-
-```text
-DATABASE_URL
-```
-
-Do not store photo files directly in PostgreSQL. Store only the image URL or object key in the database.
-
-Photo storage options, to be decided separately:
-
-- Supabase Storage
-- Cloudflare R2
-- AWS S3-compatible storage
-
-## Fixed Stack
-
-- Backend: Express on Node.js
-- Database: Railway PostgreSQL
-- Frontend: Vue
-- File storage: object storage, not PostgreSQL
-- Real-time: not used in MVP
-
-Authentication is intentionally abstracted behind backend middleware for now.
-
-Future choices:
-
-- Supabase Auth
-- Passport.js with Google/Naver OAuth
-- Auth.js
-- Custom session/JWT flow
-
-Until the final provider is selected, feature code should depend on an internal auth middleware contract, not directly on a specific provider SDK.
-
-## Data Model
-
-Initial tables:
+핵심 흐름: `users → meetups → participants → verifications → point_logs`.
+소모임 크롤링 데이터(`somoim_*`)는 앱 데이터와 분리된 읽기전용 테이블입니다.
 
 ```text
 users
-- id
-- oauth_provider
-- nickname
-- avatar
-- total_points
-- created_at
+- id, oauth_provider, nickname, avatar, total_points, created_at
+- total_points는 캐시. point_logs가 source of truth.
+  불일치 시 point_logs로부터 재계산한다.
 
-meetups
-- id
-- host_id
-- title
-- cafe_name
-- location
-- scheduled_at
-- status
-- created_at
+meetups                        -- 앱 안에서 직접 만든 모임
+- id, host_id, title, description, location, cafe_name(legacy, nullable),
+  scheduled_at, capacity, status(open/closed), created_at
 
-participants
-- id
-- meetup_id
-- user_id
-- joined_at
+participants                   -- meetup 참가 (UNIQUE meetup_id+user_id)
+- id, meetup_id, user_id, joined_at
 
-verifications
-- id
-- meetup_id
-- user_id
-- photo_url
-- points_awarded
-- status
-- created_at
+verifications                  -- 사진 인증 (UNIQUE meetup_id+user_id, 1인 1회)
+- id, meetup_id, user_id, photo_url, points_awarded,
+  status(approved/rejected/pending), created_at
 
-point_logs
-- id
-- user_id
-- source
-- ref_id
-- amount
-- created_at
+point_logs                     -- 포인트 원장. source: verify/host/dice
+- id, user_id, source, ref_id, amount, created_at
+
+-- 소모임(somoim.co.kr) 크롤링 데이터 — 읽기전용, 앱 데이터와 별도 -----------
+
+somoim_members                 -- 크롤링된 멤버. id가 users.id와 동일(FK 역할)
+- id, name, bio, face_id(얼굴 이미지 UUID), avatar_url, source_url,
+  created_at, updated_at
+
+somoim_events                  -- 크롤링된 정모 일정
+- id, source_url, title, scheduled_at(nullable — 파싱 실패 가능),
+  location, cost, joined_count, capacity, thumbnail_url
+
+somoim_event_attendees         -- 정모 참석자 (face_id로 매핑, 이름 미매핑 시 null 허용)
+- id, event_id, face_id, member_name, created_at
+
+somoim_sync_logs               -- 크롤링 동기화 이력(성공/실패, 인원 수 비교용)
+- id, source_url, expected_count, crawled_count, upserted_count,
+  status, error_message, synced_at
+
+cafe_comments                  -- 카페별 한줄 코멘트 (방문 이력 있는 유저만 작성 가능)
+- id, cafe_location, user_id, body(1~120자), created_at, updated_at
+  (UNIQUE cafe_location+user_id — 유저당 카페 하나에 코멘트 하나, upsert)
 ```
 
-Constraints and policies:
+전체 스키마와 변경 이력은 `migrations/`가 정답입니다. 위 요약이 실제 파일과
+어긋나면 마이그레이션 쪽이 맞습니다 — 이 문서를 고치세요.
 
-- `verifications` must enforce one verification per user per meetup:
+## 알려진 설계 한계
 
-```sql
-UNIQUE (meetup_id, user_id)
-```
+- **cafe_comments의 `cafe_location`이 문자열 그대로 키**: 앱 모임의 `location`
+  ("아비아채")과 정모의 `location`("아비아채 지하1층")이 다른 문자열이라 같은
+  카페인데도 다르게 집계됨. 정규화하려면 별도 카페 마스터 테이블이 필요.
+- **인증은 auth.js가 `x-user-id` 헤더를 그대로 신뢰하는 임시 구현**
+  (`AGENTS.md`의 "인증 경계" 참고). 실제 로그인으로 교체되기 전까지, 모든 권한
+  로직은 이 위에 얹혀 있다는 걸 감안해야 함.
+- **로컬 전용 DB가 없음**: 로컬 `DATABASE_URL`이 보통 팀이 공유하는 Railway DB.
+  마이그레이션을 로컬에서 직접 실행하지 않는다(`AGENTS.md` 참고).
 
-- `users.total_points` is a cache.
-- `point_logs` is the source of truth.
-- If point totals become inconsistent, recompute `users.total_points` from `point_logs`.
-
-## Decisions From Step 0
-
-Use the following defaults unless a later PR explicitly changes them:
+## 포인트 규칙
 
 ```text
-meetups.status: open / closed
-monthly ranking: aggregate point_logs by created_at
+사진 인증(verify) = 10점   (verification.service.js: VERIFY_POINTS)
+주사위(dice)       = 1~6점 (굴린 값 그대로)
+모임 개설(host)     = 0점   (스팸 방지 목적으로 의도적으로 0 — 처음부터 고정)
 ```
 
-Monthly ranking should use the service timezone consistently. The current working timezone is Asia/Seoul.
+`point_logs.source`는 `'verify' | 'host' | 'dice'`로 제약된다(DB CHECK 제약).
+새 포인트 출처를 추가하면 마이그레이션으로 이 CHECK도 같이 넓혀야 한다.
 
-Monthly ranking query rule:
+## 트랜잭션 요구사항
+
+사진 인증은 원자적으로 처리해야 한다 — 아래 세 쓰기가 하나의 트랜잭션이어야 함:
+
+1. `verifications` insert
+2. `point_logs` insert
+3. `users.total_points` increment
+
+세 개를 독립된 쿼리로 나눠 쓰지 않는다(`db.transaction()` 사용).
+
+## 월간 랭킹 규칙
+
+Asia/Seoul 타임존 기준으로 `point_logs.created_at`을 집계한다.
 
 ```text
-created_at >= start of month
-created_at < start of next month
+created_at >= 이번 달 1일 00:00 (KST)
+created_at <  다음 달 1일 00:00 (KST)
 ```
 
-## Point Rules
+## MVP 범위였던 것 (현재는 대부분 구현됨 — 참고용)
 
-Initial point values are placeholders and should live in config:
+최초 기획 당시 "범위 밖"으로 뒀던 항목들의 현재 상태:
 
-```text
-PHOTO_VERIFICATION_POINTS = N
-MEETUP_CREATE_POINTS = M
-```
+| 항목 | 초기 계획 | 현재 |
+|---|---|---|
+| Comments | 범위 밖 | 구현됨 (카페 코멘트) |
+| 알림/실시간 푸시 | 범위 밖 | 미구현 |
+| 결제 | 범위 밖 | 미구현 |
+| 고급 검색/필터 | 범위 밖 | 미구현 |
+| 채팅 | 범위 밖 | 미구현 |
 
-Recommended MVP default:
-
-```text
-PHOTO_VERIFICATION_POINTS = 10
-MEETUP_CREATE_POINTS = 0
-```
-
-Reasoning:
-
-- Photo verification is the core contribution.
-- Meetup creation points can encourage spam if enabled too early.
-
-## Transaction Requirement
-
-Photo verification must be handled atomically.
-
-The following operations must succeed or fail together:
-
-1. Insert `verifications`
-2. Insert `point_logs`
-3. Increment `users.total_points`
-
-Recommended implementation:
-
-- Use a PostgreSQL transaction in the Express service layer.
-- Alternatively, use a stored function later if DB-side encapsulation becomes useful.
-
-Do not implement these three writes as unrelated independent queries.
-
-## Plugin Feature Architecture
-
-The app is organized by feature, not by contributor.
-
-```text
-src/
-  core/
-    loadFeatures.js
-    db.js
-    auth.js
-    config.js
-  shared/
-    api-response.js
-  features/
-    _template/
-    meetups/
-    verifications/
-    ranking/
-  app.js
-```
-
-Core rule:
-
-- `core/` and `shared/` are stable shared infrastructure.
-- Feature contributors should usually add code under `src/features/<feature-name>/`.
-- Feature code should not directly import another feature.
-- Feature-to-feature communication should happen through the database in MVP.
-
-## Plugin Contract
-
-Use a factory-style route contract so dependencies can be injected.
-
-Recommended feature entry:
-
-```js
-export default {
-  name: 'meetups',
-  basePath: '/api/meetups',
-  createRoutes: (ctx) => createMeetupRouter(ctx),
-  navItem: { label: 'Meetups', path: '/meetups' },
-};
-```
-
-`ctx` should contain shared dependencies:
-
-```js
-{
-  db,
-  auth,
-  config
-}
-```
-
-Feature modules should use dependencies from `ctx` instead of creating their own database clients.
-
-## API Response Format
-
-All API responses should use the same shape:
-
-Success:
-
-```json
-{
-  "data": {},
-  "error": null
-}
-```
-
-Failure:
-
-```json
-{
-  "data": null,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Human-readable message"
-  }
-}
-```
-
-## Walking Skeleton Acceptance Criteria
-
-The first implementation slice should prove the system works end to end:
-
-- A logged-in user can create a meetup.
-- Created meetups are returned by the meetup list API.
-- Created meetups appear in the React UI.
-- Unauthenticated users cannot create meetups.
-- API responses use `{ data, error }`.
-- `features/meetups/index.js` satisfies the plugin contract.
-- `core/loadFeatures.js` auto-loads feature modules.
-- `features/_template/` exists as a starter feature skeleton.
-
-## Railway Setup Checklist
-
-1. Create a Railway project.
-2. Connect the GitHub repository as a Web Service.
-3. Add a PostgreSQL database in the same Railway project.
-4. Expose the database connection as `DATABASE_URL` to the Web Service.
-5. `railway.json` in the repo sets the deploy start command to
-   `npm run db:migrate && npm start`, so migrations run automatically before
-   every deploy (idempotent — already-applied migrations are skipped).
-   No manual dashboard start-command config needed.
-6. Add required environment variables in Railway, not in source control.
-7. First deploy after connecting `DATABASE_URL` will run all migrations from
-   scratch. To run migrations manually (e.g. locally against the Railway DB):
-
-```text
-npm run db:migrate
-```
-
-Never commit production secrets.
-
-## Environment Variables
-
-Expected variables:
-
-```text
-DATABASE_URL=
-NODE_ENV=
-PORT=
-```
-
-Future auth/storage variables may include:
-
-```text
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-NAVER_CLIENT_ID=
-NAVER_CLIENT_SECRET=
-STORAGE_BUCKET=
-STORAGE_ACCESS_KEY_ID=
-STORAGE_SECRET_ACCESS_KEY=
-STORAGE_PUBLIC_BASE_URL=
-```
-
-## Migration Convention
-
-Database migrations should be committed as SQL files.
-
-Recommended layout:
-
-```text
-migrations/
-  20260620_init.sql
-  20260620_add_verifications.sql
-```
-
-Rules:
-
-- Use timestamp-prefixed filenames.
-- Do not edit already-applied migrations casually.
-- Add a new migration for schema changes after review.
-- Keep schema constraints in migrations, not only in application code.
-
-## Collaboration Rules
-
-The project is designed for contributors to add one feature at a time.
-
-Contributor rules:
-
-- Start from `features/_template/`.
-- Keep changes focused on one feature.
-- Avoid changing `core/` and `shared/` unless the PR is explicitly about shared infrastructure.
-- Keep PRs below about 400 changed lines when practical.
-- Add or update tests for behavior introduced by the PR.
-
-Ownership should be handled through `CODEOWNERS`, not by creating folders named after people.
-
-## Suggested Next Implementation Order
-
-1. Scaffold Express and React.
-2. Add `core/loadFeatures.js`.
-3. Add `shared/api-response.js`.
-4. Add `core/db.js` using `DATABASE_URL`.
-5. Add placeholder `core/auth.js`.
-6. Implement `features/meetups/`.
-7. Add `features/_template/`.
-8. Add initial migrations.
-9. Deploy the Express service and Railway PostgreSQL connection.
+앞으로 뭐가 추가될지 특별히 정해두지 않았다 — `README.md`의 Current Features가
+지금 시점의 실제 기능 목록이다.

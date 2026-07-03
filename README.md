@@ -158,5 +158,5 @@ migrations/20260621_add_example.sql
 ## More Docs
 
 - [AGENTS.md](./AGENTS.md): AI 코딩 규칙(커밋 컨벤션, 아키텍처 규칙) — Claude Code, Codex 등 공통
-- [DEVELOPMENT.md](./DEVELOPMENT.md): product scope, architecture, collaboration rules
+- [DEVELOPMENT.md](./DEVELOPMENT.md): 데이터 모델, 포인트 규칙 등 제품/설계 결정
 - [DESIGN_GUIDE.md](./DESIGN_GUIDE.md): UI design rules
