@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { Check, Search, X } from '@lucide/vue';
 import { apiFetch } from './api.js';
 import { useCurrentUser } from './useCurrentUser.js';
+import { avatarColor, initials } from './useAvatar.js';
 
 const props = defineProps({
   dismissable: { type: Boolean, default: false },
@@ -36,20 +37,6 @@ onMounted(async () => {
 function select(member) {
   setCurrentUser(member.id, member.name);
   emit('close');
-}
-
-const AVATAR_COLORS = [
-  'bg-[#03C75A] text-white',
-  'bg-[#0068c3] text-white',
-  'bg-[#8B5CF6] text-white',
-  'bg-[#F59E0B] text-white',
-  'bg-[#EC4899] text-white',
-];
-
-function avatarColor(name) {
-  let code = 0;
-  for (const c of name) code += c.charCodeAt(0);
-  return AVATAR_COLORS[code % AVATAR_COLORS.length];
 }
 </script>
 
@@ -125,7 +112,7 @@ function avatarColor(name) {
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[15px] font-bold"
             :class="[avatarColor(member.name), member.id === currentUserId ? 'ring-2 ring-[#03C75A] ring-offset-1' : '']"
           >
-            {{ member.name.slice(0, 1) }}
+            {{ initials(member.name) }}
           </span>
           <div class="min-w-0 flex-1">
             <p class="truncate text-[15px] font-semibold text-[#333333]">{{ member.name }}</p>
