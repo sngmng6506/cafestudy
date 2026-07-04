@@ -49,6 +49,20 @@ export function createMembersRouter(ctx) {
     }
   });
 
+  // 프로필 카드용 활동 통계 (모임 참여/인증/정모 참석 횟수).
+  router.get('/:id/stats', async (req, res) => {
+    if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) {
+      return sendFail(res, 'NOT_FOUND', '멤버를 찾을 수 없습니다', 404);
+    }
+    try {
+      const stats = await service.getMemberStats(req.params.id);
+      return sendOk(res, stats);
+    } catch (err) {
+      console.error('[members/stats]', err);
+      return sendFail(res, 'FETCH_FAILED', '멤버 통계 조회 실패', 500);
+    }
+  });
+
   // 아바타 이미지 프록시. CDN 직링크는 핫링크 차단/CORS로 브라우저에서
   // 깨질 수 있어, 서버가 대신 받아 전달한다. 하루 캐시.
   router.get('/:id/avatar', async (req, res) => {

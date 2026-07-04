@@ -101,6 +101,25 @@ export function createMembersQueries(db) {
       return result.rows;
     },
 
+    // 프로필 카드용 활동 통계. somoim 정모 참석은 face_id로 멤버와 연결된다.
+    async getMemberStats(memberId) {
+      const result = await db.query(
+        `
+          SELECT
+            (SELECT COUNT(*)::int FROM participants p WHERE p.user_id = $1) AS "meetupCount",
+            (SELECT COUNT(*)::int FROM verifications v
+              WHERE v.user_id = $1 AND v.status = 'approved') AS "verifiedCount",
+            (SELECT COUNT(*)::int
+               FROM somoim_event_attendees a
+               JOIN somoim_members sm ON sm.face_id = a.face_id
+              WHERE sm.id = $1) AS "somoimCount"
+        `,
+        [memberId],
+      );
+
+      return result.rows[0];
+    },
+
     async getMemberAvatarUrl(memberId) {
       const result = await db.query(
         `SELECT avatar_url AS "avatarUrl" FROM somoim_members WHERE id = $1`,

@@ -24,6 +24,15 @@ export function createBadgesRouter(ctx) {
     }
   });
 
+  router.get('/users/:id', ctx.auth.requireUser, async (req, res, next) => {
+    try {
+      const badges = await service.listBadgesForUser(req.params.id);
+      sendOk(res, badges);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/generate', ctx.auth.requireUser, async (req, res, next) => {
     try {
       const generation = await service.generateBadge({

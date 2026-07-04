@@ -75,6 +75,10 @@ export function createMembersService(db, queries, storage) {
       return queries.getMemberAvatarUrl(memberId);
     },
 
+    async getMemberStats(memberId) {
+      return queries.getMemberStats(memberId);
+    },
+
     async listEvents() {
       const events = await queries.listEvents();
       return Promise.all(

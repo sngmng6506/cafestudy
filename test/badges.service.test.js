@@ -206,6 +206,26 @@ test('deleteBadge rejects a non-uuid badge id with 404 before querying the db', 
   assert.equal(calls.queries.length, 0);
 });
 
+test('listBadgesForUser rejects a non-uuid member id with 404 before querying the db', async () => {
+  const { service, calls } = serviceWith();
+
+  await assert.rejects(
+    () => service.listBadgesForUser('abc'),
+    (err) => err.statusCode === 404 && err.code === 'MEMBER_NOT_FOUND',
+  );
+  assert.equal(calls.queries.length, 0);
+});
+
+test('listBadgesForUser returns the badge collection of another user', async () => {
+  const { service } = serviceWith();
+
+  const result = await service.listBadgesForUser(USER_ID);
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0].id, BADGE_ID);
+  assert.equal(result[0].imageViewUrl, `signed:${result[0].imageObjectKey}`);
+});
+
 test('generateBadge rejects an empty prompt', async () => {
   const { service } = serviceWith();
 

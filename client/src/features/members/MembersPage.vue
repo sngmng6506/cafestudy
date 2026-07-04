@@ -3,12 +3,14 @@ import { computed, onMounted, ref } from 'vue';
 import { Crown, Search } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import UserAvatar from '../../shared/UserAvatar.vue';
+import MemberProfileCard from './MemberProfileCard.vue';
 
 const members = ref([]);
 const rankData = ref({});
 const loading = ref(true);
 const errorMessage = ref('');
 const query = ref('');
+const selectedMember = ref(null);
 
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase();
@@ -129,7 +131,12 @@ function highlight(text) {
         <li
           v-for="member in filtered"
           :key="member.id"
-          class="flex items-center gap-3 px-4 py-3 first:pt-4 last:pb-4"
+          class="flex cursor-pointer items-center gap-3 px-4 py-3 transition first:pt-4 last:pb-4 hover:bg-[#f5f6f7]"
+          role="button"
+          tabindex="0"
+          :aria-label="`${member.name} 프로필 보기`"
+          @click="selectedMember = member"
+          @keydown.enter="selectedMember = member"
         >
           <UserAvatar
             class="h-10 w-10 text-[15px]"
@@ -170,5 +177,13 @@ function highlight(text) {
         </li>
       </ul>
     </section>
+
+    <!-- 멤버 프로필 카드 -->
+    <MemberProfileCard
+      v-if="selectedMember"
+      :member="selectedMember"
+      :rank="rankData[selectedMember.id] ?? null"
+      @close="selectedMember = null"
+    />
   </section>
 </template>

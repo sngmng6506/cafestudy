@@ -24,6 +24,15 @@ export function createBadgesService({ db, storage, config, badgeProvider }) {
       return badge ? withImageViewUrl(badge) : null;
     },
 
+    // 다른 멤버의 뱃지 컬렉션 조회 (프로필 카드). 뱃지는 앱 안에서 공개 정보.
+    async listBadgesForUser(userId) {
+      if (!isUuid(userId)) {
+        throwNotFound('MEMBER_NOT_FOUND', 'Member was not found.');
+      }
+      const badges = await queries.listUserBadges(userId);
+      return Promise.all(badges.map(withImageViewUrl));
+    },
+
     async generateBadge({ userId, prompt }) {
       const normalizedPrompt = normalizePrompt(prompt);
       ensureStorageConfigured();
