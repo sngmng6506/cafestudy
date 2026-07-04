@@ -50,6 +50,9 @@ async function ensureLeaflet() {
     const mod = await import('leaflet');
     await import('leaflet/dist/leaflet.css');
     leaflet = mod.default;
+    // 클러스터 플러그인은 leaflet 로드 후에 붙어야 한다.
+    await import('leaflet.markercluster');
+    await import('leaflet.markercluster/dist/MarkerCluster.css');
   }
   return leaflet;
 }
@@ -72,23 +75,37 @@ async function renderMap() {
     attribution: '&copy; OpenStreetMap',
   }).addTo(map);
 
+  // 축소 상태에서는 가까운 카페들이 개수 숫자가 적힌 초록 원으로 뭉치고,
+  // 확대하면 개별 마커로 흩어진다.
+  const clusterGroup = L.markerClusterGroup({
+    showCoverageOnHover: false,
+    maxClusterRadius: 48,
+    iconCreateFunction: (cluster) =>
+      L.divIcon({
+        html: `<div class="cafe-cluster">${cluster.getChildCount()}</div>`,
+        className: '',
+        iconSize: [36, 36],
+      }),
+  });
+
   const bounds = [];
   for (const cafe of mappedCafes.value) {
     const point = [cafe.lat, cafe.lng];
     bounds.push(point);
-    L.circleMarker(point, {
+    const marker = L.circleMarker(point, {
       radius: 9,
       color: '#03C75A',
       fillColor: '#03C75A',
       fillOpacity: 0.9,
       weight: 2,
     })
-      .addTo(map)
       .bindTooltip(cafe.placeName ?? cafe.location)
       .on('click', () => {
         selectedCafe.value = cafe;
       });
+    clusterGroup.addLayer(marker);
   }
+  map.addLayer(clusterGroup);
 
   if (bounds.length === 1) map.setView(bounds[0], 16);
   else map.fitBounds(bounds, { padding: [30, 30] });
@@ -230,3 +247,21 @@ async function saveComment(cafe) {
     <CafeDetailSheet v-if="selectedCafe" :cafe="selectedCafe" @close="selectedCafe = null" />
   </section>
 </template>
+
+<style>
+/* Leaflet이 주입하는 클러스터 아이콘 — scoped가 적용되지 않아 전역으로 둔다. */
+.cafe-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background: #03c75a;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(51, 51, 51, 0.3);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+}
+</style>

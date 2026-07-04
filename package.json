@@ -25,6 +25,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
     "node-cron": "^4.5.0",
     "pg": "^8.13.1",
     "puppeteer": "^25.2.1",
