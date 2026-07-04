@@ -41,6 +41,10 @@ badges                         -- 생성 결과에서 확정된 뱃지
 
 user_badges                    -- 유저가 보유한 뱃지 (PK user_id+badge_id)
 - user_id, badge_id, awarded_at
+- 인당 최대 5개 (badges.service.js MAX_BADGES_PER_USER가 검증 —
+  DB 제약이 아니라 apply 트랜잭션의 user row 잠금 + 카운트로 보장)
+- 삭제는 user_badges 행만 지운다. badges 행과 이미지 오브젝트는
+  남는다(정리 작업은 ROADMAP의 "뱃지 정리" 참고)
 
 -- 소모임(somoim.co.kr) 크롤링 데이터 — 읽기전용, 앱 데이터와 별도 -----------
 
