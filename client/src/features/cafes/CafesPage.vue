@@ -157,7 +157,9 @@ async function saveComment(cafe) {
         <h2 class="text-lg font-semibold text-[#333333]">카페 지도</h2>
         <span class="ml-auto text-[12px] text-[#5f6368]">마커를 누르면 상세 정보</span>
       </div>
-      <div ref="mapEl" class="h-64 w-full overflow-hidden rounded-xl border border-[#dadce0]"></div>
+      <!-- relative z-0: Leaflet 내부 z-index(400~1000)를 이 안에 가둬서
+           z-50 모달(카페 시트 등)이 지도 뒤로 깔리지 않게 한다. -->
+      <div ref="mapEl" class="relative z-0 h-64 w-full overflow-hidden rounded-xl border border-[#dadce0]"></div>
       <p v-if="unmappedCount > 0" class="mt-2 text-[12px] text-[#5f6368]">
         위치를 찾지 못한 카페 {{ unmappedCount }}곳은 아래 목록에서만 표시됩니다.
       </p>
