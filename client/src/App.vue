@@ -7,11 +7,12 @@ import MemberSelectModal from './shared/MemberSelectModal.vue';
 import { useCurrentUser } from './shared/useCurrentUser.js';
 import { avatarColor } from './shared/useAvatar.js';
 
-const { currentUserId, currentUserName } = useCurrentUser();
+const { currentUserId, currentUserName, currentToken } = useCurrentUser();
 const memberSelectOpen = ref(false);
 
 onMounted(() => {
-  if (!currentUserId.value) memberSelectOpen.value = true;
+  // 유효한 세션 토큰이 있어야 로그인 상태로 본다.
+  if (!currentToken.value) memberSelectOpen.value = true;
 });
 
 // Features flagged `primary` are pinned to the bottom bar; everything else
@@ -106,7 +107,7 @@ function selectFeature(name) {
     <!-- 멤버 선택 모달 -->
     <MemberSelectModal
       v-if="memberSelectOpen"
-      :dismissable="!!currentUserId"
+      :dismissable="!!currentToken"
       @close="memberSelectOpen = false"
     />
 

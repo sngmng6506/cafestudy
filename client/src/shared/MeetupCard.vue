@@ -24,14 +24,14 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
   <li
     v-if="compact"
     class="grid gap-2 rounded-lg border p-3"
-    :class="meetup.readonly ? 'border-l-[3px] border-l-[#8B5CF6] border-y-[#dadce0] border-r-[#dadce0] bg-[#FAF8FF]' : 'border-[#dadce0] bg-[#f5f6f7]'"
+    :class="meetup.readonly ? 'border-l-[3px] border-l-[#10B981] border-y-[#dadce0] border-r-[#dadce0] bg-[#F0FDF4]' : 'border-[#dadce0] bg-[#f5f6f7]'"
   >
     <div>
       <p class="flex flex-wrap items-center gap-1.5 text-[15px] font-semibold text-[#333333]">
         {{ meetup.title }}
         <span
           v-if="meetup.readonly"
-          class="rounded bg-[#EDE7FB] px-1.5 py-0.5 text-[11px] font-semibold text-[#7C3AED]"
+          class="rounded bg-[#D1FAE5] px-1.5 py-0.5 text-[11px] font-semibold text-[#047857]"
         >
           소모임
         </span>
@@ -67,7 +67,7 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
   <li
     v-else
     class="flex flex-col gap-2.5 py-4 first:pt-0 last:pb-0"
-    :class="meetup.readonly ? 'border-l-[3px] border-l-[#8B5CF6] -ml-4 pl-4' : ''"
+    :class="meetup.readonly ? 'border-l-[3px] border-l-[#10B981] -ml-4 pl-4' : ''"
   >
     <div class="flex items-start gap-2">
       <h4 class="min-w-0 flex-1 text-[17px] font-bold tracking-[-0.34px] text-[#333333]">
@@ -75,7 +75,7 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
       </h4>
       <span
         v-if="meetup.readonly"
-        class="shrink-0 rounded bg-[#EDE7FB] px-2 py-0.5 text-[11px] font-semibold text-[#7C3AED]"
+        class="shrink-0 rounded bg-[#D1FAE5] px-2 py-0.5 text-[11px] font-semibold text-[#047857]"
       >
         소모임
       </span>
@@ -148,7 +148,7 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
       <div class="ml-auto flex items-center gap-2">
         <a
           v-if="meetup.readonly"
-          class="focus-ring inline-flex h-9 items-center justify-center gap-1 rounded-[10px] bg-[#7C3AED] px-3 text-sm font-semibold text-white transition hover:bg-[#6D28D9]"
+          class="focus-ring inline-flex h-9 items-center justify-center gap-1 rounded-[10px] bg-[#059669] px-3 text-sm font-semibold text-white transition hover:bg-[#047857]"
           href="https://www.somoim.co.kr"
           target="_blank"
           rel="noreferrer"

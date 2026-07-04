@@ -17,6 +17,11 @@ export async function createApp(ctx) {
   app.use(cors());
   app.use(express.json({ limit: '1mb' }));
 
+  // 요청당 1회 토큰(또는 dev 폴백)을 해석해 req.user / req.userId 를 세팅한다.
+  if (ctx.auth?.resolveUser) {
+    app.use(ctx.auth.resolveUser);
+  }
+
   if (hasClientBuild) {
     app.use(express.static(clientDistPath));
   }

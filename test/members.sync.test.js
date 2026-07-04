@@ -13,10 +13,14 @@ function fakeDb() {
 }
 
 function fakeQueries(overrides = {}) {
-  const calls = { upsertEvent: [], prune: [] };
+  const calls = { upsertEvent: [], prune: [], pruneMembers: [] };
   return {
     calls,
-    upsertMembers: async () => 1,
+    upsertMembers: async () => ({ count: 1, ids: ['m-1'] }),
+    pruneStaleMembers: async (_c, _url, keepIds) => {
+      calls.pruneMembers.push(keepIds);
+      return 3;
+    },
     insertSyncLog: async () => 'log-1',
     upsertEvent: async (_c, event) => {
       calls.upsertEvent.push(event);
@@ -63,6 +67,28 @@ test('syncMembers: 정모 0건(파싱 실패 가능성)이면 유령 정리를 �
   assert.equal(result.eventCount, 0);
   assert.equal(result.prunedCount, 0);
   assert.equal(queries.calls.prune.length, 0, '오삭제 방지: prune 미호출');
+});
+
+test('syncMembers: upsert 후 나간 멤버 정리를 keepIds로 호출한다', async () => {
+  const queries = fakeQueries();
+  const service = createMembersService(fakeDb(), queries);
+
+  const result = await service.syncMembers(basePayload);
+
+  assert.equal(result.prunedMemberCount, 3);
+  assert.deepEqual(queries.calls.pruneMembers, [['m-1']]);
+});
+
+test('syncMembers: 멤버 0명(파싱 실패 가능성)이면 나간 멤버 정리를 건너뛴다', async () => {
+  const queries = fakeQueries({
+    upsertMembers: async () => ({ count: 0, ids: [] }),
+  });
+  const service = createMembersService(fakeDb(), queries);
+
+  const result = await service.syncMembers({ ...basePayload, members: [] });
+
+  assert.equal(result.prunedMemberCount, 0);
+  assert.equal(queries.calls.pruneMembers.length, 0, '오삭제 방지: 멤버 prune 미호출');
 });
 
 test('syncMembers: events 필드가 없으면(구버전 페이로드) 정모 로직을 건너뛴다', async () => {

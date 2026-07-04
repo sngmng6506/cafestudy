@@ -29,7 +29,10 @@ before(async () => {
 
   const app = await createApp({
     db,
-    auth: { requireUser: (_req, _res, next) => next() },
+    auth: {
+      requireUser: (_req, _res, next) => next(),
+      requireAdmin: (_req, _res, next) => next(),
+    },
     storage: {},
     config: { env: 'test' },
   });

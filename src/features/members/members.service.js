@@ -7,13 +7,22 @@ export function createMembersService(db, queries) {
       }
 
       let upsertedCount = 0;
+      let prunedMemberCount = 0;
       let eventCount = 0;
       let prunedCount = 0;
       let logId;
 
       try {
         await db.transaction(async (client) => {
-          upsertedCount = await queries.upsertMembers(client, members, url);
+          const { count, ids } = await queries.upsertMembers(client, members, url);
+          upsertedCount = count;
+
+          // 이번 크롤에 없는 멤버 정리 (소모임에서 나간 사람).
+          // keepIds가 비면(크롤이 멤버 0명 = 파싱 실패 가능성) 오삭제 방지로 건너뛴다.
+          // 정모의 pruneStaleFutureEvents와 동일한 가드 패턴.
+          if (ids.length > 0) {
+            prunedMemberCount = await queries.pruneStaleMembers(client, url, ids);
+          }
 
           // 정모 일정 동기화 (있을 때만).
           if (Array.isArray(events)) {
@@ -49,7 +58,7 @@ export function createMembersService(db, queries) {
         throw err;
       }
 
-      return { upsertedCount, eventCount, prunedCount, logId };
+      return { upsertedCount, prunedMemberCount, eventCount, prunedCount, logId };
     },
 
     async listMembers() {

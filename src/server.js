@@ -12,7 +12,7 @@ const config = {
 };
 
 const db = createDb({ connectionString: process.env.DATABASE_URL });
-const auth = createAuth({ env: config.env });
+const auth = createAuth({ env: config.env, db });
 const storage = createStorage(process.env);
 const app = await createApp({ db, auth, storage, config });
 

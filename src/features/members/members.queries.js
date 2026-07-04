@@ -1,7 +1,7 @@
 export function createMembersQueries(db) {
   return {
     async upsertMembers(client, members, sourceUrl) {
-      if (members.length === 0) return 0;
+      if (members.length === 0) return { count: 0, ids: [] };
 
       const values = [];
       const params = [sourceUrl];
@@ -40,6 +40,26 @@ export function createMembersQueries(db) {
         );
       }
 
+      return { count: result.rowCount, ids: result.rows.map((r) => r.id) };
+    },
+
+    // 이번 크롤에 없는 멤버를 삭제한다 (소모임에서 나간 사람 정리).
+    // keepIds = 이번 upsert로 살아있는 멤버 id. UUID가 유지되므로 남은 멤버의
+    // users 계정(포인트/비밀번호/관리자)은 그대로다. 나간 멤버의 users 행은
+    // FK가 없어 그대로 남지만, listMembers가 somoim_members 기준이라 목록에서 사라진다.
+    // 크롤이 멤버를 하나도 못 뽑은 경우(파싱 실패)는 service에서 keepIds 빈 배열로
+    // 걸러 이 함수를 호출하지 않으므로 전량 오삭제가 발생하지 않는다.
+    async pruneStaleMembers(client, sourceUrl, keepIds) {
+      if (keepIds.length === 0) return 0;
+      const placeholders = keepIds.map((_, i) => `$${i + 2}`).join(', ');
+      const result = await client.query(
+        `
+          DELETE FROM somoim_members
+          WHERE source_url = $1
+            AND id NOT IN (${placeholders})
+        `,
+        [sourceUrl, ...keepIds],
+      );
       return result.rowCount;
     },
 
@@ -61,15 +81,18 @@ export function createMembersQueries(db) {
       const result = await db.query(
         `
           SELECT
-            id,
-            name,
-            bio,
-            avatar_url AS "avatarUrl",
-            source_url AS "sourceUrl",
-            created_at AS "createdAt",
-            updated_at AS "updatedAt"
-          FROM somoim_members
-          ORDER BY name ASC
+            m.id,
+            m.name,
+            m.bio,
+            m.avatar_url AS "avatarUrl",
+            m.source_url AS "sourceUrl",
+            m.created_at AS "createdAt",
+            m.updated_at AS "updatedAt",
+            (u.password_hash IS NOT NULL) AS "hasPassword",
+            COALESCE(u.is_admin, false) AS "isAdmin"
+          FROM somoim_members m
+          LEFT JOIN users u ON u.id = m.id
+          ORDER BY m.name ASC
         `,
       );
 

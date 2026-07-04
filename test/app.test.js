@@ -16,6 +16,9 @@ before(async () => {
       requireUser(_req, _res, next) {
         next();
       },
+      requireAdmin(_req, _res, next) {
+        next();
+      },
     },
     config: { env: 'test' },
   });
