@@ -3,10 +3,10 @@ import { onMounted, ref } from 'vue';
 import { Award, Check, Sparkles } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { useToast } from '../../shared/useToast.js';
-import { useCurrentUser } from '../../shared/useCurrentUser.js';
+import { useActiveBadge } from '../../shared/useActiveBadge.js';
 
 const toast = useToast();
-const { setActiveBadgeImageUrl } = useCurrentUser();
+const { setActiveBadgeImageUrl } = useActiveBadge();
 
 const prompt = ref('');
 const title = ref('');
