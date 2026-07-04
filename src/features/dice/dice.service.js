@@ -1,6 +1,7 @@
 import { createDiceQueries } from './dice.queries.js';
+import { attachBadgeImageUrls } from '../../shared/badge-image.js';
 
-export function createDiceService({ db }) {
+export function createDiceService({ db, storage }) {
   const queries = createDiceQueries(db);
 
   return {
@@ -15,8 +16,8 @@ export function createDiceService({ db }) {
       return queries.getMyPoints(userId);
     },
 
-    getRanking() {
-      return queries.getRanking();
+    async getRanking() {
+      return attachBadgeImageUrls(storage, await queries.getRanking());
     },
   };
 }

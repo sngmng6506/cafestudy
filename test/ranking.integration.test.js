@@ -33,7 +33,8 @@ before(async () => {
       requireUser: (_req, _res, next) => next(),
       requireAdmin: (_req, _res, next) => next(),
     },
-    storage: {},
+    // 랭킹 응답이 대표 뱃지 presigned URL을 붙이므로 서명 스텁이 필요하다.
+    storage: { createDownloadUrl: async (objectKey) => `signed:${objectKey}` },
     config: { env: 'test' },
   });
 

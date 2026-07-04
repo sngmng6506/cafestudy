@@ -18,7 +18,7 @@ export function createMeetupQueries(db) {
             (m.host_id = $1) AS "isHost",
             COALESCE(
               json_agg(
-                json_build_object('name', u.nickname)
+                json_build_object('name', u.nickname, 'badgeKey', b.image_object_key)
                 ORDER BY u.nickname
               ) FILTER (WHERE u.id IS NOT NULL),
               '[]'
@@ -26,6 +26,7 @@ export function createMeetupQueries(db) {
           FROM meetups m
           LEFT JOIN participants p ON p.meetup_id = m.id
           LEFT JOIN users u ON u.id = p.user_id
+          LEFT JOIN badges b ON b.id = u.active_badge_id
           WHERE m.status = 'open'
           GROUP BY m.id
           ORDER BY m.scheduled_at ASC, m.created_at DESC

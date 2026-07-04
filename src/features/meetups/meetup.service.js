@@ -1,17 +1,26 @@
 import { createMeetupQueries } from './meetup.queries.js';
 import { throwError } from '../../shared/errors.js';
+import { attachBadgeImageUrls } from '../../shared/badge-image.js';
 
 // A meetup must be scheduled at least this far ahead of "now".
 export const MIN_LEAD_MS = 30 * 60 * 1000;
 export const MAX_CAPACITY = 100;
 
-export function createMeetupService({ db }) {
+export function createMeetupService({ db, storage }) {
   const queries = createMeetupQueries(db);
 
   return {
     async listMeetups(userId) {
       const meetups = await queries.listMeetups(userId);
-      return meetups.map(withState);
+      return Promise.all(
+        meetups.map(async (meetup) => ({
+          ...withState(meetup),
+          attendees: await attachBadgeImageUrls(storage, meetup.attendees, {
+            keyField: 'badgeKey',
+            urlField: 'badgeUrl',
+          }),
+        })),
+      );
     },
 
     async createMeetup(input) {

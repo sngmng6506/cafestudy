@@ -1,25 +1,26 @@
 import { createRankingQueries } from './ranking.queries.js';
+import { attachBadgeImageUrls } from '../../shared/badge-image.js';
 
 // Monthly ranking uses the service timezone (Asia/Seoul) per DEVELOPMENT.md.
 // KST is a fixed UTC+9 offset with no daylight saving, so a constant offset is safe.
 const SEOUL_OFFSET_MS = 9 * 60 * 60 * 1000;
 
-export function createRankingService({ db }) {
+export function createRankingService({ db, storage }) {
   const queries = createRankingQueries(db);
 
   return {
-    getAllTimeRanking() {
-      return queries.getAllTimeRanking();
+    async getAllTimeRanking() {
+      return attachBadgeImageUrls(storage, await queries.getAllTimeRanking());
     },
 
     // `year` + `month` (1-12) select a specific month; omitted -> current month.
-    getMonthlyRanking({ year, month } = {}) {
+    async getMonthlyRanking({ year, month } = {}) {
       const range =
         Number.isInteger(year) && Number.isInteger(month)
           ? getMonthRange(year, month - 1)
           : getCurrentMonthRange();
 
-      return queries.getMonthlyRanking(range);
+      return attachBadgeImageUrls(storage, await queries.getMonthlyRanking(range));
     },
   };
 }

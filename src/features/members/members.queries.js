@@ -89,9 +89,11 @@ export function createMembersQueries(db) {
             m.created_at AS "createdAt",
             m.updated_at AS "updatedAt",
             (u.password_hash IS NOT NULL) AS "hasPassword",
-            COALESCE(u.is_admin, false) AS "isAdmin"
+            COALESCE(u.is_admin, false) AS "isAdmin",
+            b.image_object_key AS "activeBadgeObjectKey"
           FROM somoim_members m
           LEFT JOIN users u ON u.id = m.id
+          LEFT JOIN badges b ON b.id = u.active_badge_id
           ORDER BY m.name ASC
         `,
       );
@@ -193,13 +195,16 @@ export function createMembersQueries(db) {
             e.thumbnail_url AS "thumbnailUrl",
             COALESCE(
               json_agg(
-                json_build_object('name', a.member_name)
+                json_build_object('name', a.member_name, 'badgeKey', b.image_object_key)
                 ORDER BY a.member_name
               ) FILTER (WHERE a.id IS NOT NULL AND a.member_name IS NOT NULL),
               '[]'
             ) AS attendees
           FROM somoim_events e
           LEFT JOIN somoim_event_attendees a ON a.event_id = e.id
+          LEFT JOIN somoim_members sm ON sm.face_id = a.face_id
+          LEFT JOIN users u ON u.id = sm.id
+          LEFT JOIN badges b ON b.id = u.active_badge_id
           GROUP BY e.id
           ORDER BY e.scheduled_at ASC NULLS LAST
         `,

@@ -1,5 +1,7 @@
 import { throwValidation } from '../../shared/errors.js';
-export function createMembersService(db, queries) {
+import { attachBadgeImageUrls } from '../../shared/badge-image.js';
+
+export function createMembersService(db, queries, storage) {
   return {
     async syncMembers({ url, expected_member_count, crawled_member_count, members, events }) {
       if (!url || !Array.isArray(members)) {
@@ -63,7 +65,10 @@ export function createMembersService(db, queries) {
 
     async listMembers() {
       const members = await queries.listMembers();
-      return members.map(({ avatarUrl, ...member }) => member);
+      return attachBadgeImageUrls(
+        storage,
+        members.map(({ avatarUrl, ...member }) => member),
+      );
     },
 
     async getMemberAvatarUrl(memberId) {
@@ -71,7 +76,16 @@ export function createMembersService(db, queries) {
     },
 
     async listEvents() {
-      return queries.listEvents();
+      const events = await queries.listEvents();
+      return Promise.all(
+        events.map(async (event) => ({
+          ...event,
+          attendees: await attachBadgeImageUrls(storage, event.attendees, {
+            keyField: 'badgeKey',
+            urlField: 'badgeUrl',
+          }),
+        })),
+      );
     },
 
     async listSyncLogs() {

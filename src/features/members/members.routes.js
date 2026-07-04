@@ -14,7 +14,7 @@ function requireInternalKey(req, res, next) {
 export function createMembersRouter(ctx) {
   const router = Router();
   const queries = createMembersQueries(ctx.db);
-  const service = createMembersService(ctx.db, queries);
+  const service = createMembersService(ctx.db, queries, ctx.storage);
 
   router.post('/sync', requireInternalKey, async (req, res) => {
     try {

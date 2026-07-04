@@ -21,7 +21,7 @@ export default {
     }
 
     const queries = createMembersQueries(ctx.db);
-    const service = createMembersService(ctx.db, queries);
+    const service = createMembersService(ctx.db, queries, ctx.storage);
 
     let isRunning = false;
     cron.schedule(schedule, async () => {
