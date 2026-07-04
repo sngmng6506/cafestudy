@@ -10,9 +10,12 @@
 
 ```text
 users
-- id, oauth_provider, nickname, avatar, total_points, created_at
+- id, oauth_provider, nickname, avatar, total_points,
+  active_badge_id(nullable FK badges.id, ON DELETE SET NULL), created_at
 - total_points는 캐시. point_logs가 source of truth.
   불일치 시 point_logs로부터 재계산한다.
+- active_badge_id는 헤더 아바타에 표시할 대표 뱃지. 뱃지 적용(apply) 시
+  자동으로 갱신되고, /api/badges/:id/activate로 직접 바꿀 수 있다.
 
 meetups                        -- 앱 안에서 직접 만든 모임
 - id, host_id, title, description, location, cafe_name(legacy, nullable),
@@ -27,6 +30,17 @@ verifications                  -- 사진 인증 (UNIQUE meetup_id+user_id, 1인 
 
 point_logs                     -- 포인트 원장. source: verify/host/dice
 - id, user_id, source, ref_id, amount, created_at
+
+badge_generations              -- AI 뱃지 생성 이력 (preview → applied)
+- id, user_id, prompt, provider, model, image_object_key, point_cost,
+  status(preview/applied), error_message, created_at
+
+badges                         -- 생성 결과에서 확정된 뱃지
+- id, title, description, image_object_key, provider, model, prompt,
+  created_by, created_at
+
+user_badges                    -- 유저가 보유한 뱃지 (PK user_id+badge_id)
+- user_id, badge_id, awarded_at
 
 -- 소모임(somoim.co.kr) 크롤링 데이터 — 읽기전용, 앱 데이터와 별도 -----------
 
