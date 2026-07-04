@@ -48,6 +48,10 @@ export function createBadgesService({ db, storage, config, badgeProvider }) {
     },
 
     async applyGeneration({ userId, generationId, title }) {
+      if (!isUuid(generationId)) {
+        throwNotFound('BADGE_GENERATION_NOT_FOUND', 'Badge generation was not found.');
+      }
+
       const generation = await queries.getGenerationForUser({ generationId, userId });
       if (!generation) {
         throwNotFound('BADGE_GENERATION_NOT_FOUND', 'Badge generation was not found.');
@@ -70,12 +74,15 @@ export function createBadgesService({ db, storage, config, badgeProvider }) {
     },
 
     async setActiveBadge({ userId, badgeId }) {
-      const active = await queries.setActiveBadge({ userId, badgeId });
-      if (!active) {
+      if (!isUuid(badgeId)) {
         throwNotFound('BADGE_NOT_FOUND', 'Badge was not found.');
       }
 
-      const badge = await queries.getActiveBadge(userId);
+      const badge = await queries.setActiveBadge({ userId, badgeId });
+      if (!badge) {
+        throwNotFound('BADGE_NOT_FOUND', 'Badge was not found.');
+      }
+
       return withImageViewUrl(badge);
     },
   };
@@ -97,6 +104,14 @@ export function createBadgesService({ db, storage, config, badgeProvider }) {
       throwError(503, 'STORAGE_NOT_CONFIGURED', 'Badge image storage is not configured.');
     }
   }
+}
+
+// URL 파라미터를 uuid 컬럼 쿼리에 넣기 전에 걸러낸다.
+// 통과시키면 Postgres 22P02 캐스트 에러가 500으로 노출된다.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuid(value) {
+  return typeof value === 'string' && UUID_PATTERN.test(value);
 }
 
 function normalizePrompt(prompt) {

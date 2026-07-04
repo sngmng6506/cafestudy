@@ -3,10 +3,12 @@ import { test } from 'node:test';
 import { createBadgesService } from '../src/features/badges/badges.service.js';
 
 const USER_ID = '00000000-0000-0000-0000-000000000001';
+const GENERATION_ID = '00000000-0000-0000-0000-000000000002';
+const BADGE_ID = '00000000-0000-0000-0000-000000000003';
 
 function serviceWith({ storageConfigured = true } = {}) {
   const generation = {
-    id: 'gen-1',
+    id: GENERATION_ID,
     userId: USER_ID,
     prompt: 'weekend coding cafe',
     provider: 'test-provider',
@@ -17,32 +19,42 @@ function serviceWith({ storageConfigured = true } = {}) {
     createdAt: new Date().toISOString(),
   };
   const badge = {
-    id: 'badge-1',
+    id: BADGE_ID,
     title: 'Weekend Coder',
     description: generation.prompt,
     imageObjectKey: generation.imageObjectKey,
     provider: generation.provider,
     model: generation.model,
     prompt: generation.prompt,
-    isActive: true,
     createdAt: new Date().toISOString(),
   };
-  const calls = { putObject: [] };
+  const calls = { putObject: [], queries: [] };
 
   const db = {
-    query: async (sql) => {
+    query: async (sql, params = []) => {
+      calls.queries.push(sql);
       if (sql.includes('INSERT INTO badge_generations')) return { rows: [generation] };
       if (sql.includes('FROM badge_generations')) return { rows: [generation] };
-      if (sql.includes('UPDATE users u')) return { rows: [{ activeBadgeId: badge.id }] };
-      if (sql.includes('FROM user_badges')) return { rows: [badge] };
-      if (sql.includes('JOIN badges b ON b.id = u.active_badge_id')) return { rows: [badge] };
+      if (sql.includes('UPDATE users u')) {
+        // setActiveBadge: 소유한 뱃지일 때만 row를 반환한다.
+        if (params[1] !== BADGE_ID) return { rows: [] };
+        return { rows: [{ ...badge, awardedAt: badge.createdAt, isActive: true }] };
+      }
+      if (sql.includes('JOIN badges b ON b.id = u.active_badge_id')) {
+        return { rows: [{ ...badge, awardedAt: badge.createdAt, isActive: true }] };
+      }
+      if (sql.includes('FROM user_badges')) {
+        return { rows: [{ ...badge, awardedAt: badge.createdAt, isActive: true }] };
+      }
       return { rows: [] };
     },
     transaction: async (callback) => callback({
       query: async (sql) => {
         if (sql.includes('FROM badge_generations')) return { rows: [generation] };
         if (sql.includes('INSERT INTO badges')) return { rows: [badge] };
-        if (sql.includes('UPDATE users SET active_badge_id')) return { rows: [] };
+        if (sql.includes('UPDATE users SET active_badge_id')) {
+          return { rows: [{ activeBadgeId: badge.id }] };
+        }
         return { rows: [] };
       },
     }),
@@ -75,7 +87,7 @@ test('generateBadge creates a preview generation and stores the image', async ()
 
   const result = await service.generateBadge({ userId: USER_ID, prompt: 'weekend coding cafe' });
 
-  assert.equal(result.id, 'gen-1');
+  assert.equal(result.id, GENERATION_ID);
   assert.equal(result.pointCost, 0);
   assert.equal(result.imageViewUrl, `signed:${result.imageObjectKey}`);
   assert.equal(calls.putObject.length, 1);
@@ -87,24 +99,56 @@ test('applyGeneration creates a user badge from a preview generation', async () 
 
   const result = await service.applyGeneration({
     userId: USER_ID,
-    generationId: 'gen-1',
+    generationId: GENERATION_ID,
     title: 'Weekend Coder',
   });
 
-  assert.equal(result.id, 'badge-1');
+  assert.equal(result.id, BADGE_ID);
   assert.equal(result.title, 'Weekend Coder');
   assert.equal(result.isActive, true);
   assert.equal(result.imageViewUrl, `signed:${result.imageObjectKey}`);
 });
 
+test('applyGeneration rejects a non-uuid generation id with 404 before querying the db', async () => {
+  const { service, calls } = serviceWith();
+
+  await assert.rejects(
+    () => service.applyGeneration({ userId: USER_ID, generationId: 'not-a-uuid', title: 'x' }),
+    (err) => err.statusCode === 404 && err.code === 'BADGE_GENERATION_NOT_FOUND',
+  );
+  assert.equal(calls.queries.length, 0);
+});
+
 test('setActiveBadge switches the active user badge', async () => {
   const { service } = serviceWith();
 
-  const result = await service.setActiveBadge({ userId: USER_ID, badgeId: 'badge-1' });
+  const result = await service.setActiveBadge({ userId: USER_ID, badgeId: BADGE_ID });
 
-  assert.equal(result.id, 'badge-1');
+  assert.equal(result.id, BADGE_ID);
   assert.equal(result.isActive, true);
   assert.equal(result.imageViewUrl, `signed:${result.imageObjectKey}`);
+});
+
+test('setActiveBadge rejects a non-uuid badge id with 404 before querying the db', async () => {
+  const { service, calls } = serviceWith();
+
+  await assert.rejects(
+    () => service.setActiveBadge({ userId: USER_ID, badgeId: 'abc' }),
+    (err) => err.statusCode === 404 && err.code === 'BADGE_NOT_FOUND',
+  );
+  assert.equal(calls.queries.length, 0);
+});
+
+test('setActiveBadge rejects a badge the user does not own with 404', async () => {
+  const { service } = serviceWith();
+
+  await assert.rejects(
+    () => service.setActiveBadge({
+      userId: USER_ID,
+      badgeId: '00000000-0000-0000-0000-0000000000ff',
+    }),
+    (err) => err.statusCode === 404 && err.code === 'BADGE_NOT_FOUND',
+  );
 });
 
 test('generateBadge rejects an empty prompt', async () => {

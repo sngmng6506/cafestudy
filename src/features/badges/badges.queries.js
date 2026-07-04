@@ -1,3 +1,19 @@
+// 뱃지 row의 공통 SELECT 컬럼. 세 쿼리(RETURNING 포함)가 같은 shape를
+// 반환해야 클라이언트/서비스가 단일 형태로 다룰 수 있다.
+function badgeColumns(prefix = '') {
+  const p = prefix ? `${prefix}.` : '';
+  return `
+    ${p}id,
+    ${p}title,
+    ${p}description,
+    ${p}image_object_key AS "imageObjectKey",
+    ${p}provider,
+    ${p}model,
+    ${p}prompt,
+    ${p}created_at AS "createdAt"
+  `;
+}
+
 export function createBadgesQueries(db) {
   return {
     async createGeneration({ userId, prompt, provider, model, imageObjectKey, pointCost }) {
@@ -64,16 +80,7 @@ export function createBadgesQueries(db) {
           `
             INSERT INTO badges (title, description, image_object_key, provider, model, prompt, created_by)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING
-              id,
-              title,
-              description,
-              image_object_key AS "imageObjectKey",
-              provider,
-              model,
-              prompt,
-              created_at AS "createdAt",
-              true AS "isActive"
+            RETURNING ${badgeColumns()}
           `,
           [
             title,
@@ -95,8 +102,10 @@ export function createBadgesQueries(db) {
           [userId, badge.id],
         );
 
-        await client.query(
-          `UPDATE users SET active_badge_id = $2 WHERE id = $1`,
+        // 새로 적용한 뱃지가 대표 뱃지가 된다. isActive는 단정하지 않고
+        // 실제 UPDATE 결과에서 유도한다 (listUserBadges와 같은 진실 소스).
+        const activeResult = await client.query(
+          `UPDATE users SET active_badge_id = $2 WHERE id = $1 RETURNING active_badge_id AS "activeBadgeId"`,
           [userId, badge.id],
         );
 
@@ -105,23 +114,26 @@ export function createBadgesQueries(db) {
           [generationId],
         );
 
-        return badge;
+        return { ...badge, isActive: activeResult.rows[0]?.activeBadgeId === badge.id };
       });
     },
 
     async setActiveBadge({ userId, badgeId }) {
+      // 소유권 검증 + 갱신 + 뱃지 row 반환을 한 문장으로 처리한다.
+      // (UPDATE 후 재조회 사이에 다른 요청이 끼어드는 레이스 방지)
       const result = await db.query(
         `
           UPDATE users u
           SET active_badge_id = $2
+          FROM user_badges ub
+          JOIN badges b ON b.id = ub.badge_id
           WHERE u.id = $1
-            AND EXISTS (
-              SELECT 1
-              FROM user_badges ub
-              WHERE ub.user_id = $1
-                AND ub.badge_id = $2
-            )
-          RETURNING active_badge_id AS "activeBadgeId"
+            AND ub.user_id = $1
+            AND ub.badge_id = $2
+          RETURNING
+            ${badgeColumns('b')},
+            ub.awarded_at AS "awardedAt",
+            true AS "isActive"
         `,
         [userId, badgeId],
       );
@@ -133,15 +145,8 @@ export function createBadgesQueries(db) {
       const result = await db.query(
         `
           SELECT
-            b.id,
-            b.title,
-            b.description,
-            b.image_object_key AS "imageObjectKey",
-            b.provider,
-            b.model,
-            b.prompt,
+            ${badgeColumns('b')},
             ub.awarded_at AS "awardedAt",
-            b.created_at AS "createdAt",
             true AS "isActive"
           FROM users u
           JOIN badges b ON b.id = u.active_badge_id
@@ -158,16 +163,9 @@ export function createBadgesQueries(db) {
       const result = await db.query(
         `
           SELECT
-            b.id,
-            b.title,
-            b.description,
-            b.image_object_key AS "imageObjectKey",
-            b.provider,
-            b.model,
-            b.prompt,
+            ${badgeColumns('b')},
             ub.awarded_at AS "awardedAt",
-            b.created_at AS "createdAt",
-            b.id = u.active_badge_id AS "isActive"
+            COALESCE(b.id = u.active_badge_id, false) AS "isActive"
           FROM user_badges ub
           JOIN badges b ON b.id = ub.badge_id
           JOIN users u ON u.id = ub.user_id
