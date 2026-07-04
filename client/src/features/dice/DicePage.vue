@@ -47,6 +47,7 @@ const rollError = ref('');
 
 let spinX = 0;
 let spinY = 0;
+let rollTimer = null;
 
 onMounted(async () => {
   if (currentUserId.value) {
@@ -72,13 +73,16 @@ async function roll() {
   apiPending.value = true;
 
   let serverValue = rand(1, 6);
+  let nextPoints = myPoints.value;
+  let nextEarned = null;
+  let nextError = '';
   try {
     const body = await apiFetch('/api/dice/roll', { method: 'POST' });
     serverValue = body.data.value;
-    myPoints.value = body.data.totalPoints;
-    lastEarned.value = body.data.earned;
+    nextPoints = body.data.totalPoints;
+    nextEarned = body.data.earned;
   } catch (err) {
-    rollError.value = err.message ?? '포인트 적립에 실패했습니다.';
+    nextError = err.message ?? '포인트 적립에 실패했습니다.';
   } finally {
     apiPending.value = false;
   }
@@ -90,7 +94,11 @@ async function roll() {
   rotY.value = rest.y + 360 * spinY;
   result.value = serverValue;
 
-  setTimeout(() => {
+  clearTimeout(rollTimer);
+  rollTimer = setTimeout(() => {
+    myPoints.value = nextPoints;
+    lastEarned.value = nextEarned;
+    rollError.value = nextError;
     rolling.value = false;
   }, 1200);
 }

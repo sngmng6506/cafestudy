@@ -2,12 +2,14 @@ import { throwError } from '../../shared/errors.js';
 
 const DEFAULT_MODEL = 'megaaziib/aziibpixelmix';
 const DEFAULT_PROVIDER = 'hf-inference-api';
+const DEFAULT_PROVIDER_PATH = 'hf-inference';
 
 export function createHuggingFaceBadgeProvider(env, fetchImpl = fetch) {
   const token = env.HF_TOKEN;
   const model = env.HF_BADGE_MODEL || DEFAULT_MODEL;
+  const providerPath = env.HF_BADGE_PROVIDER_PATH || DEFAULT_PROVIDER_PATH;
   const endpoint =
-    env.HF_BADGE_ENDPOINT || `https://api-inference.huggingface.co/models/${encodeModelPath(model)}`;
+    env.HF_BADGE_ENDPOINT || `https://router.huggingface.co/${providerPath}/models/${encodeModelPath(model)}`;
 
   return {
     provider: DEFAULT_PROVIDER,
@@ -18,18 +20,27 @@ export function createHuggingFaceBadgeProvider(env, fetchImpl = fetch) {
         throwError(503, 'HF_TOKEN_MISSING', 'Hugging Face token is not configured.');
       }
 
-      const response = await fetchImpl(endpoint, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          Accept: 'image/png,image/jpeg,application/json',
-        },
-        body: JSON.stringify({
-          inputs: prompt,
-          options: { wait_for_model: true },
-        }),
-      });
+      let response;
+      try {
+        response = await fetchImpl(endpoint, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            Accept: 'image/png,image/jpeg,application/json',
+          },
+          body: JSON.stringify({
+            inputs: prompt,
+            options: { wait_for_model: true },
+          }),
+        });
+      } catch (error) {
+        throwError(
+          503,
+          'BADGE_GENERATION_UNREACHABLE',
+          `Hugging Face request could not be reached: ${error.message}`,
+        );
+      }
 
       const contentType = response.headers.get('content-type') ?? '';
       if (!response.ok) {
