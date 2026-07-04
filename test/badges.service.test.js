@@ -6,7 +6,11 @@ const USER_ID = '00000000-0000-0000-0000-000000000001';
 const GENERATION_ID = '00000000-0000-0000-0000-000000000002';
 const BADGE_ID = '00000000-0000-0000-0000-000000000003';
 
-function serviceWith({ storageConfigured = true } = {}) {
+function serviceWith({
+  storageConfigured = true,
+  badgeCount = 0,
+  deleteResult = { removedCount: 1, clearedCount: 0 },
+} = {}) {
   const generation = {
     id: GENERATION_ID,
     userId: USER_ID,
@@ -33,6 +37,8 @@ function serviceWith({ storageConfigured = true } = {}) {
   const db = {
     query: async (sql, params = []) => {
       calls.queries.push(sql);
+      if (sql.includes('SELECT COUNT(*)::int AS count')) return { rows: [{ count: badgeCount }] };
+      if (sql.includes('WITH removed AS')) return { rows: [deleteResult] };
       if (sql.includes('INSERT INTO badge_generations')) return { rows: [generation] };
       if (sql.includes('FROM badge_generations')) return { rows: [generation] };
       if (sql.includes('UPDATE users u')) {
@@ -51,6 +57,8 @@ function serviceWith({ storageConfigured = true } = {}) {
     transaction: async (callback) => callback({
       query: async (sql) => {
         if (sql.includes('FROM badge_generations')) return { rows: [generation] };
+        if (sql.includes('FOR UPDATE')) return { rows: [{ id: USER_ID }] };
+        if (sql.includes('SELECT COUNT(*)::int AS count')) return { rows: [{ count: badgeCount }] };
         if (sql.includes('INSERT INTO badges')) return { rows: [badge] };
         if (sql.includes('UPDATE users SET active_badge_id')) {
           return { rows: [{ activeBadgeId: badge.id }] };
@@ -149,6 +157,53 @@ test('setActiveBadge rejects a badge the user does not own with 404', async () =
     }),
     (err) => err.statusCode === 404 && err.code === 'BADGE_NOT_FOUND',
   );
+});
+
+test('generateBadge is blocked at the 5-badge limit before calling the provider', async () => {
+  const { service, calls } = serviceWith({ badgeCount: 5 });
+
+  await assert.rejects(
+    () => service.generateBadge({ userId: USER_ID, prompt: 'weekend coding cafe' }),
+    (err) => err.code === 'VALIDATION_ERROR',
+  );
+  assert.equal(calls.generateImage ?? 0, 0);
+});
+
+test('applyGeneration is blocked at the 5-badge limit inside the transaction', async () => {
+  const { service } = serviceWith({ badgeCount: 5 });
+
+  await assert.rejects(
+    () => service.applyGeneration({ userId: USER_ID, generationId: GENERATION_ID, title: 'x' }),
+    (err) => err.code === 'VALIDATION_ERROR',
+  );
+});
+
+test('deleteBadge removes an owned badge and reports active-badge clearing', async () => {
+  const { service } = serviceWith({ deleteResult: { removedCount: 1, clearedCount: 1 } });
+
+  const result = await service.deleteBadge({ userId: USER_ID, badgeId: BADGE_ID });
+
+  assert.equal(result.deleted, true);
+  assert.equal(result.clearedActive, true);
+});
+
+test('deleteBadge rejects a badge the user does not own with 404', async () => {
+  const { service } = serviceWith({ deleteResult: { removedCount: 0, clearedCount: 0 } });
+
+  await assert.rejects(
+    () => service.deleteBadge({ userId: USER_ID, badgeId: BADGE_ID }),
+    (err) => err.statusCode === 404 && err.code === 'BADGE_NOT_FOUND',
+  );
+});
+
+test('deleteBadge rejects a non-uuid badge id with 404 before querying the db', async () => {
+  const { service, calls } = serviceWith();
+
+  await assert.rejects(
+    () => service.deleteBadge({ userId: USER_ID, badgeId: 'abc' }),
+    (err) => err.statusCode === 404 && err.code === 'BADGE_NOT_FOUND',
+  );
+  assert.equal(calls.queries.length, 0);
 });
 
 test('generateBadge rejects an empty prompt', async () => {

@@ -49,6 +49,18 @@ export function createBadgesRouter(ctx) {
     }
   });
 
+  router.delete('/:id', ctx.auth.requireUser, async (req, res, next) => {
+    try {
+      const result = await service.deleteBadge({
+        userId: req.user.id,
+        badgeId: req.params.id,
+      });
+      sendOk(res, result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/:id/activate', ctx.auth.requireUser, async (req, res, next) => {
     try {
       const badge = await service.setActiveBadge({

@@ -61,7 +61,15 @@ export function createBadgesQueries(db) {
       return result.rows[0];
     },
 
-    async createBadgeFromGeneration({ userId, generationId, title, description }) {
+    async countUserBadges(userId) {
+      const result = await db.query(
+        `SELECT COUNT(*)::int AS count FROM user_badges WHERE user_id = $1`,
+        [userId],
+      );
+      return result.rows[0].count;
+    },
+
+    async createBadgeFromGeneration({ userId, generationId, title, description, maxBadges }) {
       return db.transaction(async (client) => {
         const generationResult = await client.query(
           `
@@ -75,6 +83,17 @@ export function createBadgesQueries(db) {
         );
         const generation = generationResult.rows[0];
         if (!generation) return null;
+
+        // 보유 수 제한. user row 잠금으로 같은 유저의 동시 적용을 직렬화해
+        // 한도 초과를 막는다 (generate 단계의 사전 확인은 UX용일 뿐).
+        await client.query(`SELECT id FROM users WHERE id = $1 FOR UPDATE`, [userId]);
+        const countResult = await client.query(
+          `SELECT COUNT(*)::int AS count FROM user_badges WHERE user_id = $1`,
+          [userId],
+        );
+        if (countResult.rows[0].count >= maxBadges) {
+          return { limitExceeded: true };
+        }
 
         const badgeResult = await client.query(
           `
@@ -116,6 +135,33 @@ export function createBadgesQueries(db) {
 
         return { ...badge, isActive: activeResult.rows[0]?.activeBadgeId === badge.id };
       });
+    },
+
+    async deleteUserBadge({ userId, badgeId }) {
+      // 소유 행 삭제 + (그 뱃지가 대표였다면) 대표 뱃지 해제를 한 문장으로.
+      // badges 원본 행과 이미지 오브젝트는 남긴다 (정리는 ROADMAP).
+      const result = await db.query(
+        `
+          WITH removed AS (
+            DELETE FROM user_badges
+            WHERE user_id = $1 AND badge_id = $2
+            RETURNING badge_id
+          ), cleared AS (
+            UPDATE users u
+            SET active_badge_id = NULL
+            FROM removed r
+            WHERE u.id = $1 AND u.active_badge_id = r.badge_id
+            RETURNING u.id
+          )
+          SELECT
+            (SELECT COUNT(*)::int FROM removed) AS "removedCount",
+            (SELECT COUNT(*)::int FROM cleared) AS "clearedCount"
+        `,
+        [userId, badgeId],
+      );
+
+      const row = result.rows[0];
+      return { removed: row.removedCount > 0, clearedActive: row.clearedCount > 0 };
     },
 
     async setActiveBadge({ userId, badgeId }) {

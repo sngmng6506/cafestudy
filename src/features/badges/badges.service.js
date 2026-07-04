@@ -6,6 +6,8 @@ import { throwError, throwNotFound, throwValidation } from '../../shared/errors.
 const POINT_COST = 0;
 const MAX_PROMPT_LENGTH = 200;
 const MAX_TITLE_LENGTH = 40;
+const MAX_BADGES_PER_USER = 5;
+const BADGE_LIMIT_MESSAGE = `뱃지는 최대 ${MAX_BADGES_PER_USER}개까지 보관할 수 있어요. 기존 뱃지를 삭제한 뒤 다시 시도해 주세요.`;
 
 export function createBadgesService({ db, storage, config, badgeProvider }) {
   const queries = createBadgesQueries(db);
@@ -25,6 +27,11 @@ export function createBadgesService({ db, storage, config, badgeProvider }) {
     async generateBadge({ userId, prompt }) {
       const normalizedPrompt = normalizePrompt(prompt);
       ensureStorageConfigured();
+      // 이미지 생성 비용을 쓰기 전에 미리 차단. 실제 한도 보장은
+      // applyGeneration 트랜잭션 안에서 한 번 더 확인한다.
+      if ((await queries.countUserBadges(userId)) >= MAX_BADGES_PER_USER) {
+        throwValidation(BADGE_LIMIT_MESSAGE);
+      }
       const fullPrompt = buildBadgePrompt(normalizedPrompt);
       const image = await provider.generateImage(fullPrompt);
       const objectKey = `badges/generations/${userId}/${crypto.randomUUID()}.png`;
@@ -65,12 +72,29 @@ export function createBadgesService({ db, storage, config, badgeProvider }) {
         generationId,
         title: normalizeTitle(title, generation.prompt),
         description: generation.prompt,
+        maxBadges: MAX_BADGES_PER_USER,
       });
       if (!badge) {
         throwNotFound('BADGE_GENERATION_NOT_FOUND', 'Badge generation was not found.');
       }
+      if (badge.limitExceeded) {
+        throwValidation(BADGE_LIMIT_MESSAGE);
+      }
 
       return withImageViewUrl(badge);
+    },
+
+    async deleteBadge({ userId, badgeId }) {
+      if (!isUuid(badgeId)) {
+        throwNotFound('BADGE_NOT_FOUND', 'Badge was not found.');
+      }
+
+      const result = await queries.deleteUserBadge({ userId, badgeId });
+      if (!result.removed) {
+        throwNotFound('BADGE_NOT_FOUND', 'Badge was not found.');
+      }
+
+      return { deleted: true, clearedActive: result.clearedActive };
     },
 
     async setActiveBadge({ userId, badgeId }) {

@@ -1,6 +1,6 @@
 <script setup>
-import { onMounted, ref } from 'vue';
-import { Award, Check, Sparkles } from '@lucide/vue';
+import { computed, onMounted, ref } from 'vue';
+import { Award, Check, Sparkles, Trash2 } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { useToast } from '../../shared/useToast.js';
 import { useActiveBadge } from '../../shared/useActiveBadge.js';
@@ -16,7 +16,12 @@ const loading = ref(true);
 const generating = ref(false);
 const applying = ref(false);
 const activatingId = ref('');
+const deletingId = ref('');
 const errorMessage = ref('');
+
+// 서버(badges.service.js MAX_BADGES_PER_USER)와 같은 값. 서버가 최종 검증한다.
+const MAX_BADGES = 5;
+const atLimit = computed(() => badges.value.length >= MAX_BADGES);
 
 onMounted(loadBadges);
 
@@ -80,6 +85,23 @@ async function applyBadge() {
   }
 }
 
+async function deleteBadge(badge) {
+  if (deletingId.value) return;
+  if (!window.confirm(`'${badge.title}' 뱃지를 삭제할까요?`)) return;
+
+  deletingId.value = badge.id;
+  try {
+    const body = await apiFetch(`/api/badges/${badge.id}`, { method: 'DELETE' });
+    badges.value = badges.value.filter((item) => item.id !== badge.id);
+    if (body.data?.clearedActive) setActiveBadgeImageUrl('');
+    toast.success('뱃지를 삭제했습니다.');
+  } catch (error) {
+    toast.error(error.message);
+  } finally {
+    deletingId.value = '';
+  }
+}
+
 async function activateBadge(badge) {
   if (badge.isActive || activatingId.value) return;
 
@@ -127,12 +149,15 @@ async function activateBadge(badge) {
       <button
         class="focus-ring mt-4 flex h-11 w-full items-center justify-center gap-2 rounded bg-[#03C75A] text-[15px] font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-50"
         type="button"
-        :disabled="generating"
+        :disabled="generating || atLimit"
         @click="generateBadge"
       >
         <Sparkles :size="17" />
         {{ generating ? '생성 중...' : '뱃지 만들기' }}
       </button>
+      <p v-if="atLimit" class="mt-2 text-[13px] text-[#5f6368]">
+        뱃지는 최대 {{ MAX_BADGES }}개까지 보관할 수 있어요. 기존 뱃지를 삭제하면 새로 만들 수 있습니다.
+      </p>
     </section>
 
     <section v-if="preview" class="surface-card">
@@ -168,6 +193,9 @@ async function activateBadge(badge) {
       <div class="flex items-center gap-2 px-5 py-4">
         <Award :size="18" class="text-[#03C75A]" />
         <h2 class="text-[15px] font-bold text-[#333333]">내 뱃지</h2>
+        <span v-if="!loading" class="ml-auto text-[13px] font-semibold text-[#5f6368]">
+          {{ badges.length }}/{{ MAX_BADGES }}
+        </span>
       </div>
       <p v-if="loading" class="px-5 pb-5 text-[14px] text-[#5f6368]">불러오는 중...</p>
       <p v-else-if="errorMessage" class="px-5 pb-5 text-[14px] font-semibold text-[#e74c3c]">{{ errorMessage }}</p>
@@ -198,6 +226,15 @@ async function activateBadge(badge) {
             @click="activateBadge(badge)"
           >
             {{ activatingId === badge.id ? '변경중' : '적용' }}
+          </button>
+          <button
+            class="focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[#dadce0] text-[#5f6368] transition hover:bg-[#f5f6f7] hover:text-[#e74c3c] disabled:opacity-50"
+            type="button"
+            :disabled="!!deletingId"
+            :aria-label="`${badge.title} 뱃지 삭제`"
+            @click="deleteBadge(badge)"
+          >
+            <Trash2 :size="14" />
           </button>
         </li>
       </ul>
