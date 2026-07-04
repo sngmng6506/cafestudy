@@ -186,13 +186,13 @@ async function activateBadge(badge) {
           </div>
           <span
             v-if="badge.isActive"
-            class="shrink-0 rounded bg-[#DFF5E7] px-2 py-1 text-[12px] font-bold text-[#03883f]"
+            class="shrink-0 rounded bg-[#e9f8ef] px-2 py-1 text-[12px] font-bold text-[#03883f]"
           >
             적용중
           </span>
           <button
             v-else
-            class="focus-ring h-8 shrink-0 rounded border border-[#dadce0] px-2 text-[12px] font-semibold text-[#333333] transition hover:bg-[#f5f6f7] disabled:opacity-50"
+            class="focus-ring h-8 shrink-0 rounded-[10px] border border-[#dadce0] px-2 text-[12px] font-semibold text-[#333333] transition hover:bg-[#f5f6f7] disabled:opacity-50"
             type="button"
             :disabled="!!activatingId"
             @click="activateBadge(badge)"
