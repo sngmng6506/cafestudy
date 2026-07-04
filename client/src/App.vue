@@ -114,10 +114,10 @@ function selectFeature(name) {
       @close="memberSelectOpen = false"
     />
 
-    <!-- 더보기: 전체 기능 회전 휠 -->
+    <!-- 더보기: 회전 휠 (탭바에 없는 기능만) -->
     <FeatureWheel
       v-if="moreOpen && hasOverflow"
-      :features="sortedFeatures"
+      :features="overflowFeatures"
       :active-name="activeFeatureName"
       @select="selectFeature"
       @close="moreOpen = false"
