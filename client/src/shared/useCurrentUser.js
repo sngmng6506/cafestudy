@@ -9,6 +9,7 @@ const currentUserId = ref(localStorage.getItem(STORAGE_KEY) ?? '');
 const currentUserName = ref(localStorage.getItem(STORAGE_NAME_KEY) ?? '');
 const currentToken = ref(localStorage.getItem(STORAGE_TOKEN_KEY) ?? '');
 const isAdmin = ref(localStorage.getItem(STORAGE_ADMIN_KEY) === 'true');
+const activeBadgeImageUrl = ref('');
 
 export function useCurrentUser() {
   function setCurrentUser(id, name, token = '', admin = false) {
@@ -16,10 +17,15 @@ export function useCurrentUser() {
     currentUserName.value = name;
     currentToken.value = token;
     isAdmin.value = admin;
+    activeBadgeImageUrl.value = '';
     localStorage.setItem(STORAGE_KEY, id);
     localStorage.setItem(STORAGE_NAME_KEY, name);
     if (token) localStorage.setItem(STORAGE_TOKEN_KEY, token);
     localStorage.setItem(STORAGE_ADMIN_KEY, admin ? 'true' : 'false');
+  }
+
+  function setActiveBadgeImageUrl(url = '') {
+    activeBadgeImageUrl.value = url;
   }
 
   function clearCurrentUser() {
@@ -27,11 +33,21 @@ export function useCurrentUser() {
     currentUserName.value = '';
     currentToken.value = '';
     isAdmin.value = false;
+    activeBadgeImageUrl.value = '';
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(STORAGE_NAME_KEY);
     localStorage.removeItem(STORAGE_TOKEN_KEY);
     localStorage.removeItem(STORAGE_ADMIN_KEY);
   }
 
-  return { currentUserId, currentUserName, currentToken, isAdmin, setCurrentUser, clearCurrentUser };
+  return {
+    currentUserId,
+    currentUserName,
+    currentToken,
+    isAdmin,
+    activeBadgeImageUrl,
+    setCurrentUser,
+    setActiveBadgeImageUrl,
+    clearCurrentUser,
+  };
 }

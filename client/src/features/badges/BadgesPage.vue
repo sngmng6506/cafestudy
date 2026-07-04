@@ -3,8 +3,10 @@ import { onMounted, ref } from 'vue';
 import { Award, Check, Sparkles } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { useToast } from '../../shared/useToast.js';
+import { useCurrentUser } from '../../shared/useCurrentUser.js';
 
 const toast = useToast();
+const { setActiveBadgeImageUrl } = useCurrentUser();
 
 const prompt = ref('');
 const title = ref('');
@@ -13,6 +15,7 @@ const preview = ref(null);
 const loading = ref(true);
 const generating = ref(false);
 const applying = ref(false);
+const activatingId = ref('');
 const errorMessage = ref('');
 
 onMounted(loadBadges);
@@ -64,7 +67,8 @@ async function applyBadge() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: title.value }),
     });
-    badges.value = [body.data, ...badges.value];
+    badges.value = [body.data, ...badges.value.map((badge) => ({ ...badge, isActive: false }))];
+    setActiveBadgeImageUrl(body.data.imageViewUrl ?? '');
     preview.value = null;
     prompt.value = '';
     title.value = '';
@@ -73,6 +77,25 @@ async function applyBadge() {
     toast.error(error.message);
   } finally {
     applying.value = false;
+  }
+}
+
+async function activateBadge(badge) {
+  if (badge.isActive || activatingId.value) return;
+
+  activatingId.value = badge.id;
+  try {
+    const body = await apiFetch(`/api/badges/${badge.id}/activate`, { method: 'POST' });
+    badges.value = badges.value.map((item) => ({
+      ...item,
+      isActive: item.id === body.data.id,
+    }));
+    setActiveBadgeImageUrl(body.data.imageViewUrl ?? '');
+    toast.success('대표 뱃지를 변경했습니다.');
+  } catch (error) {
+    toast.error(error.message);
+  } finally {
+    activatingId.value = '';
   }
 }
 </script>
@@ -161,6 +184,21 @@ async function applyBadge() {
             <p class="truncate text-[15px] font-semibold text-[#333333]">{{ badge.title }}</p>
             <p v-if="badge.description" class="truncate text-[13px] text-[#5f6368]">{{ badge.description }}</p>
           </div>
+          <span
+            v-if="badge.isActive"
+            class="shrink-0 rounded bg-[#DFF5E7] px-2 py-1 text-[12px] font-bold text-[#03883f]"
+          >
+            적용중
+          </span>
+          <button
+            v-else
+            class="focus-ring h-8 shrink-0 rounded border border-[#dadce0] px-2 text-[12px] font-semibold text-[#333333] transition hover:bg-[#f5f6f7] disabled:opacity-50"
+            type="button"
+            :disabled="!!activatingId"
+            @click="activateBadge(badge)"
+          >
+            {{ activatingId === badge.id ? '변경중' : '적용' }}
+          </button>
         </li>
       </ul>
     </section>

@@ -17,6 +17,11 @@ export function createBadgesService({ db, storage, config, badgeProvider }) {
       return Promise.all(badges.map(withImageViewUrl));
     },
 
+    async getActiveBadge(userId) {
+      const badge = await queries.getActiveBadge(userId);
+      return badge ? withImageViewUrl(badge) : null;
+    },
+
     async generateBadge({ userId, prompt }) {
       const normalizedPrompt = normalizePrompt(prompt);
       ensureStorageConfigured();
@@ -61,6 +66,16 @@ export function createBadgesService({ db, storage, config, badgeProvider }) {
         throwNotFound('BADGE_GENERATION_NOT_FOUND', 'Badge generation was not found.');
       }
 
+      return withImageViewUrl(badge);
+    },
+
+    async setActiveBadge({ userId, badgeId }) {
+      const active = await queries.setActiveBadge({ userId, badgeId });
+      if (!active) {
+        throwNotFound('BADGE_NOT_FOUND', 'Badge was not found.');
+      }
+
+      const badge = await queries.getActiveBadge(userId);
       return withImageViewUrl(badge);
     },
   };

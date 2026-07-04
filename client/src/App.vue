@@ -1,18 +1,24 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { MoreHorizontal } from '@lucide/vue';
 import { features } from './features/index.js';
 import ToastContainer from './shared/ToastContainer.vue';
 import MemberSelectModal from './shared/MemberSelectModal.vue';
 import { useCurrentUser } from './shared/useCurrentUser.js';
 import { avatarColor } from './shared/useAvatar.js';
+import { apiFetch } from './shared/api.js';
 
-const { currentUserId, currentUserName, currentToken } = useCurrentUser();
+const { currentUserId, currentUserName, currentToken, activeBadgeImageUrl, setActiveBadgeImageUrl } = useCurrentUser();
 const memberSelectOpen = ref(false);
 
 onMounted(() => {
   // 유효한 세션 토큰이 있어야 로그인 상태로 본다.
   if (!currentToken.value) memberSelectOpen.value = true;
+  void loadActiveBadge();
+});
+
+watch(currentUserId, () => {
+  void loadActiveBadge();
 });
 
 // Features flagged `primary` are pinned to the bottom bar; everything else
@@ -37,6 +43,20 @@ function selectFeature(name) {
   activeFeatureName.value = name;
   moreOpen.value = false;
 }
+
+async function loadActiveBadge() {
+  if (!currentUserId.value) {
+    setActiveBadgeImageUrl('');
+    return;
+  }
+
+  try {
+    const body = await apiFetch('/api/badges/active');
+    setActiveBadgeImageUrl(body.data?.imageViewUrl ?? '');
+  } catch {
+    setActiveBadgeImageUrl('');
+  }
+}
 </script>
 
 <template>
@@ -50,7 +70,14 @@ function selectFeature(name) {
           type="button"
           @click="memberSelectOpen = true"
         >
+          <img
+            v-if="activeBadgeImageUrl"
+            class="h-6 w-6 shrink-0 rounded-full border border-[#dadce0] bg-[#f5f6f7] object-cover"
+            :src="activeBadgeImageUrl"
+            :alt="currentUserName"
+          />
           <span
+            v-else
             class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
             :class="avatarColor(currentUserName)"
           >

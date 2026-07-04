@@ -15,6 +15,15 @@ export function createBadgesRouter(ctx) {
     }
   });
 
+  router.get('/active', ctx.auth.requireUser, async (req, res, next) => {
+    try {
+      const badge = await service.getActiveBadge(req.user.id);
+      sendOk(res, badge);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/generate', ctx.auth.requireUser, async (req, res, next) => {
     try {
       const generation = await service.generateBadge({
@@ -35,6 +44,18 @@ export function createBadgesRouter(ctx) {
         title: req.body.title,
       });
       sendOk(res, badge, 201);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/:id/activate', ctx.auth.requireUser, async (req, res, next) => {
+    try {
+      const badge = await service.setActiveBadge({
+        userId: req.user.id,
+        badgeId: req.params.id,
+      });
+      sendOk(res, badge);
     } catch (error) {
       next(error);
     }

@@ -24,6 +24,7 @@ function serviceWith({ storageConfigured = true } = {}) {
     provider: generation.provider,
     model: generation.model,
     prompt: generation.prompt,
+    isActive: true,
     createdAt: new Date().toISOString(),
   };
   const calls = { putObject: [] };
@@ -32,13 +33,16 @@ function serviceWith({ storageConfigured = true } = {}) {
     query: async (sql) => {
       if (sql.includes('INSERT INTO badge_generations')) return { rows: [generation] };
       if (sql.includes('FROM badge_generations')) return { rows: [generation] };
+      if (sql.includes('UPDATE users u')) return { rows: [{ activeBadgeId: badge.id }] };
       if (sql.includes('FROM user_badges')) return { rows: [badge] };
+      if (sql.includes('JOIN badges b ON b.id = u.active_badge_id')) return { rows: [badge] };
       return { rows: [] };
     },
     transaction: async (callback) => callback({
       query: async (sql) => {
         if (sql.includes('FROM badge_generations')) return { rows: [generation] };
         if (sql.includes('INSERT INTO badges')) return { rows: [badge] };
+        if (sql.includes('UPDATE users SET active_badge_id')) return { rows: [] };
         return { rows: [] };
       },
     }),
@@ -89,6 +93,17 @@ test('applyGeneration creates a user badge from a preview generation', async () 
 
   assert.equal(result.id, 'badge-1');
   assert.equal(result.title, 'Weekend Coder');
+  assert.equal(result.isActive, true);
+  assert.equal(result.imageViewUrl, `signed:${result.imageObjectKey}`);
+});
+
+test('setActiveBadge switches the active user badge', async () => {
+  const { service } = serviceWith();
+
+  const result = await service.setActiveBadge({ userId: USER_ID, badgeId: 'badge-1' });
+
+  assert.equal(result.id, 'badge-1');
+  assert.equal(result.isActive, true);
   assert.equal(result.imageViewUrl, `signed:${result.imageObjectKey}`);
 });
 
