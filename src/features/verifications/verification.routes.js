@@ -15,10 +15,10 @@ export function createVerificationRouter(ctx) {
     }
   });
 
-  router.get('/photos', ctx.auth.requireUser, async (_req, res, next) => {
+  router.get('/photos', ctx.auth.requireUser, async (req, res, next) => {
     try {
-      const limit = Math.min(Number(_req.query.limit) || 60, 100);
-      const photos = await verificationService.listApprovedPhotos(limit);
+      const limit = Math.min(Number(req.query.limit) || 60, 100);
+      const photos = await verificationService.listApprovedPhotos(req.user.id, limit);
       sendOk(res, photos);
     } catch (error) {
       next(error);

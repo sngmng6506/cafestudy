@@ -55,6 +55,9 @@ export function createMeetupService({ db }) {
 
     async leaveMeetup({ meetupId, userId }) {
       const meetup = await queries.getMeetupById(meetupId);
+      if (meetup && deriveState(meetup.scheduledAt) === 'done') {
+        throwError(400, 'MEETUP_CLOSED', '이미 종료된 모임입니다.');
+      }
       if (meetup && meetup.hostId === userId) {
         throwError(400, 'HOST_CANNOT_LEAVE', '모임 개설자는 참여를 취소할 수 없습니다.');
       }

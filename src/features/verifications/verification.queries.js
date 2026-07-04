@@ -31,7 +31,7 @@ export function createVerificationQueries(db) {
       return result.rows;
     },
 
-    async listApprovedPhotos(limit = 60) {
+    async listApprovedPhotos(userId, limit = 60) {
       const result = await db.query(
         `
           SELECT
@@ -45,10 +45,19 @@ export function createVerificationQueries(db) {
           FROM verifications v
           JOIN meetups m ON m.id = v.meetup_id
           WHERE v.status = 'approved'
+            AND (
+              m.host_id = $1
+              OR EXISTS (
+                SELECT 1
+                FROM participants p
+                WHERE p.meetup_id = m.id
+                  AND p.user_id = $1
+              )
+            )
           ORDER BY v.created_at DESC
-          LIMIT $1
+          LIMIT $2
         `,
-        [limit],
+        [userId, limit],
       );
 
       return result.rows;

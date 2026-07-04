@@ -54,12 +54,7 @@ export function createMembersService(db, queries) {
 
     async listMembers() {
       const members = await queries.listMembers();
-      // CDN 직링크는 핫링크 차단/CORS 문제가 있을 수 있으므로,
-      // 아바타가 있는 멤버는 서버 프록시 경로를 내려준다.
-      return members.map(({ avatarUrl, ...member }) => ({
-        ...member,
-        avatarUrl: avatarUrl ? `/api/members/${member.id}/avatar` : null,
-      }));
+      return members.map(({ avatarUrl, ...member }) => member);
     },
 
     async getMemberAvatarUrl(memberId) {

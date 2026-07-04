@@ -7,9 +7,10 @@ const OTHER = 'other-2';
 const PAST = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 const FUTURE = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
-function serviceWith({ hostId, scheduledAt = PAST, verifications = [] }) {
+function serviceWith({ hostId, scheduledAt = PAST, verifications = [], onQuery = () => {} }) {
   const db = {
-    query: async (sql) => {
+    query: async (sql, params = []) => {
+      onQuery(sql, params);
       if (sql.includes('FROM verifications')) return { rows: verifications };
       if (sql.includes('FROM meetups')) return { rows: hostId ? [{ hostId, scheduledAt }] : [] };
       return { rows: [] };
@@ -73,6 +74,22 @@ test('listMyVerifications attaches a viewable photo URL', async () => {
   });
 
   const list = await service.listMyVerifications(HOST);
+  assert.equal(list.length, 1);
+  assert.equal(list[0].photoViewUrl, 'https://signed.example/photo.jpg');
+});
+
+test('listApprovedPhotos scopes photos to the requesting user', async () => {
+  let verificationQueryParams;
+  const service = serviceWith({
+    hostId: HOST,
+    verifications: [{ id: 'v1', meetupId: 'm1', photoUrl: 'verifications/m1/u/x.jpg', meetupTitle: 'study' }],
+    onQuery: (sql, params) => {
+      if (sql.includes('FROM verifications')) verificationQueryParams = params;
+    },
+  });
+
+  const list = await service.listApprovedPhotos(OTHER);
+  assert.deepEqual(verificationQueryParams, [OTHER, 60]);
   assert.equal(list.length, 1);
   assert.equal(list[0].photoViewUrl, 'https://signed.example/photo.jpg');
 });

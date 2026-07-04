@@ -146,6 +146,18 @@ test('leaveMeetup blocks the host from leaving', async () => {
   );
 });
 
+test('leaveMeetup rejects an already finished meetup', async () => {
+  const past = new Date(Date.now() - 3_600_000).toISOString();
+  const service = createMeetupService({
+    db: participationDb({ meetup: { id: 'm1', hostId: 'u1', scheduledAt: past, status: 'open', capacity: 10 }, count: 1 }),
+  });
+
+  await assert.rejects(
+    () => service.leaveMeetup({ meetupId: 'm1', userId: 'u2' }),
+    (err) => err.statusCode === 400 && err.code === 'MEETUP_CLOSED',
+  );
+});
+
 test('leaveMeetup returns joined=false and the new count for a participant', async () => {
   const service = createMeetupService({ db: participationDb({ meetup: null, count: 1 }) });
 
