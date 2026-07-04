@@ -4,6 +4,7 @@ import { MoreHorizontal } from '@lucide/vue';
 import { features } from './features/index.js';
 import ToastContainer from './shared/ToastContainer.vue';
 import MemberSelectModal from './shared/MemberSelectModal.vue';
+import FeatureWheel from './shared/FeatureWheel.vue';
 import { useCurrentUser } from './shared/useCurrentUser.js';
 import { useActiveBadge } from './shared/useActiveBadge.js';
 import UserAvatar from './shared/UserAvatar.vue';
@@ -113,25 +114,13 @@ function selectFeature(name) {
       @close="memberSelectOpen = false"
     />
 
-    <!-- 더보기 sheet -->
-    <div v-if="moreOpen && hasOverflow" class="fixed inset-0 z-40" @click="moreOpen = false">
-      <div class="absolute inset-0 bg-[#333333]/20"></div>
-      <div class="absolute bottom-20 left-1/2 w-full max-w-md -translate-x-1/2 px-2" @click.stop>
-        <div class="grid gap-1 rounded-xl border border-[#dadce0] bg-white p-2 shadow-sm" role="menu">
-          <button
-            v-for="feature in overflowFeatures"
-            :key="feature.name"
-            class="focus-ring flex w-full items-center gap-3 rounded px-4 py-3 text-[15px] font-semibold transition"
-            :class="feature.name === activeFeatureName ? 'bg-[#03C75A] text-white' : 'text-[#333333] hover:bg-[#f5f6f7]'"
-            type="button"
-            role="menuitem"
-            @click="selectFeature(feature.name)"
-          >
-            <component :is="feature.icon" :size="18" />
-            {{ feature.label }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- 더보기: 전체 기능 회전 휠 -->
+    <FeatureWheel
+      v-if="moreOpen && hasOverflow"
+      :features="sortedFeatures"
+      :active-name="activeFeatureName"
+      @select="selectFeature"
+      @close="moreOpen = false"
+    />
   </main>
 </template>
