@@ -1,4 +1,4 @@
-import { CalendarDays, Camera, Coffee, Dices, History, Home, Trophy, Users } from '@lucide/vue';
+import { Award, CalendarDays, Camera, Coffee, Dices, History, Home, Trophy, Users } from '@lucide/vue';
 import HomePage from './home/HomePage.vue';
 import MeetupPage from './meetups/MeetupPage.vue';
 import RankingPage from './ranking/RankingPage.vue';
@@ -8,6 +8,7 @@ import MembersPage from './members/MembersPage.vue';
 import CafesPage from './cafes/CafesPage.vue';
 import UpdatesPage from './updates/UpdatesPage.vue';
 import MeetupHistoryPage from './history/MeetupHistoryPage.vue';
+import BadgesPage from './badges/BadgesPage.vue';
 
 // `primary: true` pins a feature to the bottom tab bar. Features without it
 // (extra/non-core features contributors add later) collect in the "더보기" sheet,
@@ -59,6 +60,13 @@ export const features = [
     order: 100,
     icon: Dices,
     component: DicePage,
+  },
+  {
+    name: 'badges',
+    label: '뱃지',
+    order: 105,
+    icon: Award,
+    component: BadgesPage,
   },
   {
     name: 'cafes',

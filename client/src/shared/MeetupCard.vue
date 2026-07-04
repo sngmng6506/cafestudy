@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { ExternalLink, MapPin, Map } from '@lucide/vue';
+import { MapPin, Map } from '@lucide/vue';
 import { formatDate, formatTime, naverMapUrl, googleMapUrl } from './useMeetups.js';
 import { avatarColor, initials } from './useAvatar.js';
 import { attendeeStack as buildStack } from './useSomoimEvents.js';
@@ -153,8 +153,7 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
           target="_blank"
           rel="noreferrer"
         >
-          소모임에서 신청
-          <ExternalLink :size="14" />
+          참여하기
         </a>
         <div v-else-if="meetup.isHost" class="flex items-center gap-2">
           <span class="text-sm font-semibold text-[#5f6368]">개설자</span>

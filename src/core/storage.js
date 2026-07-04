@@ -74,6 +74,27 @@ export function createStorage(env) {
       };
     },
 
+    async putObject({ objectKey, body, contentType }) {
+      if (!configured) {
+        const error = new Error('Storage bucket is not configured');
+        error.statusCode = 503;
+        error.code = 'STORAGE_NOT_CONFIGURED';
+        throw error;
+      }
+
+      await client.send(new PutObjectCommand({
+        Bucket: config.bucket,
+        Key: objectKey,
+        Body: body,
+        ContentType: contentType,
+      }));
+
+      return {
+        objectKey,
+        url: this.objectUrl(objectKey),
+      };
+    },
+
     async createDownloadUrl(objectKey) {
       if (!configured) return null;
 
