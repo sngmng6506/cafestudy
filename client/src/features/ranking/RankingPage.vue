@@ -183,7 +183,7 @@ async function loadRanking() {
               :class="user.rank === 1 ? 'text-[17px] font-bold' : user.rank <= 3 ? 'text-[15px] font-semibold' : 'text-[14px] font-medium'"
             >
               <UserAvatar
-                class="h-5 w-5"
+                class="h-6 w-6"
                 :name="user.nickname"
                 :image-url="user.activeBadgeImageUrl ?? ''"
                 :fallback="false"
@@ -239,7 +239,7 @@ async function loadRanking() {
 
           <p class="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[14px] font-medium text-[#333333]">
             <UserAvatar
-              class="h-5 w-5"
+              class="h-6 w-6"
               :name="user.nickname"
               :image-url="user.activeBadgeImageUrl ?? ''"
               :fallback="false"

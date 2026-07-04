@@ -128,14 +128,14 @@ function toHistoryFromSomoimEvent(event) {
               <UserAvatar
                 v-for="attendee in attendeeStack(meetup.attendees).shown"
                 :key="attendee.name"
-                class="h-6 w-6 text-[10px] ring-2 ring-white"
+                class="h-7 w-7 text-[11px] ring-2 ring-white"
                 :name="attendee.name"
                 :image-url="attendee.badgeUrl ?? ''"
                 :title="attendee.name"
               />
               <span
                 v-if="attendeeStack(meetup.attendees).overflow"
-                class="flex h-6 items-center justify-center rounded-full bg-[#f5f6f7] px-2 text-[10px] font-bold text-[#5f6368] ring-2 ring-white"
+                class="flex h-7 items-center justify-center rounded-full bg-[#f5f6f7] px-2 text-[11px] font-bold text-[#5f6368] ring-2 ring-white"
               >
                 +{{ attendeeStack(meetup.attendees).overflow }}
               </span>

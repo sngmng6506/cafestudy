@@ -54,7 +54,7 @@ function selectFeature(name) {
           @click="memberSelectOpen = true"
         >
           <UserAvatar
-            class="h-6 w-6 text-[11px]"
+            class="h-7 w-7 text-[12px]"
             :name="currentUserName"
             :image-url="activeBadgeImageUrl"
           />
