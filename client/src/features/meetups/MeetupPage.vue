@@ -219,7 +219,8 @@ function toLocalInputValue(date) {
       </div>
 
       <div v-if="form.lat != null" class="mb-4 overflow-hidden rounded-lg border border-[#dadce0]">
-        <div ref="mapEl" class="h-44 w-full"></div>
+        <!-- relative z-0: Leaflet 내부 z-index가 z-50 모달을 덮지 않게 가둔다. -->
+        <div ref="mapEl" class="relative z-0 h-44 w-full"></div>
       </div>
 
       <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#333333]">
