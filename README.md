@@ -107,6 +107,7 @@ test/          # node:test 테스트
 |------|--------------|-------------|
 | [README.md](./README.md) | 시작하기, 기능, 스크립트 | 프로젝트를 처음 볼 때 |
 | [AGENTS.md](./AGENTS.md) | 코딩 규칙 — 커밋 컨벤션, feature 패턴, 에러/인증/마이그레이션 | 코드를 짜거나 커밋하기 전 |
+| [ROADMAP.md](./ROADMAP.md) | 앞으로 구현하면 좋은 기능 후보 | 구현할 기능을 고를 때 |
 | [CLAUDE.md](./CLAUDE.md) | AGENTS.md로의 포인터 | 안 봐도 됨 (도구 자동 인식용) |
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | 데이터 모델, 포인트 규칙, 트랜잭션, 설계 한계 | DB나 도메인 로직을 건드리기 전 |
 | [DESIGN_GUIDE.md](./DESIGN_GUIDE.md) | 색상/타이포/컴포넌트 디자인 토큰 | UI를 만들거나 고치기 전 |
