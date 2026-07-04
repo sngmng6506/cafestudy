@@ -4,7 +4,7 @@ import { createAuth } from './core/auth.js';
 import { createDb } from './core/db.js';
 import { createStorage } from './core/storage.js';
 
-dotenv.config({ override: true });
+dotenv.config();
 
 const config = {
   env: process.env.NODE_ENV ?? 'development',

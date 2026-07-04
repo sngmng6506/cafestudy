@@ -4,7 +4,7 @@ import { createBadgesService } from '../src/features/badges/badges.service.js';
 
 const USER_ID = '00000000-0000-0000-0000-000000000001';
 
-function serviceWith() {
+function serviceWith({ storageConfigured = true } = {}) {
   const generation = {
     id: 'gen-1',
     userId: USER_ID,
@@ -44,6 +44,7 @@ function serviceWith() {
     }),
   };
   const storage = {
+    status: () => ({ configured: storageConfigured }),
     putObject: async (input) => {
       calls.putObject.push(input);
       return { objectKey: input.objectKey };
@@ -53,10 +54,13 @@ function serviceWith() {
   const badgeProvider = {
     provider: 'test-provider',
     model: 'test-model',
-    generateImage: async () => ({
-      body: Buffer.from('image'),
-      contentType: 'image/png',
-    }),
+    generateImage: async () => {
+      calls.generateImage = (calls.generateImage ?? 0) + 1;
+      return {
+        body: Buffer.from('image'),
+        contentType: 'image/png',
+      };
+    },
   };
 
   return { service: createBadgesService({ db, storage, badgeProvider }), calls };
@@ -95,4 +99,14 @@ test('generateBadge rejects an empty prompt', async () => {
     () => service.generateBadge({ userId: USER_ID, prompt: '   ' }),
     (err) => err.code === 'VALIDATION_ERROR',
   );
+});
+
+test('generateBadge checks storage before calling the image provider', async () => {
+  const { service, calls } = serviceWith({ storageConfigured: false });
+
+  await assert.rejects(
+    () => service.generateBadge({ userId: USER_ID, prompt: 'weekend coding cafe' }),
+    (err) => err.statusCode === 503 && err.code === 'STORAGE_NOT_CONFIGURED',
+  );
+  assert.equal(calls.generateImage ?? 0, 0);
 });

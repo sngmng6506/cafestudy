@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { createBadgesQueries } from './badges.queries.js';
 import { createHuggingFaceBadgeProvider } from './huggingface.provider.js';
-import { throwNotFound, throwValidation } from '../../shared/errors.js';
+import { throwError, throwNotFound, throwValidation } from '../../shared/errors.js';
 
 const POINT_COST = 0;
 const MAX_PROMPT_LENGTH = 200;
@@ -19,6 +19,7 @@ export function createBadgesService({ db, storage, config, badgeProvider }) {
 
     async generateBadge({ userId, prompt }) {
       const normalizedPrompt = normalizePrompt(prompt);
+      ensureStorageConfigured();
       const fullPrompt = buildBadgePrompt(normalizedPrompt);
       const image = await provider.generateImage(fullPrompt);
       const objectKey = `badges/generations/${userId}/${crypto.randomUUID()}.png`;
@@ -74,6 +75,12 @@ export function createBadgesService({ db, storage, config, badgeProvider }) {
   async function resolveImageUrl(objectKey) {
     if (!objectKey) return null;
     return storage.createDownloadUrl(objectKey);
+  }
+
+  function ensureStorageConfigured() {
+    if (storage.status?.().configured === false) {
+      throwError(503, 'STORAGE_NOT_CONFIGURED', 'Badge image storage is not configured.');
+    }
   }
 }
 
