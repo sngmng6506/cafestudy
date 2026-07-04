@@ -6,10 +6,10 @@ import ToastContainer from './shared/ToastContainer.vue';
 import MemberSelectModal from './shared/MemberSelectModal.vue';
 import { useCurrentUser } from './shared/useCurrentUser.js';
 import { useActiveBadge } from './shared/useActiveBadge.js';
-import { avatarColor, initials } from './shared/useAvatar.js';
+import UserAvatar from './shared/UserAvatar.vue';
 
 const { currentUserId, currentUserName, currentToken } = useCurrentUser();
-const { activeBadgeImageUrl, setActiveBadgeImageUrl } = useActiveBadge();
+const { activeBadgeImageUrl } = useActiveBadge();
 const memberSelectOpen = ref(false);
 
 onMounted(() => {
@@ -53,20 +53,11 @@ function selectFeature(name) {
           type="button"
           @click="memberSelectOpen = true"
         >
-          <img
-            v-if="activeBadgeImageUrl"
-            class="h-6 w-6 shrink-0 rounded-full border border-[#dadce0] bg-[#f5f6f7] object-cover"
-            :src="activeBadgeImageUrl"
-            :alt="currentUserName"
-            @error="setActiveBadgeImageUrl('')"
+          <UserAvatar
+            class="h-6 w-6 text-[11px]"
+            :name="currentUserName"
+            :image-url="activeBadgeImageUrl"
           />
-          <span
-            v-else
-            class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
-            :class="avatarColor(currentUserName)"
-          >
-            {{ initials(currentUserName) }}
-          </span>
           {{ currentUserName }}
         </button>
         <button

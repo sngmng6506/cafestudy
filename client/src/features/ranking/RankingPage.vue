@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { ChevronLeft, ChevronRight, Crown, Dices, Trophy } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
+import UserAvatar from '../../shared/UserAvatar.vue';
 
 const now = new Date();
 const CURRENT = { year: now.getFullYear(), month: now.getMonth() + 1 };
@@ -178,10 +179,16 @@ async function loadRanking() {
 
           <div class="min-w-0 flex-1">
             <p
-              class="truncate text-[#333333]"
+              class="flex items-center gap-1.5 truncate text-[#333333]"
               :class="user.rank === 1 ? 'text-[17px] font-bold' : user.rank <= 3 ? 'text-[15px] font-semibold' : 'text-[14px] font-medium'"
             >
-              {{ user.nickname }}
+              <UserAvatar
+                class="h-5 w-5"
+                :name="user.nickname"
+                :image-url="user.activeBadgeImageUrl ?? ''"
+                :fallback="false"
+              />
+              <span class="truncate">{{ user.nickname }}</span>
             </p>
             <p class="mt-0.5 text-[12px] font-medium text-[#5f6368]">스터디 인증 포인트</p>
           </div>
@@ -230,7 +237,15 @@ async function loadRanking() {
             <template v-else>{{ user.rank }}</template>
           </span>
 
-          <p class="min-w-0 flex-1 truncate text-[14px] font-medium text-[#333333]">{{ user.nickname }}</p>
+          <p class="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[14px] font-medium text-[#333333]">
+            <UserAvatar
+              class="h-5 w-5"
+              :name="user.nickname"
+              :image-url="user.activeBadgeImageUrl ?? ''"
+              :fallback="false"
+            />
+            <span class="truncate">{{ user.nickname }}</span>
+          </p>
 
           <strong class="shrink-0 text-[14px] font-bold" :class="user.rank === 1 ? 'text-[#03C75A]' : 'text-[#333333]'">
             {{ user.points }}점

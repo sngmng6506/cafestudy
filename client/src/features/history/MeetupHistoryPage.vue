@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { CalendarCheck, Image as ImageIcon, MapPin } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { formatDate } from '../../shared/useMeetups.js';
-import { avatarColor, initials } from '../../shared/useAvatar.js';
+import UserAvatar from '../../shared/UserAvatar.vue';
 import { somoimEventToMeetup, attendeeStack } from '../../shared/useSomoimEvents.js';
 
 const meetups = ref([]);
@@ -125,15 +125,14 @@ function toHistoryFromSomoimEvent(event) {
           <div v-if="attendeeStack(meetup.attendees).shown.length || attendeeStack(meetup.attendees).overflow" class="flex items-center gap-2">
             <span class="text-[12px] font-medium text-[#5f6368]">참석자</span>
             <div class="flex -space-x-1.5">
-              <span
-                v-for="name in attendeeStack(meetup.attendees).shown"
-                :key="name"
-                class="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ring-2 ring-white"
-                :class="avatarColor(name)"
-                :title="name"
-              >
-                {{ initials(name) }}
-              </span>
+              <UserAvatar
+                v-for="attendee in attendeeStack(meetup.attendees).shown"
+                :key="attendee.name"
+                class="h-6 w-6 text-[10px] ring-2 ring-white"
+                :name="attendee.name"
+                :image-url="attendee.badgeUrl ?? ''"
+                :title="attendee.name"
+              />
               <span
                 v-if="attendeeStack(meetup.attendees).overflow"
                 class="flex h-6 items-center justify-center rounded-full bg-[#f5f6f7] px-2 text-[10px] font-bold text-[#5f6368] ring-2 ring-white"

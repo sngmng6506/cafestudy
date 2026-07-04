@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { Crown, Search } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
-import { avatarColor, initials } from '../../shared/useAvatar.js';
+import UserAvatar from '../../shared/UserAvatar.vue';
 
 const members = ref([]);
 const rankData = ref({});
@@ -131,12 +131,12 @@ function highlight(text) {
           :key="member.id"
           class="flex items-center gap-3 px-4 py-3 first:pt-4 last:pb-4"
         >
-          <span
-            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[15px] font-bold"
-            :class="[avatarColor(member.name), avatarRingClass(member.id)]"
-          >
-            {{ initials(member.name) }}
-          </span>
+          <UserAvatar
+            class="h-10 w-10 text-[15px]"
+            :class="avatarRingClass(member.id)"
+            :name="member.name"
+            :image-url="member.activeBadgeImageUrl ?? ''"
+          />
           <div class="min-w-0 flex-1">
             <p class="truncate text-[15px] font-semibold text-[#333333]" v-html="highlight(member.name)"></p>
             <p v-if="member.bio" class="truncate text-[13px] text-[#5f6368]" v-html="highlight(member.bio)"></p>

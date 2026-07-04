@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { MapPin, Map } from '@lucide/vue';
 import { formatDate, formatTime, naverMapUrl, googleMapUrl } from './useMeetups.js';
-import { avatarColor, initials } from './useAvatar.js';
+import UserAvatar from './UserAvatar.vue';
 import { attendeeStack as buildStack } from './useSomoimEvents.js';
 
 const props = defineProps({
@@ -105,15 +105,14 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
     <!-- 참석자 아바타 스택 -->
     <div v-if="attendeeStack.shown.length || attendeeStack.overflow" class="flex items-center gap-2">
       <div class="flex -space-x-1.5">
-        <span
-          v-for="name in attendeeStack.shown"
-          :key="name"
-          class="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ring-2 ring-white"
-          :class="avatarColor(name)"
-          :title="name"
-        >
-          {{ initials(name) }}
-        </span>
+        <UserAvatar
+          v-for="attendee in attendeeStack.shown"
+          :key="attendee.name"
+          class="h-6 w-6 text-[10px] ring-2 ring-white"
+          :name="attendee.name"
+          :image-url="attendee.badgeUrl ?? ''"
+          :title="attendee.name"
+        />
         <span
           v-if="attendeeStack.overflow"
           class="flex h-6 items-center justify-center rounded-full bg-[#f5f6f7] px-2 text-[10px] font-bold text-[#5f6368] ring-2 ring-white"
