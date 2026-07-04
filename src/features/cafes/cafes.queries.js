@@ -63,6 +63,82 @@ export function createCafesQueries(db) {
       return result.rows;
     },
 
+    async listCafePlaces() {
+      const result = await db.query(
+        `
+          SELECT
+            location,
+            place_name AS "placeName",
+            road_address AS "roadAddress",
+            lat,
+            lng,
+            resolved_at AS "resolvedAt"
+          FROM cafe_places
+        `,
+      );
+
+      return result.rows;
+    },
+
+    async upsertCafePlace({ location, placeName, roadAddress, lat, lng }) {
+      const result = await db.query(
+        `
+          INSERT INTO cafe_places (location, place_name, road_address, lat, lng, resolved_at)
+          VALUES ($1, $2, $3, $4, $5, now())
+          ON CONFLICT (location)
+          DO UPDATE SET
+            place_name = EXCLUDED.place_name,
+            road_address = EXCLUDED.road_address,
+            lat = EXCLUDED.lat,
+            lng = EXCLUDED.lng,
+            resolved_at = now()
+          RETURNING
+            location,
+            place_name AS "placeName",
+            road_address AS "roadAddress",
+            lat,
+            lng,
+            resolved_at AS "resolvedAt"
+        `,
+        [location, placeName, roadAddress, lat, lng],
+      );
+
+      return result.rows[0];
+    },
+
+    // 해당 카페(모임 장소)에서 찍힌 승인 인증 사진.
+    // 사진 공개 범위는 verifications의 규칙과 동일하게, 요청자가 호스트이거나
+    // 참여했던 모임의 사진만 보여준다 (6bdd551의 프라이버시 결정 유지).
+    async listCafePhotos({ userId, location, limit = 12 }) {
+      const result = await db.query(
+        `
+          SELECT
+            v.id,
+            v.photo_url AS "photoUrl",
+            v.created_at AS "createdAt",
+            m.title AS "meetupTitle"
+          FROM verifications v
+          JOIN meetups m ON m.id = v.meetup_id
+          WHERE v.status = 'approved'
+            AND m.location = $2
+            AND (
+              m.host_id = $1
+              OR EXISTS (
+                SELECT 1
+                FROM participants p
+                WHERE p.meetup_id = m.id
+                  AND p.user_id = $1
+              )
+            )
+          ORDER BY v.created_at DESC
+          LIMIT $3
+        `,
+        [userId, location, limit],
+      );
+
+      return result.rows;
+    },
+
     async hasVisitedCafe({ userId, location }) {
       const result = await db.query(
         `

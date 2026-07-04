@@ -1,9 +1,10 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
-import { Coffee, MessageSquare } from '@lucide/vue';
+import { computed, onBeforeUnmount, onMounted, nextTick, reactive, ref } from 'vue';
+import { Coffee, Map as MapIcon, MessageSquare } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { formatDate } from '../../shared/useMeetups.js';
 import { useToast } from '../../shared/useToast.js';
+import CafeDetailSheet from './CafeDetailSheet.vue';
 
 const toast = useToast();
 
@@ -12,6 +13,10 @@ const loading = ref(true);
 const errorMessage = ref('');
 const commentInputs = reactive({});
 const pendingLocation = ref('');
+const selectedCafe = ref(null);
+
+const mappedCafes = computed(() => cafes.value.filter((cafe) => cafe.lat != null && cafe.lng != null));
+const unmappedCount = computed(() => cafes.value.length - mappedCafes.value.length);
 
 onMounted(() => {
   void loadCafes();
@@ -27,12 +32,75 @@ async function loadCafes() {
     for (const cafe of cafes.value) {
       commentInputs[cafe.location] = cafe.comments?.find((comment) => comment.isMine)?.body ?? '';
     }
+    void renderMap();
   } catch (error) {
     errorMessage.value = error.message;
   } finally {
     loading.value = false;
   }
 }
+
+// --- 카페 지도 (Leaflet, MeetupPage와 같은 lazy-load 패턴) ---
+const mapEl = ref(null);
+let leaflet = null;
+let map = null;
+
+async function ensureLeaflet() {
+  if (!leaflet) {
+    const mod = await import('leaflet');
+    await import('leaflet/dist/leaflet.css');
+    leaflet = mod.default;
+  }
+  return leaflet;
+}
+
+async function renderMap() {
+  if (mappedCafes.value.length === 0) return;
+
+  const L = await ensureLeaflet();
+  await nextTick();
+  if (!mapEl.value) return;
+
+  if (map) {
+    map.remove();
+    map = null;
+  }
+
+  map = L.map(mapEl.value, { zoomControl: true });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap',
+  }).addTo(map);
+
+  const bounds = [];
+  for (const cafe of mappedCafes.value) {
+    const point = [cafe.lat, cafe.lng];
+    bounds.push(point);
+    L.circleMarker(point, {
+      radius: 9,
+      color: '#03C75A',
+      fillColor: '#03C75A',
+      fillOpacity: 0.9,
+      weight: 2,
+    })
+      .addTo(map)
+      .bindTooltip(cafe.placeName ?? cafe.location)
+      .on('click', () => {
+        selectedCafe.value = cafe;
+      });
+  }
+
+  if (bounds.length === 1) map.setView(bounds[0], 16);
+  else map.fitBounds(bounds, { padding: [30, 30] });
+  map.invalidateSize();
+}
+
+onBeforeUnmount(() => {
+  if (map) {
+    map.remove();
+    map = null;
+  }
+});
 
 async function saveComment(cafe) {
   const body = (commentInputs[cafe.location] ?? '').trim();
@@ -64,6 +132,19 @@ async function saveComment(cafe) {
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">카페 정보</h1>
       <p class="mt-1 text-[14px] text-[#5f6368]">완료된 모임이 있었던 카페와 한줄 코멘트를 모아봅니다.</p>
     </div>
+
+    <!-- 카페 지도 -->
+    <section v-if="mappedCafes.length" class="surface-card">
+      <div class="mb-4 flex items-center gap-2">
+        <MapIcon :size="18" class="text-[#03C75A]" />
+        <h2 class="text-lg font-semibold text-[#333333]">카페 지도</h2>
+        <span class="ml-auto text-[12px] text-[#5f6368]">마커를 누르면 상세 정보</span>
+      </div>
+      <div ref="mapEl" class="h-64 w-full overflow-hidden rounded-xl border border-[#dadce0]"></div>
+      <p v-if="unmappedCount > 0" class="mt-2 text-[12px] text-[#5f6368]">
+        위치를 찾지 못한 카페 {{ unmappedCount }}곳은 아래 목록에서만 표시됩니다.
+      </p>
+    </section>
 
     <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
@@ -144,5 +225,8 @@ async function saveComment(cafe) {
         </li>
       </ul>
     </section>
+
+    <!-- 카페 상세 시트 -->
+    <CafeDetailSheet v-if="selectedCafe" :cafe="selectedCafe" @close="selectedCafe = null" />
   </section>
 </template>

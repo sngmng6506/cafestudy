@@ -118,7 +118,7 @@ function cafesDbStub({ visited = true } = {}) {
 }
 
 test('upsertComment: 빈 위치/빈 본문/121자 초과는 VALIDATION_ERROR', async () => {
-  const service = createCafesService(cafesDbStub());
+  const service = createCafesService({ db: cafesDbStub() });
 
   for (const input of [
     { location: '  ', body: '좋아요' },
@@ -133,7 +133,7 @@ test('upsertComment: 빈 위치/빈 본문/121자 초과는 VALIDATION_ERROR', a
 });
 
 test('upsertComment: 방문 이력 없으면 COMMENT_NOT_ALLOWED', async () => {
-  const service = createCafesService(cafesDbStub({ visited: false }));
+  const service = createCafesService({ db: cafesDbStub({ visited: false }) });
 
   await assert.rejects(
     service.upsertComment({ userId: 'u-1', location: '아비아채', body: '좋아요' }),
@@ -142,7 +142,7 @@ test('upsertComment: 방문 이력 없으면 COMMENT_NOT_ALLOWED', async () => {
 });
 
 test('upsertComment: 방문 이력 있으면 공백 정규화 후 저장', async () => {
-  const service = createCafesService(cafesDbStub({ visited: true }));
+  const service = createCafesService({ db: cafesDbStub({ visited: true }) });
 
   const result = await service.upsertComment({
     userId: 'u-1',
