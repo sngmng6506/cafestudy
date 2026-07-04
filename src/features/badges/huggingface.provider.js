@@ -1,6 +1,6 @@
 import { throwError } from '../../shared/errors.js';
 
-const DEFAULT_MODEL = 'megaaziib/aziibpixelmix';
+const DEFAULT_MODEL = 'black-forest-labs/FLUX.1-schnell';
 const DEFAULT_PROVIDER = 'hf-inference-api';
 const DEFAULT_PROVIDER_PATH = 'hf-inference';
 
@@ -27,7 +27,7 @@ export function createHuggingFaceBadgeProvider(env, fetchImpl = fetch) {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
-            Accept: 'image/png,image/jpeg,application/json',
+            Accept: 'image/png',
           },
           body: JSON.stringify({
             inputs: prompt,
@@ -45,7 +45,7 @@ export function createHuggingFaceBadgeProvider(env, fetchImpl = fetch) {
       const contentType = response.headers.get('content-type') ?? '';
       if (!response.ok) {
         const message = await readErrorMessage(response, contentType);
-        throwError(response.status === 401 ? 502 : 503, 'BADGE_GENERATION_FAILED', message);
+        throwError(response.status === 401 ? 502 : 503, errorCodeFor(message), message);
       }
 
       if (!contentType.startsWith('image/')) {
@@ -73,4 +73,10 @@ async function readErrorMessage(response, contentType) {
   }
 
   return response.text().catch(() => `Hugging Face request failed (${response.status})`);
+}
+
+function errorCodeFor(message) {
+  return /not support|not supported|no inference provider/i.test(message)
+    ? 'BADGE_MODEL_UNSUPPORTED'
+    : 'BADGE_GENERATION_FAILED';
 }
