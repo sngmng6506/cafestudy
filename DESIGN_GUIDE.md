@@ -1,7 +1,6 @@
 # Design Guide
 
-CafeStudy의 UI 디자인 기준. 실제 컴포넌트(`client/src/`)에서 쓰는 값만 담습니다.
-값의 원본은 `client/src/styles.css`의 CSS 변수 — 이 문서와 어긋나면 styles.css가 정답입니다.
+CafeStudy의 UI 디자인 기준.
 
 전체적인 톤: Naver 스타일 — 흰 배경 + 초록 액센트(`#03C75A`) 하나, 회색 텍스트,
 테두리·배경 tint로 구획을 나누고 그림자는 최소한으로. 밀도보다 명료함.
