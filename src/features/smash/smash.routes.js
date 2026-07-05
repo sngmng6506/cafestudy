@@ -14,9 +14,10 @@ export function createSmashRouter(ctx) {
     }
   });
 
-  router.post('/toggle', ctx.auth.requireUser, async (req, res, next) => {
+  // 로그인한 멤버만 토글할 수 있지만, 누가 눌렀는지는 기록하지 않는다.
+  router.post('/toggle', ctx.auth.requireUser, async (_req, res, next) => {
     try {
-      sendOk(res, await service.toggle(req.user.id));
+      sendOk(res, await service.toggle());
     } catch (error) {
       next(error);
     }

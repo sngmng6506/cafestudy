@@ -2,8 +2,6 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createSmashService } from '../src/features/smash/smash.service.js';
 
-const USER_ID = '00000000-0000-0000-0000-000000000001';
-
 function serviceWith({ flag = null } = {}) {
   const calls = { toggles: [] };
   const db = {
@@ -28,28 +26,28 @@ test('getState: 기록이 없으면 안 깨진 상태', async () => {
 
   assert.deepEqual(await service.getState(), {
     smashed: false,
-    updatedByName: null,
     updatedAt: null,
   });
 });
 
-test('getState: 누가 깨부쉈는지 닉네임을 함께 반환', async () => {
+test('getState: 조작자 정보를 노출하지 않는다 (익명)', async () => {
   const { service } = serviceWith({
-    flag: { value: true, updatedByName: '이상명', updatedAt: '2026-07-05' },
+    flag: { value: true, updatedAt: '2026-07-05' },
   });
 
   const state = await service.getState();
+  assert.deepEqual(Object.keys(state).sort(), ['smashed', 'updatedAt']);
   assert.equal(state.smashed, true);
-  assert.equal(state.updatedByName, '이상명');
 });
 
-test('toggle: 현재 값을 뒤집고 조작자를 기록한다', async () => {
+test('toggle: 현재 값을 뒤집고 조작자를 기록하지 않는다', async () => {
   const { service, calls } = serviceWith({
-    flag: { value: true, updatedByName: null, updatedAt: '2026-07-05' },
+    flag: { value: true, updatedAt: '2026-07-05' },
   });
 
-  const result = await service.toggle(USER_ID);
+  const result = await service.toggle();
 
   assert.equal(result.smashed, false);
-  assert.equal(calls.toggles[0][1], USER_ID);
+  // 파라미터는 key 하나뿐 — user id가 넘어가지 않는다.
+  assert.deepEqual(calls.toggles[0], ['smashed']);
 });
