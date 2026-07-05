@@ -7,6 +7,30 @@ const RESOLVE_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 // 한 번의 목록 요청에서 지오코딩하는 최대 개수 — 응답 지연과 API 호출을 제한.
 const RESOLVE_BATCH = 5;
 
+// 지오코딩 검색어 후보. 원문이 실패하면 괄호 안 주소를 떼고, 그래도 실패하면
+// "지하1층" 같은 꼬리 단어를 하나씩 줄여가며(최대 2회) 재시도한다.
+// 예: "스타벅스 무교동점 (서울 중구 ...)" → "스타벅스 무교동점"
+//     "아비아채 지하1층" → "아비아채"
+export function geocodeCandidates(location) {
+  const candidates = [];
+  const push = (value) => {
+    const v = value.replace(/\s+/g, ' ').trim();
+    if (v.length >= 2 && !candidates.includes(v)) candidates.push(v);
+  };
+
+  push(location);
+  const withoutParens = location.replace(/\([^)]*\)/g, ' ');
+  push(withoutParens);
+
+  let words = withoutParens.replace(/\s+/g, ' ').trim().split(' ');
+  for (let i = 0; i < 2 && words.length > 1; i += 1) {
+    words = words.slice(0, -1);
+    push(words.join(' '));
+  }
+
+  return candidates;
+}
+
 export function createCafesService({ db, storage, searchPlacesFn = searchPlaces }) {
   const queries = createCafesQueries(db);
 
@@ -113,10 +137,16 @@ export function createCafesService({ db, storage, searchPlacesFn = searchPlaces 
   }
 
   async function resolvePlace(location) {
+    // "d", "ㅇ" 같은 한 글자 위치는 검색해봐야 엉뚱한 장소가 잡힌다 — 건너뛴다.
+    if (location.trim().length < 2) return null;
+
     let found = null;
     try {
-      const results = await searchPlacesFn(location);
-      found = results[0] ?? null;
+      for (const query of geocodeCandidates(location)) {
+        const results = await searchPlacesFn(query);
+        found = results[0] ?? null;
+        if (found?.lat != null) break;
+      }
     } catch (error) {
       // 검색 API 미설정이면 기록하지 않는다 — 설정된 뒤 자연스럽게 재시도되도록.
       if (error.code === 'PLACES_NOT_CONFIGURED') return null;
