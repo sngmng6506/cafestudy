@@ -1,16 +1,18 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { MoreHorizontal } from '@lucide/vue';
+import { Hammer, MoreHorizontal, Wrench } from '@lucide/vue';
 import { features } from './features/index.js';
 import ToastContainer from './shared/ToastContainer.vue';
 import MemberSelectModal from './shared/MemberSelectModal.vue';
 import FeatureWheel from './shared/FeatureWheel.vue';
 import { useCurrentUser } from './shared/useCurrentUser.js';
 import { useActiveBadge } from './shared/useActiveBadge.js';
+import { useSmash } from './shared/useSmash.js';
 import UserAvatar from './shared/UserAvatar.vue';
 
 const { currentUserId, currentUserName, currentToken } = useCurrentUser();
 const { activeBadgeImageUrl } = useActiveBadge();
+const { smashed, toggleSmash } = useSmash();
 const memberSelectOpen = ref(false);
 
 onMounted(() => {
@@ -36,7 +38,23 @@ const overflowActive = computed(() =>
   overflowFeatures.value.some((feature) => feature.name === activeFeatureName.value),
 );
 
+// 더보기 휠 항목 = 탭바에 없는 기능 + '깨부수기' 장난 토글.
+// 깨진 상태에서는 이름이 '원래대로'로 바뀐다.
+const wheelItems = computed(() => [
+  ...overflowFeatures.value,
+  {
+    name: 'smash',
+    label: smashed.value ? '원래대로' : '깨부수기',
+    icon: smashed.value ? Wrench : Hammer,
+  },
+]);
+
 function selectFeature(name) {
+  if (name === 'smash') {
+    toggleSmash();
+    moreOpen.value = false;
+    return;
+  }
   activeFeatureName.value = name;
   moreOpen.value = false;
 }
@@ -44,7 +62,10 @@ function selectFeature(name) {
 </script>
 
 <template>
-  <main class="mx-auto min-h-screen w-full max-w-md px-5 pb-28 pt-8 text-[#333333]">
+  <main
+    class="mx-auto min-h-screen w-full max-w-md px-5 pb-28 pt-8 text-[#333333]"
+    :class="{ smashed }"
+  >
     <div class="relative">
       <!-- 현재 사용자 표시 (페이지 타이틀과 같은 라인) -->
       <div class="absolute right-0 top-0 z-10">
@@ -114,10 +135,10 @@ function selectFeature(name) {
       @close="memberSelectOpen = false"
     />
 
-    <!-- 더보기: 회전 휠 (탭바에 없는 기능만) -->
+    <!-- 더보기: 회전 휠 (탭바에 없는 기능 + 깨부수기) -->
     <FeatureWheel
       v-if="moreOpen && hasOverflow"
-      :features="overflowFeatures"
+      :features="wheelItems"
       :active-name="activeFeatureName"
       @select="selectFeature"
       @close="moreOpen = false"

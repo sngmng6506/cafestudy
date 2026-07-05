@@ -135,3 +135,46 @@ button {
     transform: translate(calc(-50% + var(--x)), var(--y)) scale(1);
   }
 }
+
+/* ── 깨부수기 모드 ─────────────────────────────────────────────
+   더보기 휠의 '깨부수기'가 켜면 main에 .smashed가 붙는다.
+   transform 위주라 레이아웃은 유지되고, '원래대로'를 누르면
+   transition을 타고 스르륵 복구된다. */
+.smashed {
+  animation: smash-impact 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  filter: hue-rotate(160deg) saturate(1.5) contrast(1.05);
+}
+
+.smashed .surface-card,
+.smashed section,
+.smashed h1,
+.smashed nav,
+.smashed button,
+.smashed img,
+.smashed li {
+  transition: transform 0.45s ease;
+}
+
+.smashed .surface-card:nth-of-type(odd) { transform: rotate(-2.5deg) translate(-7px, 9px) skewX(-1.5deg); }
+.smashed .surface-card:nth-of-type(even) { transform: rotate(3deg) translate(9px, -5px) skewY(1deg); }
+.smashed h1 { transform: rotate(-4deg) translateX(12px); letter-spacing: 3px; }
+.smashed li:nth-child(odd) { transform: rotate(-1.2deg) translateX(-4px); }
+.smashed li:nth-child(even) { transform: rotate(1.5deg) translateX(6px); }
+.smashed img { transform: rotate(7deg); }
+.smashed button { transform: rotate(-1.5deg) translateY(2px); }
+.smashed nav { transform: rotate(1.2deg) translateY(4px); }
+
+@keyframes smash-impact {
+  0% { transform: translate(0, 0); }
+  15% { transform: translate(-10px, 6px) rotate(-1.5deg); }
+  30% { transform: translate(12px, -8px) rotate(2deg); }
+  45% { transform: translate(-8px, 4px) rotate(-1deg); }
+  60% { transform: translate(6px, -3px) rotate(0.8deg); }
+  80% { transform: translate(-3px, 2px); }
+  100% { transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .smashed { animation: none; }
+  .smashed * { transition: none !important; }
+}
