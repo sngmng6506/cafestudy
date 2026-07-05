@@ -138,11 +138,14 @@ button {
 
 /* ── 깨부수기 모드 ─────────────────────────────────────────────
    더보기 휠의 '깨부수기'가 켜면 main에 .smashed가 붙는다.
+   기울기·밀림·비틀림·색상은 --sm-* 변수(shared/smash-style.js가
+   서버 updated_at을 시드로 생성 — 모든 사용자가 같은 파괴 패턴을 보고
+   깨부술 때마다 새 패턴)로 정해지고, 변수가 없으면 폴백값을 쓴다.
    transform 위주라 레이아웃은 유지되고, '원래대로'를 누르면
    transition을 타고 스르륵 복구된다. */
 .smashed {
   animation: smash-impact 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97);
-  filter: hue-rotate(160deg) saturate(1.5) contrast(1.05);
+  filter: hue-rotate(var(--sm-hue, 160deg)) saturate(var(--sm-sat, 1.5)) contrast(1.05);
 }
 
 .smashed .surface-card,
@@ -155,14 +158,16 @@ button {
   transition: transform 0.45s ease;
 }
 
-.smashed .surface-card:nth-of-type(odd) { transform: rotate(-2.5deg) translate(-7px, 9px) skewX(-1.5deg); }
-.smashed .surface-card:nth-of-type(even) { transform: rotate(3deg) translate(9px, -5px) skewY(1deg); }
-.smashed h1 { transform: rotate(-4deg) translateX(12px); letter-spacing: 3px; }
-.smashed li:nth-child(odd) { transform: rotate(-1.2deg) translateX(-4px); }
-.smashed li:nth-child(even) { transform: rotate(1.5deg) translateX(6px); }
-.smashed img { transform: rotate(7deg); }
-.smashed button { transform: rotate(-1.5deg) translateY(2px); }
-.smashed nav { transform: rotate(1.2deg) translateY(4px); }
+.smashed .surface-card:nth-of-type(3n + 1) { transform: rotate(var(--sm-r1, -2.5deg)) translate(var(--sm-x1, -7px), var(--sm-y1, 9px)) skewX(var(--sm-k1, -1.5deg)); }
+.smashed .surface-card:nth-of-type(3n + 2) { transform: rotate(var(--sm-r2, 3deg)) translate(var(--sm-x2, 9px), var(--sm-y2, -5px)) skewY(var(--sm-k2, 1deg)); }
+.smashed .surface-card:nth-of-type(3n) { transform: rotate(var(--sm-r3, -1.8deg)) translate(var(--sm-x3, 4px), var(--sm-y3, 6px)) skewX(var(--sm-k3, 1.2deg)); }
+.smashed h1 { transform: rotate(var(--sm-r4, -4deg)) translate(var(--sm-x4, 12px), var(--sm-y4, 0px)); letter-spacing: var(--sm-ls, 3px); }
+.smashed li:nth-child(3n + 1) { transform: rotate(var(--sm-r5, -1.2deg)) translateX(var(--sm-x5, -4px)); }
+.smashed li:nth-child(3n + 2) { transform: rotate(var(--sm-r6, 1.5deg)) translateX(var(--sm-x6, 6px)); }
+.smashed li:nth-child(3n) { transform: rotate(var(--sm-r7, 0.8deg)) translate(var(--sm-x7, -2px), var(--sm-y7, 3px)); }
+.smashed img { transform: rotate(var(--sm-r8, 7deg)) skewX(var(--sm-k8, 0deg)); }
+.smashed button { transform: rotate(var(--sm-r9, -1.5deg)) translate(var(--sm-x9, 0px), var(--sm-y9, 2px)); }
+.smashed nav { transform: rotate(var(--sm-r10, 1.2deg)) translateY(var(--sm-y10, 4px)); }
 
 @keyframes smash-impact {
   0% { transform: translate(0, 0); }

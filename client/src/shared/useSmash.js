@@ -8,14 +8,21 @@ import { useToast } from './useToast.js';
 const POLL_MS = 45_000;
 
 const smashed = ref(false);
+// 랜덤 파괴 패턴의 시드 — 서버 updated_at이라 모든 사용자가 같은 패턴을 본다.
+const smashSeed = ref('');
 const toast = useToast();
 
 let started = false;
 
+function applyState(data) {
+  smashed.value = data?.smashed ?? false;
+  smashSeed.value = data?.updatedAt ?? '';
+}
+
 async function loadState() {
   try {
     const body = await apiFetch('/api/smash');
-    smashed.value = body.data?.smashed ?? false;
+    applyState(body.data);
   } catch {
     // 상태 조회 실패는 조용히 무시 — 다음 폴링에서 다시 시도된다.
   }
@@ -37,11 +44,11 @@ export function useSmash() {
   async function toggleSmash() {
     try {
       const body = await apiFetch('/api/smash/toggle', { method: 'POST' });
-      smashed.value = body.data?.smashed ?? false;
+      applyState(body.data);
     } catch (error) {
       toast.error(error.message);
     }
   }
 
-  return { smashed, toggleSmash };
+  return { smashed, smashSeed, toggleSmash };
 }

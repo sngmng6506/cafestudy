@@ -8,11 +8,17 @@ import FeatureWheel from './shared/FeatureWheel.vue';
 import { useCurrentUser } from './shared/useCurrentUser.js';
 import { useActiveBadge } from './shared/useActiveBadge.js';
 import { useSmash } from './shared/useSmash.js';
+import { smashStyleVars } from './shared/smash-style.js';
 import UserAvatar from './shared/UserAvatar.vue';
 
 const { currentUserId, currentUserName, currentToken } = useCurrentUser();
 const { activeBadgeImageUrl } = useActiveBadge();
-const { smashed, toggleSmash } = useSmash();
+const { smashed, smashSeed, toggleSmash } = useSmash();
+
+// 깨질 때마다(updated_at이 바뀔 때마다) 새로운 랜덤 파괴 패턴.
+const smashStyle = computed(() =>
+  smashed.value ? smashStyleVars(smashSeed.value || 'smash') : {},
+);
 const memberSelectOpen = ref(false);
 
 onMounted(() => {
@@ -65,6 +71,7 @@ function selectFeature(name) {
   <main
     class="mx-auto min-h-screen w-full max-w-md px-5 pb-28 pt-8 text-[#333333]"
     :class="{ smashed }"
+    :style="smashStyle"
   >
     <div class="relative">
       <!-- 현재 사용자 표시 (페이지 타이틀과 같은 라인) -->
