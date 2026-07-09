@@ -5,6 +5,7 @@ import { useMeetups, formatDate, formatTime } from '../../shared/useMeetups.js';
 import MeetupCard from '../../shared/MeetupCard.vue';
 import { apiFetch } from '../../shared/api.js';
 import { somoimEventToMeetup } from '../../shared/useSomoimEvents.js';
+import RefreshSomoimButton from '../../shared/RefreshSomoimButton.vue';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -165,9 +166,12 @@ function sortTime(value) {
 <template>
   <section class="grid gap-5">
     <!-- 헤더 -->
-    <div class="mb-1 pr-32">
+    <div class="relative mb-1 pr-32">
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">[홍대] it&ai 스터디</h1>
       <p class="mt-1 text-[14px] text-[#5f6368]">주말 아침 몰입할 수 있는 시간을 만들어요.</p>
+      <div class="absolute right-0 top-0">
+        <RefreshSomoimButton @refreshed="loadSomoimEvents" />
+      </div>
     </div>
 
     <!-- 모임 캘린더 -->
