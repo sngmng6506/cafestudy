@@ -147,9 +147,24 @@ function extractEventCardsInPage(groupId) {
   const thumbs = patternThumbs.filter((img) => !groupId || img.src.includes(groupId));
   diag.groupThumbs = thumbs.length;
 
-  // 진단: 썸네일이 0인데 startEl은 찾은 경우, scope 안 img src 샘플 3개를 남긴다.
+  // 진단 강화: 썸네일 앵커가 실패했으므로 정모 섹션의 실제 구조를 살핀다.
+  // startEl 위로 올라가며 넓은 컨테이너를 찾아, 그 안의 텍스트/링크/이미지 형태를 본다.
   if (thumbs.length === 0) {
-    diag.sampleImgSrcs = allImgs.slice(0, 3).map((i) => i.src);
+    // startEl의 조상들 중 자식이 여럿인(=카드 목록을 담을 법한) 컨테이너 탐색
+    let container = startEl;
+    for (let i = 0; i < 6 && container.parentElement; i++) {
+      container = container.parentElement;
+    }
+    const containerText = (container.innerText || '').split('\n').map((s) => s.trim()).filter(Boolean);
+    diag.containerTextSample = containerText.slice(0, 25);
+    // 정모 링크로 추정되는 a 태그들의 href 패턴
+    diag.linkSample = Array.from(container.querySelectorAll('a'))
+      .map((a) => a.getAttribute('href'))
+      .filter(Boolean)
+      .slice(0, 8);
+    // 모든 이미지 src를 확장자별로 집계
+    const allContainerImgs = Array.from(container.querySelectorAll('img')).map((i) => i.src);
+    diag.imgSample = allContainerImgs.slice(0, 8);
   }
 
   const cards = thumbs.map((thumb) => {
