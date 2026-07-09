@@ -121,50 +121,44 @@ async function clickMoreUntilEnd(page, max = 50) {
 /* c8 ignore start */
 function extractEventCardsInPage(groupId) {
   // 진단용: 각 단계에서 몇 개가 잡히는지 __diag 에 담아 반환한다.
-  const diag = { candidates: 0, startElFound: false, allThumbs: 0, groupThumbs: 0 };
+  const diag = { candidates: 0, scopeTried: 0, thumbsFound: 0 };
 
-  // "정모 일정" 텍스트를 포함하는 요소 중 "가장 깊은" 것을 헤더로 삼는다.
-  const candidates = Array.from(document.querySelectorAll('h1, h2, h3, div, span')).filter(
+  // "정모 일정" 텍스트를 포함하는 leaf 요소들을 전부 후보로 모은다.
+  // 주의: 사이트 사이드바에도 "정모일정" 메뉴가 있어(전체 정모 페이지 링크)
+  // 첫 매칭을 그대로 쓰면 사이드바를 정모 섹션으로 착각한다. 그래서 후보를
+  // 순회하며 "실제로 정모 썸네일이 존재하는" 영역을 찾는 것으로 판별한다.
+  const candidates = Array.from(document.querySelectorAll('h1, h2, h3, div, span, a')).filter(
     (el) => /정모\s*일정/.test(el.textContent || ''),
   );
-  diag.candidates = candidates.length;
-  const startEl = candidates.find(
+  const leaves = candidates.filter(
     (el) => !candidates.some((other) => other !== el && el.contains(other)),
   );
-  if (!startEl) {
-    return { cards: [], __diag: diag };
-  }
-  diag.startElFound = true;
+  diag.candidates = leaves.length;
 
-  const scope = startEl.closest('section, div') || document.body;
+  // 썸네일 판별: <groupId><YYYYMMDDHHMM>s<n>.png (이 그룹의 정모 대표 이미지)
+  const isThumb = (img) =>
+    /\d{12}s\d+\.png/.test(img.src) && (!groupId || img.src.includes(groupId));
 
-  // 진단: 필터 전 전체 img 중 썸네일 패턴 매칭 수 + groupId까지 통과한 수.
-  const allImgs = Array.from(scope.querySelectorAll('img'));
-  const patternThumbs = allImgs.filter((img) => /\d{12}s\d+\.png/.test(img.src));
-  diag.allThumbs = patternThumbs.length;
-
-  // 썸네일(정모 대표 이미지)을 카드 앵커로 사용: <groupId><YYYYMMDDHHMM>s<n>.png
-  const thumbs = patternThumbs.filter((img) => !groupId || img.src.includes(groupId));
-  diag.groupThumbs = thumbs.length;
-
-  // 진단 강화: 썸네일 앵커가 실패했으므로 정모 섹션의 실제 구조를 살핀다.
-  // startEl 위로 올라가며 넓은 컨테이너를 찾아, 그 안의 텍스트/링크/이미지 형태를 본다.
-  if (thumbs.length === 0) {
-    // startEl의 조상들 중 자식이 여럿인(=카드 목록을 담을 법한) 컨테이너 탐색
-    let container = startEl;
-    for (let i = 0; i < 6 && container.parentElement; i++) {
-      container = container.parentElement;
+  // 각 후보에서 조상으로 6단계까지 넓혀가며 썸네일을 찾는다.
+  // 사이드바 후보는 썸네일이 없어 탈락하고, 본문 정모 섹션 후보만 통과한다.
+  let thumbs = [];
+  for (const startEl of leaves) {
+    let scope = startEl;
+    for (let depth = 0; depth < 6 && scope; depth++) {
+      diag.scopeTried += 1;
+      const found = Array.from(scope.querySelectorAll('img')).filter(isThumb);
+      if (found.length > 0) {
+        thumbs = found;
+        break;
+      }
+      scope = scope.parentElement;
     }
-    const containerText = (container.innerText || '').split('\n').map((s) => s.trim()).filter(Boolean);
-    diag.containerTextSample = containerText.slice(0, 25);
-    // 정모 링크로 추정되는 a 태그들의 href 패턴
-    diag.linkSample = Array.from(container.querySelectorAll('a'))
-      .map((a) => a.getAttribute('href'))
-      .filter(Boolean)
-      .slice(0, 8);
-    // 모든 이미지 src를 확장자별로 집계
-    const allContainerImgs = Array.from(container.querySelectorAll('img')).map((i) => i.src);
-    diag.imgSample = allContainerImgs.slice(0, 8);
+    if (thumbs.length > 0) break;
+  }
+  diag.thumbsFound = thumbs.length;
+
+  if (thumbs.length === 0) {
+    return { cards: [], __diag: diag };
   }
 
   const cards = thumbs.map((thumb) => {
