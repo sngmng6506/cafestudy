@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import { MapPin, Map } from '@lucide/vue';
 import { formatDate, formatTime, naverMapUrl, googleMapUrl } from './useMeetups.js';
 import UserAvatar from './UserAvatar.vue';
-import { attendeeStack as buildStack } from './useSomoimEvents.js';
 
 const props = defineProps({
   meetup: { type: Object, required: true },
@@ -15,8 +14,9 @@ const emit = defineEmits(['toggle-join', 'cancel']);
 
 const isFull = computed(() => props.meetup.participantCount >= props.meetup.capacity);
 
-// 참석자 아바타 스택 (최대 5명 + 나머지 +N).
-const attendeeStack = computed(() => buildStack(props.meetup.attendees));
+const attendees = computed(() =>
+  [...(props.meetup.attendees ?? [])].sort((a, b) => Number(Boolean(b.isHost)) - Number(Boolean(a.isHost))),
+);
 </script>
 
 <template>
@@ -102,24 +102,30 @@ const attendeeStack = computed(() => buildStack(props.meetup.attendees));
       </span>
     </div>
 
-    <!-- 참석자 아바타 스택 -->
-    <div v-if="attendeeStack.shown.length || attendeeStack.overflow" class="flex items-center gap-2">
-      <div class="flex -space-x-1.5">
-        <UserAvatar
-          v-for="attendee in attendeeStack.shown"
-          :key="attendee.name"
-          class="h-7 w-7 text-[11px] ring-2 ring-white"
-          :name="attendee.name"
-          :image-url="attendee.badgeUrl ?? ''"
-          :title="attendee.name"
-        />
-        <span
-          v-if="attendeeStack.overflow"
-          class="flex h-7 items-center justify-center rounded-full bg-[#f5f6f7] px-2 text-[11px] font-bold text-[#5f6368] ring-2 ring-white"
+    <!-- 참석자 전체 목록: 주최자를 맨 앞에 고정하고, 이름까지 보여줘 식별성을 높인다. -->
+    <div v-if="attendees.length" class="grid gap-1.5">
+      <p class="text-[12px] font-semibold text-[#5f6368]">참석자</p>
+      <ul class="flex flex-wrap gap-1.5">
+        <li
+          v-for="attendee in attendees"
+          :key="`name-${attendee.id ?? attendee.name}`"
+          class="inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium leading-tight"
+          :class="attendee.isHost ? 'border-[#03C75A] bg-[#e9f8ef] text-[#03883f]' : 'border-transparent bg-[#f5f6f7] text-[#333333]'"
         >
-          +{{ attendeeStack.overflow }}
-        </span>
-      </div>
+          <UserAvatar
+            class="h-5 w-5 text-[9px]"
+            :name="attendee.name"
+            :image-url="attendee.badgeUrl ?? ''"
+          />
+          <span class="min-w-0 break-words">{{ attendee.name }}</span>
+          <span
+            v-if="attendee.isHost"
+            class="shrink-0 rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-bold text-[#03883f]"
+          >
+            주최자
+          </span>
+        </li>
+      </ul>
     </div>
 
     <div class="mt-auto flex flex-wrap items-center gap-2">

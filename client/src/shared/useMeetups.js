@@ -33,6 +33,7 @@ export function useMeetups() {
         target.joined = body.data.joined;
         target.participantCount = body.data.participantCount;
       }
+      await loadMeetups();
     } catch (error) {
       actionError.value = error.message;
     } finally {

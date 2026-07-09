@@ -13,22 +13,47 @@ export function createMeetupQueries(db) {
             m.status,
             m.capacity,
             m.created_at AS "createdAt",
-            COUNT(p.user_id)::int AS "participantCount",
-            COALESCE(BOOL_OR(p.user_id = $1), false) AS "joined",
+            COALESCE(attendee_summary.participant_count, 0)::int AS "participantCount",
+            (
+              m.host_id = $1
+              OR EXISTS (
+                SELECT 1
+                FROM participants joined_participant
+                WHERE joined_participant.meetup_id = m.id
+                  AND joined_participant.user_id = $1
+              )
+            ) AS "joined",
             (m.host_id = $1) AS "isHost",
-            COALESCE(
-              json_agg(
-                json_build_object('name', u.nickname, 'badgeKey', b.image_object_key)
-                ORDER BY u.nickname
-              ) FILTER (WHERE u.id IS NOT NULL),
-              '[]'
-            ) AS attendees
+            COALESCE(attendee_summary.attendees, '[]') AS attendees
           FROM meetups m
-          LEFT JOIN participants p ON p.meetup_id = m.id
-          LEFT JOIN users u ON u.id = p.user_id
-          LEFT JOIN badges b ON b.id = u.active_badge_id
+          LEFT JOIN LATERAL (
+            SELECT
+              COUNT(*)::int AS participant_count,
+              json_agg(
+                json_build_object(
+                  'id', attendee.id,
+                  'name', attendee.nickname,
+                  'badgeKey', attendee.image_object_key,
+                  'isHost', attendee.id = m.host_id
+                )
+                ORDER BY (attendee.id = m.host_id) DESC, attendee.nickname
+              ) AS attendees
+            FROM (
+              SELECT u.id, u.nickname, b.image_object_key
+              FROM users u
+              LEFT JOIN badges b ON b.id = u.active_badge_id
+              WHERE u.id = m.host_id
+
+              UNION
+
+              SELECT u.id, u.nickname, b.image_object_key
+              FROM participants p
+              JOIN users u ON u.id = p.user_id
+              LEFT JOIN badges b ON b.id = u.active_badge_id
+              WHERE p.meetup_id = m.id
+            ) attendee
+          ) attendee_summary ON true
           WHERE m.status = 'open'
-          GROUP BY m.id
           ORDER BY m.scheduled_at ASC, m.created_at DESC
         `,
         [userId ?? null],
