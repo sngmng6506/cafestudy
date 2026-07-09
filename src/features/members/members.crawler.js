@@ -278,6 +278,10 @@ export async function crawlMembers(url) {
       normalizeEvent(card, { crawlYear, memberByFaceId }),
     );
 
+    console.log(
+      `[crawler] 크롤 결과: 멤버 ${membersWithFace.length}명, 정모 카드 ${rawEventCards.length}건 → 정규화 ${events.length}건`,
+    );
+
     return {
       url,
       expected_member_count: parseMemberCount(lines),

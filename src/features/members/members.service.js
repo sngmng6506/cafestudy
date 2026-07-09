@@ -140,6 +140,13 @@ export function createMembersService(db, queries, storage) {
         const crawled = await crawlMembers(url);
         const result = await service.syncMembers(crawled);
         lastRefreshAt = Date.now(); // 성공한 시점부터 쿨타임 시작
+        console.log(
+          `[members] 갱신 완료(버튼): ${result.upsertedCount}명 upserted, 정모 ${result.eventCount}건` +
+            ` (크롤 원본 정모 ${crawled.events?.length ?? 0}건, 멤버 ${crawled.members?.length ?? 0}명)`,
+        );
+        if (result.eventCount === 0) {
+          console.warn('[members] 갱신 결과 정모 0건 — 소모임에 정모가 없거나 파싱 실패 가능성');
+        }
         return { status: 'ok', ...result, ...service.getRefreshStatus() };
       } finally {
         refreshing = false;
