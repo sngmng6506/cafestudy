@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import { sendOk, sendFail } from '../../shared/api-response.js';
-import { createMembersQueries } from './members.queries.js';
-import { createMembersService } from './members.service.js';
 
 function requireInternalKey(req, res, next) {
   const key = process.env.INTERNAL_API_KEY;
@@ -11,10 +9,8 @@ function requireInternalKey(req, res, next) {
   next();
 }
 
-export function createMembersRouter(ctx) {
+export function createMembersRouter(ctx, service) {
   const router = Router();
-  const queries = createMembersQueries(ctx.db);
-  const service = createMembersService(ctx.db, queries, ctx.storage);
 
   router.post('/sync', requireInternalKey, async (req, res) => {
     try {
@@ -27,6 +23,26 @@ export function createMembersRouter(ctx) {
       console.error('[members/sync]', err);
       return sendFail(res, 'SYNC_FAILED', '동기화 중 오류가 발생했습니다', 500);
     }
+  });
+
+  // 사용자용 갱신 버튼 트리거. 내부 키 없이 호출 가능하되, 서버가 5분 쿨타임을
+  // 강제해 남용을 막는다. 쿨타임 중이면 크롤링 없이 남은 시간만 반환.
+  router.post('/refresh', async (_req, res) => {
+    try {
+      const result = await service.refreshFromSomoim(process.env.SOMOIM_URL);
+      return sendOk(res, result);
+    } catch (err) {
+      if (err.code === 'VALIDATION_ERROR') {
+        return sendFail(res, 'VALIDATION_ERROR', err.message, 400);
+      }
+      console.error('[members/refresh]', err);
+      return sendFail(res, 'REFRESH_FAILED', '갱신 중 오류가 발생했습니다', 500);
+    }
+  });
+
+  // 갱신 버튼 초기 상태(쿨타임 남은 시간, 진행 여부).
+  router.get('/refresh-status', (_req, res) => {
+    return sendOk(res, service.getRefreshStatus());
   });
 
   router.get('/', async (_req, res) => {

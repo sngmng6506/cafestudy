@@ -1,8 +1,18 @@
 import { throwValidation } from '../../shared/errors.js';
 import { attachBadgeImageUrls } from '../../shared/badge-image.js';
+import { crawlMembers } from './members.crawler.js';
+
+// 갱신 버튼 쿨타임(ms). 이 시간 안에는 재크롤링을 거부한다.
+// 서버 전역 상태라 모든 사용자가 쿨타임을 공유한다(동시 남용 방지).
+const REFRESH_COOLDOWN_MS = 5 * 60 * 1000;
 
 export function createMembersService(db, queries, storage) {
-  return {
+  // 마지막 갱신 성공 시각 + 진행 중 플래그. 모듈이 아니라 서비스 인스턴스 스코프.
+  // (서버 재시작 시 리셋되지만, 재시작 직후엔 어차피 크롤링이 한 번 도므로 무방)
+  let lastRefreshAt = 0;
+  let refreshing = false;
+
+  const service = {
     async syncMembers({ url, expected_member_count, crawled_member_count, members, events }) {
       if (!url || !Array.isArray(members)) {
         throwValidation('url과 members 배열이 필요합니다');
@@ -95,5 +105,47 @@ export function createMembersService(db, queries, storage) {
     async listSyncLogs() {
       return queries.listSyncLogs();
     },
+
+    // 현재 쿨타임 상태. 프론트가 버튼 초기 상태를 그리는 데 쓴다.
+    getRefreshStatus() {
+      const now = Date.now();
+      const readyAt = lastRefreshAt + REFRESH_COOLDOWN_MS;
+      const remainingMs = Math.max(0, readyAt - now);
+      return {
+        refreshing,
+        cooldownMs: REFRESH_COOLDOWN_MS,
+        remainingMs,
+        readyAt: remainingMs > 0 ? new Date(readyAt).toISOString() : null,
+      };
+    },
+
+    // 소모임을 실제로 크롤링해서 동기화. cron과 갱신 버튼이 공유한다.
+    // 쿨타임/중복 실행을 서버에서 강제하므로, 여러 사용자가 동시에 눌러도
+    // 실제 크롤링은 5분에 한 번만 일어난다.
+    async refreshFromSomoim(url, { force = false } = {}) {
+      if (!url) throwValidation('SOMOIM_URL이 설정되지 않았습니다');
+
+      const now = Date.now();
+      const readyAt = lastRefreshAt + REFRESH_COOLDOWN_MS;
+
+      if (refreshing) {
+        return { status: 'in_progress', ...service.getRefreshStatus() };
+      }
+      if (!force && now < readyAt) {
+        return { status: 'cooldown', ...service.getRefreshStatus() };
+      }
+
+      refreshing = true;
+      try {
+        const crawled = await crawlMembers(url);
+        const result = await service.syncMembers(crawled);
+        lastRefreshAt = Date.now(); // 성공한 시점부터 쿨타임 시작
+        return { status: 'ok', ...result, ...service.getRefreshStatus() };
+      } finally {
+        refreshing = false;
+      }
+    },
   };
+
+  return service;
 }

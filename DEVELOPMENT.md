@@ -47,10 +47,14 @@ user_badges                    -- 유저가 보유한 뱃지 (PK user_id+badge_i
   남는다(정리 작업은 ROADMAP의 "뱃지 정리" 참고)
 
 -- 소모임(somoim.co.kr) 크롤링 데이터 — 읽기전용, 앱 데이터와 별도 -----------
--- 동기화: node-cron으로 하루 2회(새벽 2시·오후 6시 KST) 자동 크롤링.
---   기본 스케줄은 members/index.js의 '0 2,18 * * *'. CRAWL_SCHEDULE 환경변수로 재정의.
---   SOMOIM_URL이 없으면 스케줄이 등록되지 않아 동기화가 아예 돌지 않는다.
---   실행 이력은 somoim_sync_logs, 수동 트리거는 POST /api/members/sync(내부 키 필요).
+-- 동기화: (1) node-cron 정기 크롤링 — 하루 2회(새벽 2시·오후 6시 KST). 기본
+--   스케줄은 members/index.js의 '0 2,18 * * *', CRAWL_SCHEDULE로 재정의.
+--   (2) 사용자 갱신 버튼 — POST /api/members/refresh(공개, 5분 쿨타임 서버 강제).
+--   둘 다 같은 서비스 인스턴스를 공유해 쿨타임 시계를 공유한다(정기 크롤 직후
+--   버튼 중복 방지). 정기 크롤은 force=true로 쿨타임 무시.
+--   SOMOIM_URL이 없으면 스케줄이 등록되지 않아 정기 동기화가 돌지 않는다.
+--   실행 이력은 somoim_sync_logs. POST /api/members/sync(내부 키)는 크롤링 없이
+--   외부에서 만든 데이터를 직접 주입하는 별도 경로.
 
 somoim_members                 -- 크롤링된 멤버. id가 users.id와 동일(FK 역할)
 - id, name, bio, face_id(얼굴 이미지 UUID), avatar_url, source_url,
