@@ -62,9 +62,8 @@ async function cleanup() {
 }
 
 async function seed() {
-  // total_points (all-time cache) is intentionally ordered differently from the
-  // current-month point_logs sums, so the two endpoints can't be confused.
-  // Values are huge to guarantee the test users land in the top-50 result.
+  // 누적/월간 랭킹은 이제 point_logs의 source='verify'만 집계한다(주사위·호스트 제외).
+  // total_points 캐시는 전체 합산이라 더 이상 랭킹 정렬 기준이 아니다.
   await db.query(
     `
       INSERT INTO users (id, nickname, total_points) VALUES
@@ -75,11 +74,11 @@ async function seed() {
     TEST_IDS,
   );
 
-  // Current-month logs (counted by monthly ranking):
-  //   Alice = 10000000 + 100 = 10000100  (two logs -> tests aggregation)
-  //   Bob   = 10000200
-  //   Carol = 10000050
-  // Plus one out-of-month log for Bob that must be excluded.
+  // verify 로그 (랭킹에 집계됨):
+  //   Alice = 10000000 + 100 = 10000100 (이번 달, 두 로그 -> 집계 테스트)
+  //   Bob   = 10000200 (이번 달) + 5000000 (40일 전, 월간에선 제외)
+  //   Carol = 10000050 (이번 달)
+  // dice 로그는 랭킹에서 제외되어야 함 -> Carol에 큰 주사위 점수를 넣어 검증.
   await db.query(
     `
       INSERT INTO point_logs (user_id, source, ref_id, amount, created_at) VALUES
@@ -87,7 +86,8 @@ async function seed() {
         ($1, 'verify', gen_random_uuid(),      100, now()),
         ($2, 'verify', gen_random_uuid(), 10000200, now()),
         ($2, 'verify', gen_random_uuid(),  5000000, now() - interval '40 days'),
-        ($3, 'verify', gen_random_uuid(), 10000050, now())
+        ($3, 'verify', gen_random_uuid(), 10000050, now()),
+        ($3, 'dice',   gen_random_uuid(), 99999999, now())
     `,
     TEST_IDS,
   );
@@ -98,7 +98,7 @@ function onlyTestUsers(rows) {
   return rows.filter((row) => TEST_IDS.includes(row.id));
 }
 
-test('GET /api/ranking/all-time ranks test users by total_points cache', { skip: !hasDb }, async () => {
+test('GET /api/ranking/all-time ranks by verify points only (dice excluded)', { skip: !hasDb }, async () => {
   const res = await fetch(`${baseUrl}/api/ranking/all-time`);
   const body = await res.json();
 
@@ -108,14 +108,15 @@ test('GET /api/ranking/all-time ranks test users by total_points cache', { skip:
   const seeded = onlyTestUsers(body.data);
   assert.equal(seeded.length, 3, 'all three seeded users should appear');
 
-  // Order by total_points DESC: Bob(10000003) > Carol(10000002) > Alice(10000001)
+  // verify 합산: Bob(10000200+5000000=15000200) > Alice(10000100) > Carol(10000050).
+  // Carol의 dice 99999999가 집계됐다면 Carol이 1등이었을 것 -> dice 제외 검증.
   assert.deepEqual(
     seeded.map((u) => u.nickname),
-    ['__itest_bob', '__itest_carol', '__itest_alice'],
+    ['__itest_bob', '__itest_alice', '__itest_carol'],
   );
   assert.deepEqual(
     seeded.map((u) => u.points),
-    [10000003, 10000002, 10000001],
+    [15000200, 10000100, 10000050],
   );
 
   // ranks are strictly increasing and each row carries a numeric rank.
@@ -134,8 +135,8 @@ test('GET /api/ranking/monthly sums current-month point_logs only', { skip: !has
   const seeded = onlyTestUsers(body.data);
   assert.equal(seeded.length, 3, 'all three seeded users should appear');
 
-  // Order by this-month sum DESC: Bob(10000200) > Alice(10000100) > Carol(10000050).
-  // Note this differs from the all-time order, proving a different source.
+  // 이번 달 verify 합산 DESC: Bob(10000200) > Alice(10000100) > Carol(10000050).
+  // Carol의 dice(이번 달) 99999999는 source 필터로 제외됨.
   assert.deepEqual(
     seeded.map((u) => u.nickname),
     ['__itest_bob', '__itest_alice', '__itest_carol'],
