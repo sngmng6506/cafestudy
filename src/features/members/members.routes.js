@@ -35,8 +35,9 @@ export function createMembersRouter(ctx, service) {
       if (err.code === 'VALIDATION_ERROR') {
         return sendFail(res, 'VALIDATION_ERROR', err.message, 400);
       }
-      console.error('[members/refresh]', err);
-      return sendFail(res, 'REFRESH_FAILED', '갱신 중 오류가 발생했습니다', 500);
+      // 실제 실패 원인을 로그에 남긴다(Chromium 미탑재, 페이지 타임아웃 등 진단용).
+      console.error('[members/refresh] 크롤링 실패:', err.stack || err.message);
+      return sendFail(res, 'REFRESH_FAILED', `갱신 실패: ${err.message}`, 500);
     }
   });
 

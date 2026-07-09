@@ -24,7 +24,7 @@ const countdown = computed(() => {
 const label = computed(() => {
   if (loading.value) return '갱신 중…';
   if (onCooldown.value) return `${countdown.value} 후 가능`;
-  return '정모 새로고침';
+  return '새로고침';
 });
 
 // 남은 시간을 1초마다 깎는 로컬 타이머. 서버가 준 remainingMs를 기준으로 시작.
@@ -62,6 +62,10 @@ async function refresh() {
     if (onCooldown.value) startTicker();
 
     if (data.status === 'ok') {
+      // 크롤링은 성공했지만 정모가 0건이면 파싱 실패 가능성을 알린다.
+      if (data.eventCount === 0) {
+        errorMessage.value = '정모를 찾지 못했어요. 소모임에 정모가 없거나 페이지 구조가 바뀌었을 수 있어요.';
+      }
       emit('refreshed'); // 부모가 정모 목록 다시 불러오게
     } else if (data.status === 'cooldown') {
       errorMessage.value = '잠시 후 다시 시도해주세요.';
