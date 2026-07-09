@@ -1,8 +1,9 @@
 <script setup>
-import { computed } from 'vue';
-import { MapPin, Map } from '@lucide/vue';
+import { computed, ref } from 'vue';
+import { ChevronDown, ChevronUp, MapPin, Map } from '@lucide/vue';
 import { formatDate, formatTime, naverMapUrl, googleMapUrl } from './useMeetups.js';
 import UserAvatar from './UserAvatar.vue';
+import { attendeeStack as buildStack } from './useSomoimEvents.js';
 
 const props = defineProps({
   meetup: { type: Object, required: true },
@@ -12,11 +13,13 @@ const props = defineProps({
 
 const emit = defineEmits(['toggle-join', 'cancel']);
 
+const attendeesExpanded = ref(false);
 const isFull = computed(() => props.meetup.participantCount >= props.meetup.capacity);
 
 const attendees = computed(() =>
   [...(props.meetup.attendees ?? [])].sort((a, b) => Number(Boolean(b.isHost)) - Number(Boolean(a.isHost))),
 );
+const attendeeStack = computed(() => buildStack(attendees.value));
 </script>
 
 <template>
@@ -102,28 +105,48 @@ const attendees = computed(() =>
       </span>
     </div>
 
-    <!-- 참석자 전체 목록: 주최자를 맨 앞에 고정하고, 이름까지 보여줘 식별성을 높인다. -->
-    <div v-if="attendees.length" class="grid gap-1.5">
-      <p class="text-[12px] font-semibold text-[#5f6368]">참석자</p>
-      <ul class="flex flex-wrap gap-1.5">
+    <!-- 참석자 아바타 스택. 주최자는 맨 앞에 고정하고 초록 링으로 강조한다. -->
+    <div v-if="attendeeStack.shown.length || attendeeStack.overflow" class="grid gap-2">
+      <div class="flex items-center gap-2">
+        <div class="flex -space-x-1.5">
+          <UserAvatar
+            v-for="attendee in attendeeStack.shown"
+            :key="attendee.id ?? attendee.name"
+            class="h-7 w-7 text-[11px] ring-2"
+            :class="attendee.isHost ? 'ring-[#03C75A]' : 'ring-white'"
+            :name="attendee.name"
+            :image-url="attendee.badgeUrl ?? ''"
+            :title="attendee.isHost ? `${attendee.name} · 주최자` : attendee.name"
+          />
+          <span
+            v-if="attendeeStack.overflow"
+            class="flex h-7 items-center justify-center rounded-full bg-[#f5f6f7] px-2 text-[11px] font-bold text-[#5f6368] ring-2 ring-white"
+          >
+            +{{ attendeeStack.overflow }}
+          </span>
+        </div>
+        <button
+          v-if="attendees.length > 1"
+          class="focus-ring inline-flex h-7 items-center gap-0.5 rounded-full px-2 text-[12px] font-semibold text-[#5f6368] transition hover:bg-[#f5f6f7] hover:text-[#333333]"
+          type="button"
+          :aria-expanded="attendeesExpanded"
+          @click="attendeesExpanded = !attendeesExpanded"
+        >
+          {{ attendeesExpanded ? '접기' : '전체 보기' }}
+          <ChevronUp v-if="attendeesExpanded" :size="14" />
+          <ChevronDown v-else :size="14" />
+        </button>
+      </div>
+
+      <ul v-if="attendeesExpanded" class="flex flex-wrap gap-1.5">
         <li
           v-for="attendee in attendees"
           :key="`name-${attendee.id ?? attendee.name}`"
           class="inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium leading-tight"
           :class="attendee.isHost ? 'border-[#03C75A] bg-[#e9f8ef] text-[#03883f]' : 'border-transparent bg-[#f5f6f7] text-[#333333]'"
         >
-          <UserAvatar
-            class="h-5 w-5 text-[9px]"
-            :name="attendee.name"
-            :image-url="attendee.badgeUrl ?? ''"
-          />
           <span class="min-w-0 break-words">{{ attendee.name }}</span>
-          <span
-            v-if="attendee.isHost"
-            class="shrink-0 rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-bold text-[#03883f]"
-          >
-            주최자
-          </span>
+          <span v-if="attendee.isHost" class="shrink-0 text-[10px] font-bold text-[#03883f]">주최자</span>
         </li>
       </ul>
     </div>
