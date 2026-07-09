@@ -85,7 +85,7 @@ export const features = [
   },
   {
     name: 'updates',
-    label: '업데이트 이력',
+    label: '알려진 이슈',
     order: 120,
     icon: History,
     component: UpdatesPage,

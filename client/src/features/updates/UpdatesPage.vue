@@ -1,14 +1,60 @@
+<script setup>
+// 알려진 이슈 & 개선 예정 목록.
+// 지금은 정적 데이터. 항목이 늘거나 상태가 바뀌면 이 배열만 수정하면 된다.
+// (백엔드로 옮길 만큼 많아지면 그때 API로 승격)
+const knownIssues = [
+  {
+    title: '같은 카페가 여러 개로 집계됨',
+    status: 'planned', // planned | in-progress | done
+    problem:
+      '카페 이름이 "아비아채", "아비아채 지하1층"처럼 조금씩 다르게 입력되면 서로 다른 카페로 집계됩니다. 방문 통계와 코멘트가 갈라집니다.',
+    plan: '며칠에 한 번 AI(Claude Haiku)가 카페 이름 목록을 보고 같은 곳끼리 묶어 대표 이름으로 정규화할 예정입니다. 원본 데이터는 그대로 두고 별칭 매핑만 관리해 안전하게 되돌릴 수 있게 합니다.',
+  },
+];
+
+const statusMeta = {
+  planned: { label: '개선 예정', cls: 'bg-[#EDE7FB] text-[#7C3AED]' },
+  'in-progress': { label: '진행 중', cls: 'bg-[#e9f8ef] text-[#03883f]' },
+  done: { label: '완료', cls: 'bg-[#f5f6f7] text-[#5f6368]' },
+};
+</script>
+
 <template>
   <section class="grid gap-5">
     <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">업데이트 이력</h1>
-      <p class="mt-1 text-[14px] text-[#5f6368]">서비스 변경 사항을 나중에 기록할 수 있게 준비 중입니다.</p>
+      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">알려진 이슈 & 개선 예정</h1>
+      <p class="mt-1 text-[14px] text-[#5f6368]">
+        현재 알려진 문제와 앞으로의 개선 계획을 정리합니다.
+      </p>
     </div>
 
-    <section class="surface-card text-center">
-      <p class="text-[15px] font-semibold text-[#333333]">아직 업데이트 이력이 없습니다.</p>
-      <p class="mt-1 text-[13px] text-[#5f6368]">배포 기록과 변경 사항을 이곳에 표시할 예정입니다.</p>
-    </section>
+    <ul class="grid gap-3">
+      <li v-for="issue in knownIssues" :key="issue.title" class="surface-card">
+        <div class="mb-3 flex items-start justify-between gap-3">
+          <h2 class="text-[16px] font-semibold text-[#222222]">{{ issue.title }}</h2>
+          <span
+            class="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+            :class="statusMeta[issue.status].cls"
+          >
+            {{ statusMeta[issue.status].label }}
+          </span>
+        </div>
+
+        <div class="grid gap-3">
+          <div>
+            <p class="mb-1 text-[12px] font-semibold text-[#999999]">문제</p>
+            <p class="text-[14px] leading-relaxed text-[#5f6368]">{{ issue.problem }}</p>
+          </div>
+          <div>
+            <p class="mb-1 text-[12px] font-semibold text-[#999999]">해결 계획</p>
+            <p class="text-[14px] leading-relaxed text-[#5f6368]">{{ issue.plan }}</p>
+          </div>
+        </div>
+      </li>
+    </ul>
+
+    <p class="px-1 text-[13px] text-[#999999]">
+      다른 문제를 발견하면 팀에 알려주세요.
+    </p>
   </section>
 </template>
-
