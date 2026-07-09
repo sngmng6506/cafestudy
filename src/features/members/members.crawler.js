@@ -120,26 +120,39 @@ async function clickMoreUntilEnd(page, max = 50) {
 // "비슷한 모임" 등 다른 그룹의 정모 카드가 섞이는 것을 막는 필터로 쓴다.
 /* c8 ignore start */
 function extractEventCardsInPage(groupId) {
+  // 진단용: 각 단계에서 몇 개가 잡히는지 __diag 에 담아 반환한다.
+  const diag = { candidates: 0, startElFound: false, allThumbs: 0, groupThumbs: 0 };
+
   // "정모 일정" 텍스트를 포함하는 요소 중 "가장 깊은" 것을 헤더로 삼는다.
-  // (조상 wrapper div의 textContent에도 매칭되므로, 첫 매치를 쓰면 scope가
-  // 사실상 body 전체가 되어 다른 섹션의 카드가 섞여 들어온다.)
   const candidates = Array.from(document.querySelectorAll('h1, h2, h3, div, span')).filter(
     (el) => /정모\s*일정/.test(el.textContent || ''),
   );
+  diag.candidates = candidates.length;
   const startEl = candidates.find(
     (el) => !candidates.some((other) => other !== el && el.contains(other)),
   );
-  if (!startEl) return [];
+  if (!startEl) {
+    return { cards: [], __diag: diag };
+  }
+  diag.startElFound = true;
 
   const scope = startEl.closest('section, div') || document.body;
 
-  // 썸네일(정모 대표 이미지)을 카드 앵커로 사용: <groupId><YYYYMMDDHHMM>s<n>.png
-  const thumbs = Array.from(scope.querySelectorAll('img')).filter(
-    (img) =>
-      /\d{12}s\d+\.png/.test(img.src) && (!groupId || img.src.includes(groupId)),
-  );
+  // 진단: 필터 전 전체 img 중 썸네일 패턴 매칭 수 + groupId까지 통과한 수.
+  const allImgs = Array.from(scope.querySelectorAll('img'));
+  const patternThumbs = allImgs.filter((img) => /\d{12}s\d+\.png/.test(img.src));
+  diag.allThumbs = patternThumbs.length;
 
-  return thumbs.map((thumb) => {
+  // 썸네일(정모 대표 이미지)을 카드 앵커로 사용: <groupId><YYYYMMDDHHMM>s<n>.png
+  const thumbs = patternThumbs.filter((img) => !groupId || img.src.includes(groupId));
+  diag.groupThumbs = thumbs.length;
+
+  // 진단: 썸네일이 0인데 startEl은 찾은 경우, scope 안 img src 샘플 3개를 남긴다.
+  if (thumbs.length === 0) {
+    diag.sampleImgSrcs = allImgs.slice(0, 3).map((i) => i.src);
+  }
+
+  const cards = thumbs.map((thumb) => {
     // 카드 컨테이너 추정: 썸네일의 조상 중 얼굴 이미지를 포함하는 가장 가까운 블록.
     let card = thumb.parentElement;
     for (let i = 0; i < 6 && card; i++) {
@@ -183,6 +196,8 @@ function extractEventCardsInPage(groupId) {
       capacityText,
     };
   });
+
+  return { cards, __diag: diag };
 }
 
 // 멤버 섹션에서 이름<->얼굴 매핑을 뽑는다 (face_id 채우기용).
@@ -255,7 +270,11 @@ export async function crawlMembers(url) {
     // groupId = URL 마지막 세그먼트 (썸네일 필터용).
     const groupId = new URL(url).pathname.split('/').filter(Boolean).pop() ?? '';
     const memberFaces = await page.evaluate(extractMemberFacesInPage);
-    const rawEventCards = await page.evaluate(extractEventCardsInPage, groupId);
+    const eventResult = await page.evaluate(extractEventCardsInPage, groupId);
+    const rawEventCards = eventResult.cards ?? [];
+
+    // 정모 추출 진단 로그: 어느 단계에서 0이 되는지 특정.
+    console.log('[crawler] 정모 추출 진단:', JSON.stringify(eventResult.__diag));
 
     // 이름 -> face_id 매핑을 members 에 병합.
     const faceByName = new Map();
