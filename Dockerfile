@@ -19,7 +19,11 @@ ENV NODE_ENV=production
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
-RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont \
+  && if [ ! -e /usr/bin/chromium-browser ] && [ -e /usr/bin/chromium ]; then \
+       ln -s /usr/bin/chromium /usr/bin/chromium-browser; \
+     fi \
+  && echo "chromium resolved at:" && (command -v chromium-browser || command -v chromium || echo "NOT FOUND")
 
 COPY package*.json ./
 RUN npm ci --omit=dev --ignore-scripts

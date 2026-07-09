@@ -1,5 +1,22 @@
 import puppeteer from 'puppeteer';
+import { existsSync } from 'node:fs';
 import { normalizeEvent, buildFaceIdMap, extractFaceId } from './members.events.js';
+
+// Chromium 실행 파일 경로를 방어적으로 결정한다.
+// PUPPETEER_EXECUTABLE_PATH가 실제로 존재하면 그걸 쓰고, 아니면 알려진 후보를
+// 순회한다. (Alpine 버전에 따라 chromium-browser / chromium 으로 경로가 갈림)
+function resolveChromiumPath() {
+  const candidates = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+  ].filter(Boolean);
+  for (const p of candidates) {
+    if (existsSync(p)) return p;
+  }
+  // 아무것도 못 찾으면 undefined → puppeteer가 번들 Chromium을 시도(로컬 개발용).
+  return undefined;
+}
 
 const NAME_REGEX = /^[가-힣A-Za-z0-9_.\s]{2,20}$/;
 const BIO_KEYWORDS = ['안녕하세요', '개발자', '프로그래밍', '하는 일', 'Engineer'];
@@ -205,8 +222,11 @@ function extractMemberFacesInPage() {
 /* c8 ignore stop */
 
 export async function crawlMembers(url) {
+  const executablePath = resolveChromiumPath();
+  console.log(`[crawler] Chromium 경로: ${executablePath ?? '(puppeteer 번들 사용)'}`);
+
   const browser = await puppeteer.launch({
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    executablePath,
     headless: true,
     args: [
       '--no-sandbox',
