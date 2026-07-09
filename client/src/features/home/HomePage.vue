@@ -166,12 +166,9 @@ function sortTime(value) {
 <template>
   <section class="grid gap-5">
     <!-- 헤더 -->
-    <div class="relative mb-1 pr-32">
+    <div class="mb-1 pr-32">
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">[홍대] it&ai 스터디</h1>
       <p class="mt-1 text-[14px] text-[#5f6368]">주말 아침 몰입할 수 있는 시간을 만들어요.</p>
-      <div class="absolute right-0 top-0">
-        <RefreshSomoimButton @refreshed="loadSomoimEvents" />
-      </div>
     </div>
 
     <!-- 모임 캘린더 -->
@@ -255,15 +252,18 @@ function sortTime(value) {
 
     <!-- 지금 열린 모임 -->
     <section class="surface-card">
-      <div class="mb-5 flex items-center gap-2">
-        <CalendarDays :size="18" class="text-[#03C75A]" />
-        <h3 class="text-lg font-semibold text-[#333333]">지금 열린 모임</h3>
-        <span
-          v-if="!loading && !somoimLoading && !errorMessage"
-          class="ml-1 rounded-lg bg-[#f5f6f7] px-2 py-0.5 text-sm font-semibold text-[#5f6368]"
-        >
-          {{ openMeetups.length }}
-        </span>
+      <div class="mb-5 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <CalendarDays :size="18" class="text-[#03C75A]" />
+          <h3 class="text-lg font-semibold text-[#333333]">지금 열린 모임</h3>
+          <span
+            v-if="!loading && !somoimLoading && !errorMessage"
+            class="ml-1 rounded-lg bg-[#f5f6f7] px-2 py-0.5 text-sm font-semibold text-[#5f6368]"
+          >
+            {{ openMeetups.length }}
+          </span>
+        </div>
+        <RefreshSomoimButton @refreshed="loadSomoimEvents" />
       </div>
 
       <p v-if="actionError" class="mb-4 rounded-lg bg-[#FFF1F2] px-4 py-3 text-sm font-semibold text-[#e74c3c]">
