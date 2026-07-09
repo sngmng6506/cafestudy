@@ -14,7 +14,8 @@ export default {
     const url = process.env.SOMOIM_URL;
     if (!url || process.env.NODE_ENV === 'test') return;
 
-    const schedule = process.env.CRAWL_SCHEDULE ?? '0 2 * * *';
+    // 기본: 하루 두 번, 새벽 2시 + 오후 6시 (Asia/Seoul). CRAWL_SCHEDULE로 재정의 가능.
+    const schedule = process.env.CRAWL_SCHEDULE ?? '0 2,18 * * *';
     if (!cron.validate(schedule)) {
       console.error(`[members] 유효하지 않은 CRAWL_SCHEDULE: "${schedule}"`);
       return;
