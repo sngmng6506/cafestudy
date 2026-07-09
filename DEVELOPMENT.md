@@ -65,7 +65,9 @@ somoim_events                  -- 크롤링된 정모 일정
   location, cost, joined_count, capacity, thumbnail_url
 
 somoim_event_attendees         -- 정모 참석자 (face_id로 매핑, 이름 미매핑 시 null 허용)
-- id, event_id, face_id, member_name, created_at
+- id, event_id, face_id, member_name, attendee_order, is_host, created_at
+- attendee_order는 크롤링한 카드의 얼굴 표시 순서. is_host는 현재 소모임 UI에서
+  첫 얼굴이 주최자로 보이는 관찰에 기반한 추정값(첫 참석자=true).
 
 somoim_sync_logs               -- 크롤링 동기화 이력(성공/실패, 인원 수 비교용)
 - id, source_url, expected_count, crawled_count, upserted_count,

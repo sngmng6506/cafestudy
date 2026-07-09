@@ -13,17 +13,17 @@ test('somoimAttendees: 매핑된 이름 + 미매핑은 "외 N명" 항목으로',
   };
   // 이름 2명, 참여 7명 → 미매핑 5명
   assert.deepEqual(somoimAttendees(event), [
-    { name: '이상명', badgeUrl: 'signed:b.png' },
-    { name: '유인완', badgeUrl: null },
+    { name: '이상명', badgeUrl: 'signed:b.png', isHost: false },
+    { name: '유인완', badgeUrl: null, isHost: false },
     { name: '외 5명', unmappedCount: 5 },
   ]);
 });
 
 test('somoimAttendees: 전원 매핑되면 "외" 없음', () => {
-  const event = { joinedCount: 2, attendees: [{ name: 'A' }, { name: 'B' }] };
+  const event = { joinedCount: 2, attendees: [{ name: 'A', isHost: true }, { name: 'B' }] };
   assert.deepEqual(somoimAttendees(event), [
-    { name: 'A', badgeUrl: null },
-    { name: 'B', badgeUrl: null },
+    { name: 'A', badgeUrl: null, isHost: true },
+    { name: 'B', badgeUrl: null, isHost: false },
   ]);
 });
 

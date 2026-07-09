@@ -165,16 +165,19 @@ export function createMembersQueries(db) {
       if (event.attendees.length > 0) {
         const values = [];
         const params = [eventId];
-        event.attendees.forEach(({ faceId, name }, i) => {
-          const base = i * 2 + 2;
-          values.push(`($1, $${base}, $${base + 1})`);
-          params.push(faceId, name ?? null);
+        event.attendees.forEach(({ faceId, name, isHost }, i) => {
+          const base = i * 4 + 2;
+          values.push(`($1, $${base}, $${base + 1}, $${base + 2}, $${base + 3})`);
+          params.push(faceId, name ?? null, i, isHost === true);
         });
         await client.query(
           `
-            INSERT INTO somoim_event_attendees (event_id, face_id, member_name)
+            INSERT INTO somoim_event_attendees (event_id, face_id, member_name, attendee_order, is_host)
             VALUES ${values.join(', ')}
-            ON CONFLICT (event_id, face_id) DO UPDATE SET member_name = EXCLUDED.member_name
+            ON CONFLICT (event_id, face_id) DO UPDATE SET
+              member_name = EXCLUDED.member_name,
+              attendee_order = EXCLUDED.attendee_order,
+              is_host = EXCLUDED.is_host
           `,
           params,
         );
@@ -214,8 +217,12 @@ export function createMembersQueries(db) {
             e.thumbnail_url AS "thumbnailUrl",
             COALESCE(
               json_agg(
-                json_build_object('name', a.member_name, 'badgeKey', b.image_object_key)
-                ORDER BY a.member_name
+                json_build_object(
+                  'name', a.member_name,
+                  'badgeKey', b.image_object_key,
+                  'isHost', a.is_host
+                )
+                ORDER BY a.is_host DESC, a.attendee_order NULLS LAST, a.member_name
               ) FILTER (WHERE a.id IS NOT NULL AND a.member_name IS NOT NULL),
               '[]'
             ) AS attendees

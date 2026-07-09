@@ -75,7 +75,9 @@ test('normalizeEvent: 썸네일 날짜 우선, 참가자 이름 매핑, 미매�
   assert.equal(ev.joinedCount, 7);
   assert.equal(ev.capacity, 10);
   assert.equal(ev.attendees[0].name, '이상명');
+  assert.equal(ev.attendees[0].isHost, true);
   assert.equal(ev.attendees[1].name, null); // 미매핑은 null, faceId는 유지
+  assert.equal(ev.attendees[1].isHost, false);
   assert.ok(ev.attendees[1].faceId);
 });
 

@@ -59,7 +59,11 @@ export function normalizeEvent(card, { crawlYear = new Date().getFullYear(), mem
     const faceId = extractFaceId(src);
     if (!faceId || seen.has(faceId)) continue;
     seen.add(faceId);
-    attendees.push({ faceId, name: memberByFaceId[faceId] ?? null });
+    attendees.push({
+      faceId,
+      name: memberByFaceId[faceId] ?? null,
+      isHost: attendees.length === 0,
+    });
   }
 
   return {

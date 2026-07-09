@@ -9,7 +9,7 @@ export function somoimAttendees(event) {
   const participantCount = Number(event.joinedCount ?? 0);
   const named = (event.attendees ?? [])
     .filter((a) => a.name)
-    .map((a) => ({ name: a.name, badgeUrl: a.badgeUrl ?? null }));
+    .map((a) => ({ name: a.name, badgeUrl: a.badgeUrl ?? null, isHost: a.isHost === true }));
   const unmapped = participantCount - named.length;
   return unmapped > 0
     ? [...named, { name: `외 ${unmapped}명`, unmappedCount: unmapped }]
