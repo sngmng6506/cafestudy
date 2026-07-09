@@ -4,7 +4,11 @@ import { crawlMembers } from './members.crawler.js';
 
 // 갱신 버튼 쿨타임(ms). 이 시간 안에는 재크롤링을 거부한다.
 // 서버 전역 상태라 모든 사용자가 쿨타임을 공유한다(동시 남용 방지).
-const REFRESH_COOLDOWN_MS = 5 * 60 * 1000;
+// REFRESH_COOLDOWN_SEC 환경변수로 조절(디버깅 중 0으로 끌 수 있음). 기본 300초(5분).
+const REFRESH_COOLDOWN_MS = (() => {
+  const sec = Number(process.env.REFRESH_COOLDOWN_SEC);
+  return Number.isFinite(sec) && sec >= 0 ? sec * 1000 : 5 * 60 * 1000;
+})();
 
 export function createMembersService(db, queries, storage) {
   // 마지막 갱신 성공 시각 + 진행 중 플래그. 모듈이 아니라 서비스 인스턴스 스코프.
