@@ -50,8 +50,24 @@ select {
   font: inherit;
 }
 
+button,
+a,
+[role='button'] {
+  touch-action: manipulation;
+}
+
 button {
   letter-spacing: 0;
+}
+
+/* iOS는 16px 미만 입력창에 포커스할 때 페이지를 자동 확대한다.
+   핀치 확대는 유지하면서 터치 기기의 폼 컨트롤만 16px 이상으로 보정한다. */
+@media (hover: none) and (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* Shared keyboard-focus ring — Naver brand green, applied to interactive chrome */
