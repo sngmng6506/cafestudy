@@ -5,6 +5,9 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
   root: 'client',
+  optimizeDeps: {
+    exclude: ['@ternlight/mini'],
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
