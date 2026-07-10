@@ -167,8 +167,7 @@ function sortTime(value) {
   <section class="grid gap-5">
     <!-- 헤더 -->
     <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">[홍대] it&ai 스터디</h1>
-      <p class="mt-1 text-[14px] text-[#5f6368]">주말 아침 몰입할 수 있는 시간을 만들어요.</p>
+      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">IT&AI 스터디</h1>
     </div>
 
     <!-- 모임 캘린더 -->
@@ -309,6 +308,7 @@ function sortTime(value) {
           :key="meetup.id"
           :meetup="meetup"
           :pending-id="pendingId"
+          :show-readonly-dot="false"
           @toggle-join="toggleJoin"
           @cancel="cancelMeetup"
         />
@@ -326,7 +326,7 @@ function sortTime(value) {
 
     <!-- 모임 안내 (접기/펼치기) -->
     <!-- TODO(multi-group): 아래 시간/장소/타임라인은 현재 단일 모임
-         ([홍대] it&ai 스터디) 전용으로 하드코딩됨. 여러 모임을 지원하게 되면
+         (IT&AI 스터디) 전용으로 하드코딩됨. 여러 모임을 지원하게 되면
          모임 설정(meetup_config 등)에서 불러오도록 분리 필요. -->
     <section class="surface-card surface-card--flush">
       <button

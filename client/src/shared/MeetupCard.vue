@@ -9,6 +9,7 @@ const props = defineProps({
   meetup: { type: Object, required: true },
   pendingId: { type: String, required: true },
   compact: { type: Boolean, default: false },
+  showReadonlyDot: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['toggle-join', 'cancel']);
@@ -71,7 +72,7 @@ const attendeeStack = computed(() => buildStack(attendees.value));
         {{ meetup.title }}
       </h4>
       <span
-        v-if="meetup.readonly"
+        v-if="meetup.readonly && showReadonlyDot"
         class="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#10B981]"
         aria-label="소모임"
       ></span>
