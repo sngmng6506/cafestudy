@@ -103,6 +103,7 @@ function move(dir) {
   if (!hasMoves(cells)) {
     over.value = true;
     submitScore();
+    clearSavedState();
   }
 }
 
@@ -205,13 +206,70 @@ async function loadMyBest() {
   }
 }
 
-onMounted(() => {
+// 저장된 게임 상태가 있으면 복원, 없으면 새 게임. true면 복원됨.
+async function restoreOrNew() {
+  try {
+    const { data } = await apiFetch('/api/game2048/state');
+    const s = data?.savedState;
+    if (s && Array.isArray(s.board) && s.board.length === 16) {
+      board.value = s.board;
+      score.value = s.score ?? 0;
+      won.value = false;
+      over.value = false;
+      submitted = false;
+      // 복원한 타일들의 id와 겹치지 않게 nextId를 최대값+1로 맞춘다.
+      const maxId = s.board.reduce((m, c) => (c && c.id > m ? c.id : m), 0);
+      nextId = maxId + 1;
+      return true;
+    }
+  } catch {
+    // 로그인 안 됨/저장 없음 — 새 게임으로
+  }
   reset();
+  return false;
+}
+
+// 진행 중인 게임 상태를 서버에 저장(페이지 이탈 시). 게임오버면 저장 안 함.
+async function saveState() {
+  if (over.value || score.value <= 0) return;
+  try {
+    await apiFetch('/api/game2048/state', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: { board: board.value, score: score.value } }),
+    });
+  } catch {
+    // 저장 실패는 무시(로그인 안 됨 등)
+  }
+}
+
+// 저장 상태 삭제(게임오버 시 — 이어할 게 없으므로).
+async function clearSavedState() {
+  try {
+    await apiFetch('/api/game2048/state', { method: 'DELETE' });
+  } catch {
+    // 무시
+  }
+}
+
+// beforeunload: 탭 닫기/새로고침 시에도 저장 시도(sendBeacon은 인증 헤더가
+// 안 실려 일반 fetch keepalive 사용).
+function onBeforeUnload() {
+  saveState();
+}
+
+onMounted(async () => {
   window.addEventListener('keydown', onKey);
+  window.addEventListener('beforeunload', onBeforeUnload);
+  await restoreOrNew();
   loadMyBest();
   loadRanking();
 });
-onUnmounted(() => window.removeEventListener('keydown', onKey));
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKey);
+  window.removeEventListener('beforeunload', onBeforeUnload);
+  saveState(); // 탭 내 화면 전환 시 저장
+});
 
 const displayScore = computed(() => score.value.toLocaleString());
 const displayBest = computed(() => best.value.toLocaleString());
