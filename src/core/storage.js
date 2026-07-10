@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'node:crypto';
 
@@ -107,6 +107,35 @@ export function createStorage(env) {
         Bucket: config.bucket,
         Key: objectKey,
       }));
+    },
+
+    async getPrefixUsage(prefix) {
+      if (!configured) {
+        const error = new Error('Storage bucket is not configured');
+        error.statusCode = 503;
+        error.code = 'STORAGE_NOT_CONFIGURED';
+        throw error;
+      }
+
+      let continuationToken;
+      let objectCount = 0;
+      let totalBytes = 0;
+
+      do {
+        const result = await client.send(new ListObjectsV2Command({
+          Bucket: config.bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        }));
+
+        for (const object of result.Contents ?? []) {
+          objectCount += 1;
+          totalBytes += Number(object.Size ?? 0);
+        }
+        continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined;
+      } while (continuationToken);
+
+      return { prefix, objectCount, totalBytes };
     },
 
     async createDownloadUrl(objectKey) {
