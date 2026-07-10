@@ -124,7 +124,7 @@ function openMenuSearch() {
             @click="openMenuSearch"
           >
             <Search class="shrink-0 text-[#03C75A]" :size="18" />
-            <span class="min-w-0 flex-1 truncate">하고 싶은 기능을 문장으로 찾아보세요</span>
+            <span class="min-w-0 flex-1 truncate">찾고 싶은 기능 검색</span>
           </button>
         </div>
       </Transition>
