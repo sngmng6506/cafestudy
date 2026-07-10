@@ -19,7 +19,11 @@ export async function searchMenusBySemantic(
   const engine = await loadEngine();
   const index = indexPromise
     ? await indexPromise
-    : await getOrCreateIndex({ metadata, engine, useDefaultCache: metadata === menuSearchMetadata && loadEngine === loadTernlightEngine });
+    : await getOrCreateIndex({
+      metadata,
+      engine,
+      useDefaultCache: metadata === menuSearchMetadata && loadEngine === loadTernlightEngine,
+    });
   const queryVector = engine.embed(normalizedQuery);
   const bestByFeature = new Map();
 
@@ -40,36 +44,22 @@ export async function searchMenusBySemantic(
     .slice(0, limit);
 }
 
-export async function createSemanticMenuIndex({ metadata = menuSearchMetadata, loadEngine = loadTernlightEngine } = {}) {
-  const engine = await loadEngine();
+async function getOrCreateIndex({ metadata, engine, useDefaultCache }) {
+  if (!useDefaultCache) {
+    return buildIndex(metadata, engine);
+  }
+
+  if (!defaultIndexPromise) {
+    defaultIndexPromise = Promise.resolve(buildIndex(metadata, engine));
+  }
+  return defaultIndexPromise;
+}
+
+function buildIndex(metadata, engine) {
   return buildMenuSearchEntries(metadata).map((entry) => ({
     ...entry,
     vector: engine.embed(entry.text),
   }));
-}
-
-export function resetSemanticMenuSearchCache() {
-  defaultEnginePromise = undefined;
-  defaultIndexPromise = undefined;
-}
-
-async function getOrCreateIndex({ metadata, engine, useDefaultCache }) {
-  if (!useDefaultCache) {
-    return buildMenuSearchEntries(metadata).map((entry) => ({
-      ...entry,
-      vector: engine.embed(entry.text),
-    }));
-  }
-
-  if (!defaultIndexPromise) {
-    defaultIndexPromise = Promise.resolve(
-      buildMenuSearchEntries(metadata).map((entry) => ({
-        ...entry,
-        vector: engine.embed(entry.text),
-      })),
-    );
-  }
-  return defaultIndexPromise;
 }
 
 async function loadTernlightEngine() {
