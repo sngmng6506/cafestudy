@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'node:crypto';
 
@@ -93,6 +93,20 @@ export function createStorage(env) {
         objectKey,
         url: this.objectUrl(objectKey),
       };
+    },
+
+    async deleteObject(objectKey) {
+      if (!configured) {
+        const error = new Error('Storage bucket is not configured');
+        error.statusCode = 503;
+        error.code = 'STORAGE_NOT_CONFIGURED';
+        throw error;
+      }
+
+      await client.send(new DeleteObjectCommand({
+        Bucket: config.bucket,
+        Key: objectKey,
+      }));
     },
 
     async createDownloadUrl(objectKey) {
