@@ -86,7 +86,6 @@ async function loadRanking() {
   <section class="grid gap-5">
     <div class="mb-1 pr-32">
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">랭킹</h1>
-      <p class="mt-1 text-[14px] text-[#5f6368]">포인트 기반 순위</p>
     </div>
 
     <section class="surface-card">

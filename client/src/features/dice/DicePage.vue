@@ -112,7 +112,6 @@ function isFilled(value, slot) {
   <section class="grid gap-5">
     <div class="mb-1 pr-32">
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">주사위</h1>
-      <p class="mt-1 text-[14px] text-[#5f6368]">굴릴수록 포인트가 쌓입니다</p>
     </div>
 
     <section class="surface-card">

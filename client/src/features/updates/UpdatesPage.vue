@@ -30,9 +30,6 @@ const statusMeta = {
   <section class="grid gap-5">
     <div class="mb-1 pr-32">
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">알려진 이슈 & 개선 예정</h1>
-      <p class="mt-1 text-[14px] text-[#5f6368]">
-        현재 알려진 문제와 앞으로의 개선 계획을 정리합니다.
-      </p>
     </div>
 
     <ul class="grid gap-3">

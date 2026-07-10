@@ -65,7 +65,6 @@ function toHistoryFromSomoimEvent(event) {
   <section class="grid gap-5">
     <div class="mb-1 pr-32">
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">모임 이력</h1>
-      <p class="mt-1 text-[14px] text-[#5f6368]">완료된 모임과 인증 사진을 모아봅니다.</p>
     </div>
 
     <section class="surface-card">

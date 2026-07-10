@@ -126,7 +126,6 @@ async function activateBadge(badge) {
   <section class="grid gap-5">
     <div class="mb-1 pr-32">
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">AI 뱃지</h1>
-      <p class="mt-1 text-[14px] text-[#5f6368]">프롬프트로 픽셀 뱃지를 만들고 내 프로필에 추가합니다.</p>
     </div>
 
     <section class="surface-card">

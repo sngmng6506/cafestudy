@@ -213,7 +213,6 @@ function formatBytes(bytes) {
   <section class="grid gap-5">
     <div class="mb-1 pr-32">
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">출석 인증</h1>
-      <p class="mt-1 text-[14px] text-[#5f6368]">모임 현장 사진을 업로드하세요</p>
     </div>
 
     <section class="surface-card">

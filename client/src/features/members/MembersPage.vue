@@ -75,10 +75,6 @@ function highlight(text) {
   <section class="grid gap-5">
     <div class="mb-1 pr-32">
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">모임 멤버</h1>
-      <p class="mt-1 text-[14px] text-[#5f6368]">
-        <template v-if="!loading">총 {{ members.length }}명</template>
-        <template v-else>불러오는 중…</template>
-      </p>
     </div>
 
     <!-- 검색 -->

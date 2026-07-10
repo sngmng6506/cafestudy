@@ -147,7 +147,6 @@ async function saveComment(cafe) {
   <section class="grid gap-5">
     <div class="mb-1 pr-32">
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">카페 정보</h1>
-      <p class="mt-1 text-[14px] text-[#5f6368]">완료된 모임이 있었던 카페와 한줄 코멘트를 모아봅니다.</p>
     </div>
 
     <!-- 카페 지도 -->

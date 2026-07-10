@@ -180,7 +180,6 @@ function toLocalInputValue(date) {
   <section class="grid gap-5">
     <div class="mb-1 pr-32">
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">모임 개설</h1>
-      <p class="mt-1 text-[14px] text-[#5f6368]">새 모임을 만들어보세요</p>
     </div>
 
     <form class="surface-card" @submit.prevent="createMeetup">
