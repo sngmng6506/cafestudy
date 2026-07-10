@@ -234,16 +234,25 @@ function sortTime(value) {
           <p v-if="selectedMeetups.length === 0" class="text-[15px] text-[#5f6368]">
             이 날은 열린 모임이 없어요.
           </p>
-          <ul v-else class="grid gap-2">
-            <MeetupCard
+          <ul v-else class="grid gap-1.5">
+            <li
               v-for="meetup in selectedMeetups"
               :key="meetup.id"
-              :meetup="meetup"
-              :pending-id="pendingId"
-              compact
-              @toggle-join="toggleJoin"
-              @cancel="cancelMeetup"
-            />
+              class="flex min-h-9 items-center gap-2 rounded-lg bg-[#f5f6f7] px-3 py-2"
+            >
+              <time
+                class="w-12 shrink-0 text-[12px] font-bold text-[#03C75A]"
+                :datetime="meetup.scheduledAt"
+              >
+                {{ formatTime(meetup.scheduledAt) }}
+              </time>
+              <span class="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#333333]">
+                {{ meetup.title }}
+              </span>
+              <span class="shrink-0 text-[12px] font-medium text-[#5f6368]">
+                {{ meetup.participantCount }}/{{ meetup.capacity }}
+              </span>
+            </li>
           </ul>
         </template>
       </div>
