@@ -76,6 +76,6 @@ export function registerBadgeGarbageCollection({ db, storage }) {
 
   // 기존에 누적된 고아 데이터도 배포 직후 정리한다.
   void run();
-  cron.schedule(run, schedule, { timezone: 'Asia/Seoul' });
+  cron.schedule(schedule, run, { timezone: 'Asia/Seoul' });
   console.log(`[badges] GC 스케줄 등록: "${schedule}" (Asia/Seoul)`);
 }
