@@ -115,19 +115,22 @@ function openMenuSearch() {
     <div
       class="fixed bottom-0 left-1/2 z-50 w-full max-w-md -translate-x-1/2 border-t border-[#dadce0] bg-white px-2 pt-2 shadow-[0_-4px_18px_rgba(0,0,0,0.06)]"
     >
-      <button
-        v-if="showBottomSearch"
-        class="focus-ring mx-2 flex h-11 w-[calc(100%-1rem)] items-center gap-2.5 rounded-xl border border-[#dadce0] bg-[#f7f8f9] px-4 text-left text-[14px] font-medium text-[#5f6368] transition hover:border-[#bfc4c9] hover:bg-[#f1f3f4]"
-        type="button"
-        aria-label="자연어로 기능 찾기"
-        @click="openMenuSearch"
-      >
-        <Search class="shrink-0 text-[#03C75A]" :size="18" />
-        <span class="min-w-0 flex-1 truncate">하고 싶은 기능을 문장으로 찾아보세요</span>
-      </button>
+      <Transition name="bottom-search">
+        <div v-if="showBottomSearch" class="bottom-search-slot overflow-hidden px-2">
+          <button
+            class="focus-ring flex h-11 w-full items-center gap-2.5 rounded-xl border border-[#dadce0] bg-[#f7f8f9] px-4 text-left text-[14px] font-medium text-[#5f6368] transition hover:border-[#bfc4c9] hover:bg-[#f1f3f4]"
+            type="button"
+            aria-label="자연어로 기능 찾기"
+            @click="openMenuSearch"
+          >
+            <Search class="shrink-0 text-[#03C75A]" :size="18" />
+            <span class="min-w-0 flex-1 truncate">하고 싶은 기능을 문장으로 찾아보세요</span>
+          </button>
+        </div>
+      </Transition>
 
       <nav
-        class="flex gap-1 pb-[calc(0.375rem+env(safe-area-inset-bottom))]"
+        class="flex gap-1 pb-[calc(0.375rem+env(safe-area-inset-bottom))] transition-[margin] duration-200 ease-out"
         :class="showBottomSearch ? 'mt-1.5' : ''"
         aria-label="기능 탭"
       >
@@ -184,3 +187,32 @@ function openMenuSearch() {
     />
   </main>
 </template>
+
+<style scoped>
+.bottom-search-slot {
+  max-height: 44px;
+  transform-origin: bottom center;
+}
+
+.bottom-search-enter-active,
+.bottom-search-leave-active {
+  transition:
+    max-height 220ms ease,
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bottom-search-enter-from,
+.bottom-search-leave-to {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-search-enter-active,
+  .bottom-search-leave-active {
+    transition: none;
+  }
+}
+</style>
