@@ -5,7 +5,7 @@ WORKDIR /app
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 COPY package*.json ./
-RUN npm install --ignore-scripts
+RUN npm ci --ignore-scripts
 
 FROM deps AS build
 
@@ -26,7 +26,7 @@ RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefo
   && echo "chromium resolved at:" && (command -v chromium-browser || command -v chromium || echo "NOT FOUND")
 
 COPY package*.json ./
-RUN npm install --omit=dev --ignore-scripts
+RUN npm ci --omit=dev --ignore-scripts
 
 COPY --from=build /app/src ./src
 COPY --from=build /app/client/dist ./client/dist
