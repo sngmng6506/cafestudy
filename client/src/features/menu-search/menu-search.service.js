@@ -2,8 +2,8 @@ import { menuSearchMetadata } from './menu-search.metadata.js';
 import { searchMenusByKeyword } from './menu-search.keyword.js';
 import { searchMenusBySemantic } from './menu-search.semantic.js';
 
-const SEMANTIC_WEIGHT = 0.7;
-const KEYWORD_WEIGHT = 0.3;
+const SEMANTIC_WEIGHT = 0.3;
+const KEYWORD_WEIGHT = 0.7;
 
 export async function searchMenus(
   query,
@@ -42,7 +42,7 @@ export async function searchMenus(
           : keywordScore,
         semanticScore,
         keywordScore,
-        matchedText: semantic?.matchedText ?? keyword?.matchedText ?? null,
+        matchedText: keyword?.matchedText ?? semantic?.matchedText ?? null,
       };
     })
     .filter((item) => item.score > 0)
