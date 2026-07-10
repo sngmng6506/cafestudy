@@ -2,11 +2,32 @@ export function createVerificationQueries(db) {
   return {
     async getMeetupForVerify(meetupId) {
       const result = await db.query(
-        `SELECT host_id AS "hostId", scheduled_at AS "scheduledAt" FROM meetups WHERE id = $1`,
+        `
+          SELECT
+            host_id AS "hostId",
+            scheduled_at AS "scheduledAt"
+          FROM meetups
+          WHERE id = $1
+        `,
         [meetupId],
       );
 
       return result.rows[0];
+    },
+
+    async isParticipant(meetupId, userId) {
+      const result = await db.query(
+        `
+          SELECT 1
+          FROM participants
+          WHERE meetup_id = $1
+            AND user_id = $2
+          LIMIT 1
+        `,
+        [meetupId, userId],
+      );
+
+      return result.rows.length > 0;
     },
 
     async listByUser(userId) {

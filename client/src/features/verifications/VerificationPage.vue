@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { Camera, Clock3, History, Image as ImageIcon, MapPin } from '@lucide/vue';
+import { Camera, Clock3, History, Image as ImageIcon } from '@lucide/vue';
 import { useMeetups, formatDate } from '../../shared/useMeetups.js';
 import { useToast } from '../../shared/useToast.js';
 import { apiFetch } from '../../shared/api.js';
@@ -19,24 +19,18 @@ const status = ref('');
 const submitting = ref(false);
 const showSuccessEffect = ref(false);
 
-const hostMeetups = computed(() =>
+const verifiableMeetups = computed(() =>
   [...meetups.value]
-    .filter((meetup) => meetup.isHost)
+    .filter((meetup) => meetup.joined || meetup.isHost)
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt)),
 );
 
-const joinedMeetups = computed(() =>
-  [...meetups.value]
-    .filter((m) => m.joined && !m.isHost)
-    .sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt)),
-);
-
 const selectedMeetup = computed(
-  () => hostMeetups.value.find((meetup) => meetup.id === selectedMeetupId.value) ?? null,
+  () => verifiableMeetups.value.find((meetup) => meetup.id === selectedMeetupId.value) ?? null,
 );
 const verifiedIds = computed(() => new Set(myVerifications.value.map((v) => v.meetupId)));
-const pendingHostMeetups = computed(() =>
-  hostMeetups.value.filter((meetup) => !verifiedIds.value.has(meetup.id)),
+const pendingMeetups = computed(() =>
+  verifiableMeetups.value.filter((meetup) => !verifiedIds.value.has(meetup.id)),
 );
 const alreadyVerified = computed(() =>
   selectedMeetup.value ? verifiedIds.value.has(selectedMeetup.value.id) : false,
@@ -67,7 +61,7 @@ onBeforeUnmount(() => {
 onMounted(async () => {
   await loadMeetups();
   if (!selectedMeetupId.value) {
-    selectedMeetupId.value = hostMeetups.value[0]?.id ?? '';
+    selectedMeetupId.value = verifiableMeetups.value[0]?.id ?? '';
   }
   void loadMyVerifications();
 });
@@ -221,59 +215,34 @@ function formatBytes(bytes) {
         <h2 class="text-lg font-semibold text-[#333333]">사진 인증</h2>
       </div>
 
-      <!-- 비호스트: 인증 안내 + 참여 모임 목록 -->
-      <div v-if="hostMeetups.length === 0" class="space-y-4 py-2">
+      <div v-if="verifiableMeetups.length === 0" class="space-y-4 py-2">
         <div class="rounded-xl border border-[#dadce0] bg-[#f5f6f7] p-4">
           <div class="mb-2 flex items-center gap-2">
             <Camera :size="15" class="text-[#03C75A]" />
             <p class="text-[13px] font-bold text-[#03C75A]">인증 시스템 안내</p>
           </div>
           <p class="text-[13px] leading-relaxed text-[#333333]">
-            호스트가 모임 현장 사진을 업로드하여 출석을 인증합니다.
+            참여한 모임의 현장 사진을 업로드하여 출석을 인증합니다.
             인증이 완료되면 <strong>10포인트</strong>가 지급됩니다.
           </p>
-          <p class="mt-2 text-[12px] text-[#5f6368]">
-            정기모임 5회 이상 참여 시 호스트 권한을 받을 수 있어요.
-          </p>
         </div>
-
-        <div v-if="joinedMeetups.length > 0">
-          <p class="mb-2 text-[13px] font-semibold text-[#333333]">내가 참여한 모임</p>
-          <ul class="grid gap-2">
-            <li
-              v-for="meetup in joinedMeetups"
-              :key="meetup.id"
-              class="rounded-lg border border-[#dadce0] bg-[#f5f6f7] p-3"
-            >
-              <p class="text-[14px] font-semibold text-[#333333]">{{ meetup.title }}</p>
-              <p class="mt-0.5 text-[12px] text-[#5f6368]">{{ formatDate(meetup.scheduledAt) }}</p>
-              <div class="mt-1 flex items-center gap-1.5">
-                <MapPin :size="16" class="shrink-0 text-[#5f6368]" />
-                <span class="text-[12px] text-[#5f6368]">{{ meetup.location }}</span>
-              </div>
-            </li>
-          </ul>
-        </div>
-        <p v-else class="text-[13px] text-[#5f6368]">
-          아직 참여한 모임이 없습니다. 모임 탭에서 모임에 참여해 보세요.
-        </p>
+        <p class="text-[13px] text-[#5f6368]">아직 인증할 수 있는 참여 모임이 없습니다.</p>
       </div>
 
-      <!-- 호스트: 인증 폼 -->
       <template v-else>
         <p class="mb-5 text-[15px] leading-7 text-[#5f6368]">
-          내가 연 모임의 현장 사진을 올려 인증하세요. 모임 시작 시간 이후에 가능하고,
+          참여한 모임의 현장 사진을 올려 인증하세요. 모임 시작 시간 이후에 가능하고,
           원본 대신 압축본만 업로드합니다.
         </p>
 
         <label class="mb-1 grid gap-2 text-sm font-semibold text-[#333333]">
-          내가 연 모임
+          인증할 모임
           <select
             v-model="selectedMeetupId"
             class="h-12 rounded-lg border border-[#dadce0] bg-white px-4 text-[15px] font-medium outline-none transition focus:border-[#03C75A]"
           >
             <option value="" disabled>모임을 선택하세요</option>
-            <option v-for="meetup in hostMeetups" :key="meetup.id" :value="meetup.id">
+            <option v-for="meetup in verifiableMeetups" :key="meetup.id" :value="meetup.id">
               {{ meetup.title }}
             </option>
           </select>
@@ -361,17 +330,17 @@ function formatBytes(bytes) {
       </dl>
     </section>
 
-    <section v-if="hostMeetups.length > 0" class="surface-card">
+    <section v-if="verifiableMeetups.length > 0" class="surface-card">
       <div class="mb-5 flex items-center gap-2">
         <Clock3 :size="18" class="text-[#03C75A]" />
         <h2 class="text-lg font-semibold text-[#333333]">인증 대기</h2>
       </div>
 
-      <p v-if="pendingHostMeetups.length === 0" class="py-4 text-[15px] text-[#5f6368]">
+      <p v-if="pendingMeetups.length === 0" class="py-4 text-[15px] text-[#5f6368]">
         대기 중인 모임이 없어요.
       </p>
       <ul v-else class="grid gap-2">
-        <li v-for="meetup in pendingHostMeetups" :key="meetup.id">
+        <li v-for="meetup in pendingMeetups" :key="meetup.id">
           <button
             class="focus-ring flex w-full items-center gap-3 rounded-lg border p-3 text-left transition hover:bg-[#f5f6f7]"
             :class="

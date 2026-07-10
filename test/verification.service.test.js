@@ -7,11 +7,14 @@ const OTHER = 'other-2';
 const PAST = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 const FUTURE = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
-function serviceWith({ hostId, scheduledAt = PAST, verifications = [], onQuery = () => {} }) {
+function serviceWith({ hostId, scheduledAt = PAST, participantIds = [], verifications = [], onQuery = () => {} }) {
   const db = {
     query: async (sql, params = []) => {
       onQuery(sql, params);
       if (sql.includes('FROM verifications')) return { rows: verifications };
+      if (sql.includes('FROM participants')) {
+        return { rows: participantIds.includes(params[1]) ? [{ '?column?': 1 }] : [] };
+      }
       if (sql.includes('FROM meetups')) return { rows: hostId ? [{ hostId, scheduledAt }] : [] };
       return { rows: [] };
     },
@@ -24,12 +27,12 @@ function serviceWith({ hostId, scheduledAt = PAST, verifications = [], onQuery =
   return createVerificationService({ db, storage });
 }
 
-test('createVerification rejects a non-host with 403', async () => {
+test('createVerification rejects a non-participant with 403', async () => {
   const service = serviceWith({ hostId: HOST });
 
   await assert.rejects(
     () => service.createVerification({ userId: OTHER, meetupId: 'm1', photoUrl: 'p' }),
-    (err) => err.statusCode === 403 && err.code === 'NOT_MEETUP_HOST',
+    (err) => err.statusCode === 403 && err.code === 'NOT_MEETUP_PARTICIPANT',
   );
 });
 
@@ -49,7 +52,14 @@ test('createVerification allows the host once the meetup has started', async () 
   assert.equal(result.id, 'v1');
 });
 
-test('createUploadUrl also enforces host + started', async () => {
+test('createVerification allows a participant once the meetup has started', async () => {
+  const service = serviceWith({ hostId: HOST, scheduledAt: PAST, participantIds: [OTHER] });
+
+  const result = await service.createVerification({ userId: OTHER, meetupId: 'm1', photoUrl: 'p' });
+  assert.equal(result.id, 'v1');
+});
+
+test('createUploadUrl also enforces participant + started', async () => {
   const service = serviceWith({ hostId: HOST, scheduledAt: FUTURE });
 
   await assert.rejects(

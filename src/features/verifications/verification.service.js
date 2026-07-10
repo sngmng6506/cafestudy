@@ -74,16 +74,19 @@ export function createVerificationService({ db, storage }) {
     },
   };
 
-  // Only the host may verify, and only once the meetup has started.
+  // Participants, including the host, may verify once the meetup has started.
   async function ensureCanVerify(meetupId, userId) {
     const meetup = await queries.getMeetupForVerify(meetupId);
 
     if (!meetup) {
       throwError(404, 'MEETUP_NOT_FOUND', '모임을 찾을 수 없습니다.');
     }
-    if (meetup.hostId !== userId) {
-      throwError(403, 'NOT_MEETUP_HOST', '모임 개설자만 인증할 수 있습니다.');
+
+    const isParticipant = meetup.hostId === userId || (await queries.isParticipant(meetupId, userId));
+    if (!isParticipant) {
+      throwError(403, 'NOT_MEETUP_PARTICIPANT', '모임 참석자만 인증할 수 있습니다.');
     }
+
     if (new Date(meetup.scheduledAt).getTime() > Date.now()) {
       throwError(400, 'MEETUP_NOT_STARTED', '모임 시작 시간 이후에 인증할 수 있습니다.');
     }
