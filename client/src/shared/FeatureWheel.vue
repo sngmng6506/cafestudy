@@ -44,7 +44,8 @@ const items = computed(() =>
     const angle = itemAngle(i, rotation.value, step.value);
     const rad = (angle * Math.PI) / 180;
     const visible = Math.abs(angle) <= VISIBLE_LIMIT;
-    // 정점에 가까울수록 커진다 (한 칸 거리에서 1배 → 정점에서 1.22배)
+    // 정점 강조는 아이콘 원에만 적용한다. 버튼과 기능명 크기는 고정해
+    // 인접 항목의 흰 아이콘 배경이 라벨 위를 덮지 않게 한다.
     const nearApex = Math.max(0, 1 - Math.abs(angle) / step.value);
     const fade = Math.max(0.2, 1 - Math.max(0, Math.abs(angle) - 55) / 45);
     return {
@@ -53,10 +54,12 @@ const items = computed(() =>
       style: {
         transform:
           `translate(-50%, -50%) ` +
-          `translate(${(radius.value * Math.sin(rad)).toFixed(1)}px, ${(-radius.value * Math.cos(rad)).toFixed(1)}px) ` +
-          `scale(${(1 + 0.22 * nearApex).toFixed(3)})`,
+          `translate(${(radius.value * Math.sin(rad)).toFixed(1)}px, ${(-radius.value * Math.cos(rad)).toFixed(1)}px)`,
         opacity: visible ? String(fade) : '0',
         pointerEvents: visible ? 'auto' : 'none',
+      },
+      iconStyle: {
+        transform: `scale(${(1 + 0.22 * nearApex).toFixed(3)})`,
       },
     };
   }),
@@ -223,12 +226,13 @@ function stopAnimation() {
         @click="emit('select', item.feature.name)"
       >
         <span
-          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-colors"
+          class="flex h-11 w-11 shrink-0 origin-center items-center justify-center rounded-full border transition-[transform,border-color,background-color] duration-150"
           :class="item.isApex ? 'border-[#03C75A] bg-[#e9f8ef]' : 'border-[#dadce0] bg-white'"
+          :style="item.iconStyle"
         >
           <component :is="item.feature.icon" :size="20" />
         </span>
-        <span class="block w-full truncate whitespace-nowrap px-0.5 leading-4">
+        <span class="relative z-10 block w-full truncate whitespace-nowrap px-0.5 leading-4">
           {{ item.feature.label }}
         </span>
       </button>
