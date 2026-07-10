@@ -113,10 +113,15 @@ git blame <파일>                 # 줄 단위 출처
   `error.statusCode`/`error.code`를 읽어 자동으로 응답한다.
 
 ### 인증 경계 — 중요
-- 현재 `auth.js`는 `x-user-id` 헤더 기반의 **임시** 구현이다. 언젠가 실제 토큰
-  검증으로 교체된다.
-- 그러니 라우트/서비스는 **`req.user.id`(또는 `ctx.auth.userId(req)`)에만 의존**하고,
-  헤더를 직접 읽지 않는다. auth 내부가 바뀌어도 나머지 코드가 안 깨지도록.
+- 인증은 **비밀번호 + 세션 토큰** 방식으로 구현되어 있다: 로그인(`POST /api/auth/login`)
+  성공 시 세션 토큰 발급 → 클라이언트가 `Authorization: Bearer <token>`으로 전송 →
+  전역 미들웨어(`resolveUser`)가 sessions 테이블에서 검증해 `req.user`를 세팅.
+  관리자 전용 라우트는 `ctx.auth.requireAdmin`(users.is_admin) 사용.
+- 라우트/서비스는 **`req.user.id`(또는 `ctx.auth.userId(req)`)에만 의존**하고,
+  헤더나 세션 테이블을 직접 읽지 않는다. auth 내부가 바뀌어도 나머지 코드가
+  안 깨지도록.
+- dev 환경(`NODE_ENV !== 'production'`)에서는 토큰 없이 `x-user-id` 헤더 폴백이
+  아직 동작한다(로컬 개발 편의). 프로덕션 동작을 가정하는 코드를 짤 때 주의.
 
 ### DB 마이그레이션
 - `migrations/`에 `YYYYMMDD_설명.sql`. 파일명 사전순으로 실행된다.
