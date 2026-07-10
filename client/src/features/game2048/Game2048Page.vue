@@ -1,8 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { RotateCcw, Trophy } from '@lucide/vue';
+import { RotateCcw } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
-import { avatarColor, initials } from '../../shared/useAvatar.js';
 
 const SIZE = 4;
 
@@ -14,9 +13,6 @@ const won = ref(false);
 const over = ref(false);
 let nextId = 1;
 
-// 랭킹
-const ranking = ref([]);
-const rankingLoading = ref(false);
 const submitting = ref(false);
 let submitted = false; // 한 판당 한 번만 제출
 
@@ -119,7 +115,6 @@ async function submitScore() {
       body: JSON.stringify({ score: score.value }),
     });
     if (typeof data?.bestScore === 'number') best.value = data.bestScore;
-    await loadRanking();
   } catch {
     // 제출 실패는 게임 흐름을 막지 않는다(로그인 안 됨 등). 조용히 무시.
   } finally {
@@ -183,18 +178,6 @@ function onTouchEnd(e) {
   if (Math.max(absX, absY) < 24) return; // 너무 작은 이동은 무시
   if (absX > absY) move(dx > 0 ? 'right' : 'left');
   else move(dy > 0 ? 'down' : 'up');
-}
-
-async function loadRanking() {
-  rankingLoading.value = true;
-  try {
-    const { data } = await apiFetch('/api/game2048/ranking');
-    ranking.value = Array.isArray(data) ? data : [];
-  } catch {
-    ranking.value = [];
-  } finally {
-    rankingLoading.value = false;
-  }
 }
 
 async function loadMyBest() {
@@ -263,7 +246,6 @@ onMounted(async () => {
   window.addEventListener('beforeunload', onBeforeUnload);
   await restoreOrNew();
   loadMyBest();
-  loadRanking();
 });
 onUnmounted(() => {
   window.removeEventListener('keydown', onKey);
@@ -355,55 +337,6 @@ const displayBest = computed(() => best.value.toLocaleString());
       <p class="mt-4 text-center text-[13px] text-[#999999]">
         방향키 또는 스와이프로 타일을 밀어보세요.
       </p>
-    </section>
-
-    <!-- 랭킹 -->
-    <section class="surface-card">
-      <div class="mb-4 flex items-center gap-2">
-        <Trophy :size="18" class="text-[#03C75A]" />
-        <h3 class="text-lg font-semibold text-[#333333]">2048 랭킹</h3>
-      </div>
-
-      <p v-if="rankingLoading" class="py-4 text-center text-[14px] text-[#999999]">
-        불러오는 중…
-      </p>
-      <p v-else-if="ranking.length === 0" class="py-4 text-center text-[14px] text-[#999999]">
-        아직 기록이 없어요. 첫 기록을 남겨보세요!
-      </p>
-      <ul v-else class="grid gap-1">
-        <li
-          v-for="row in ranking"
-          :key="row.id"
-          class="flex items-center gap-3 rounded-[10px] px-2 py-2"
-          :class="row.rank <= 3 ? 'bg-[#f0faf4]' : ''"
-        >
-          <span
-            class="w-6 shrink-0 text-center text-[15px] font-bold"
-            :class="row.rank <= 3 ? 'text-[#03883f]' : 'text-[#999999]'"
-          >
-            {{ row.rank }}
-          </span>
-          <img
-            v-if="row.activeBadgeImageUrl"
-            :src="row.activeBadgeImageUrl"
-            alt=""
-            class="h-8 w-8 shrink-0 rounded-full object-cover"
-          />
-          <span
-            v-else
-            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold"
-            :class="avatarColor(row.nickname)"
-          >
-            {{ initials(row.nickname) }}
-          </span>
-          <span class="min-w-0 flex-1 truncate text-[14px] font-medium text-[#333333]">
-            {{ row.nickname }}
-          </span>
-          <span class="shrink-0 text-[15px] font-bold text-[#333333]">
-            {{ row.bestScore.toLocaleString() }}
-          </span>
-        </li>
-      </ul>
     </section>
   </section>
 </template>
