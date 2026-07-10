@@ -258,12 +258,12 @@ function sortTime(value) {
       </div>
     </section>
 
-    <!-- 지금 열린 모임 -->
+    <!-- 예정 모임 -->
     <section class="surface-card">
       <div class="mb-5 flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           <CalendarDays :size="18" class="text-[#03C75A]" />
-          <h3 class="text-lg font-semibold text-[#333333]">지금 열린 모임</h3>
+          <h3 class="text-lg font-semibold text-[#333333]">예정 모임</h3>
           <span
             v-if="!loading && !somoimLoading && !errorMessage"
             class="ml-1 rounded-lg bg-[#f5f6f7] px-2 py-0.5 text-sm font-semibold text-[#5f6368]"
