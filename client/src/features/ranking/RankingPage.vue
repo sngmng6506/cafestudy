@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { ChevronLeft, ChevronRight, Crown, Dices, Trophy } from '@lucide/vue';
+import { ChevronLeft, ChevronRight, Crown, Dices, Gamepad2, Trophy } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import UserAvatar from '../../shared/UserAvatar.vue';
 
@@ -14,7 +14,44 @@ const errorMessage = ref('');
 
 const diceRanking = ref([]);
 const diceLoading = ref(true);
+const game2048Ranking = ref([]);
+const game2048Loading = ref(true);
 const cursor = ref({ ...CURRENT });
+
+// 미니게임 랭킹 캐러셀: 좌우 스와이프(또는 점 탭)로 주사위 ↔ 2048 전환.
+const miniGames = ['dice', 'game2048'];
+const miniIndex = ref(0);
+const currentMini = computed(() =>
+  miniGames[miniIndex.value] === 'dice'
+    ? {
+        key: 'dice',
+        title: '주사위 TOP 5',
+        loading: diceLoading.value,
+        rows: diceRanking.value,
+        empty: ['아직 주사위를 굴린 사람이 없습니다.', '더보기 → 주사위에서 굴려보세요!'],
+        valueOf: (u) => `${u.points}점`,
+      }
+    : {
+        key: 'game2048',
+        title: '2048 TOP 5',
+        loading: game2048Loading.value,
+        rows: game2048Ranking.value,
+        empty: ['아직 2048 기록이 없습니다.', '더보기 → 2048에서 도전해보세요!'],
+        valueOf: (u) => u.bestScore.toLocaleString(),
+      },
+);
+function goMini(i) {
+  miniIndex.value = (i + miniGames.length) % miniGames.length;
+}
+let miniTouchX = 0;
+function onMiniTouchStart(e) {
+  miniTouchX = e.changedTouches[0].clientX;
+}
+function onMiniTouchEnd(e) {
+  const dx = e.changedTouches[0].clientX - miniTouchX;
+  if (Math.abs(dx) < 40) return;
+  goMini(miniIndex.value + (dx < 0 ? 1 : -1));
+}
 
 const title = computed(() => (mode.value === 'monthly' ? '월간 랭킹' : '누적 랭킹'));
 const monthLabel = computed(() => `${cursor.value.year}년 ${cursor.value.month}월`);
@@ -30,6 +67,7 @@ const emptyMessage = computed(() =>
 onMounted(() => {
   void loadRanking();
   void loadDiceRanking();
+  void loadGame2048Ranking();
 });
 
 async function loadDiceRanking() {
@@ -41,6 +79,18 @@ async function loadDiceRanking() {
     diceRanking.value = [];
   } finally {
     diceLoading.value = false;
+  }
+}
+
+async function loadGame2048Ranking() {
+  game2048Loading.value = true;
+  try {
+    const body = await apiFetch('/api/game2048/ranking');
+    game2048Ranking.value = (body.data ?? []).slice(0, 5);
+  } catch {
+    game2048Ranking.value = [];
+  } finally {
+    game2048Loading.value = false;
   }
 }
 
@@ -202,55 +252,72 @@ async function loadRanking() {
       </ol>
     </section>
 
-    <!-- 주사위 TOP 5 -->
+    <!-- 미니게임 랭킹 (좌우 스와이프로 주사위 ↔ 2048 전환) -->
     <section class="surface-card">
-      <div class="mb-5 flex items-center gap-2">
-        <Dices :size="18" class="text-[#03C75A]" />
-        <h3 class="text-[15px] font-semibold text-[#333333]">주사위 TOP 5</h3>
+      <div class="mb-5 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <Dices v-if="currentMini.key === 'dice'" :size="18" class="text-[#03C75A]" />
+          <Gamepad2 v-else :size="18" class="text-[#03C75A]" />
+          <h3 class="text-[15px] font-semibold text-[#333333]">{{ currentMini.title }}</h3>
+        </div>
+        <!-- 페이지 인디케이터 (탭도 가능) -->
+        <div class="flex items-center gap-1.5">
+          <button
+            v-for="(g, i) in miniGames"
+            :key="g"
+            type="button"
+            class="h-2 rounded-full transition-all"
+            :class="i === miniIndex ? 'w-5 bg-[#03C75A]' : 'w-2 bg-[#dadce0]'"
+            :aria-label="`${i + 1}번째 랭킹`"
+            @click="goMini(i)"
+          ></button>
+        </div>
       </div>
 
-      <ol v-if="diceLoading" class="divide-y divide-[#dadce0] animate-pulse">
-        <li v-for="n in 5" :key="n" class="flex min-h-[52px] items-center gap-4 py-3 first:pt-0 last:pb-0">
-          <div class="h-8 w-8 shrink-0 rounded-lg bg-[#f5f6f7]"></div>
-          <div class="h-4 flex-1 rounded bg-[#f5f6f7]"></div>
-          <div class="h-4 w-12 shrink-0 rounded bg-[#f5f6f7]"></div>
-        </li>
-      </ol>
+      <div @touchstart.passive="onMiniTouchStart" @touchend="onMiniTouchEnd">
+        <ol v-if="currentMini.loading" class="divide-y divide-[#dadce0] animate-pulse">
+          <li v-for="n in 5" :key="n" class="flex min-h-[52px] items-center gap-4 py-3 first:pt-0 last:pb-0">
+            <div class="h-8 w-8 shrink-0 rounded-lg bg-[#f5f6f7]"></div>
+            <div class="h-4 flex-1 rounded bg-[#f5f6f7]"></div>
+            <div class="h-4 w-12 shrink-0 rounded bg-[#f5f6f7]"></div>
+          </li>
+        </ol>
 
-      <div v-else-if="diceRanking.length === 0" class="py-8 text-center">
-        <p class="text-[15px] text-[#333333]">아직 주사위를 굴린 사람이 없습니다.</p>
-        <p class="mt-1 text-[13px] text-[#5f6368]">더보기 → 주사위에서 굴려보세요!</p>
-      </div>
+        <div v-else-if="currentMini.rows.length === 0" class="py-8 text-center">
+          <p class="text-[15px] text-[#333333]">{{ currentMini.empty[0] }}</p>
+          <p class="mt-1 text-[13px] text-[#5f6368]">{{ currentMini.empty[1] }}</p>
+        </div>
 
-      <ol v-else class="divide-y divide-[#dadce0]">
-        <li
-          v-for="user in diceRanking"
-          :key="user.id"
-          class="flex min-h-[52px] items-center gap-4 py-3 first:pt-0 last:pb-0"
-        >
-          <span
-            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold"
-            :class="user.rank === 1 ? 'bg-[#03C75A] text-white' : user.rank <= 3 ? 'bg-[#03C75A]/15 text-[#02b350]' : 'bg-[#f5f6f7] text-[#5f6368]'"
+        <ol v-else class="divide-y divide-[#dadce0]">
+          <li
+            v-for="user in currentMini.rows"
+            :key="user.id"
+            class="flex min-h-[52px] items-center gap-4 py-3 first:pt-0 last:pb-0"
           >
-            <Crown v-if="user.rank === 1" :size="14" />
-            <template v-else>{{ user.rank }}</template>
-          </span>
+            <span
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold"
+              :class="user.rank === 1 ? 'bg-[#03C75A] text-white' : user.rank <= 3 ? 'bg-[#03C75A]/15 text-[#02b350]' : 'bg-[#f5f6f7] text-[#5f6368]'"
+            >
+              <Crown v-if="user.rank === 1" :size="14" />
+              <template v-else>{{ user.rank }}</template>
+            </span>
 
-          <p class="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[14px] font-medium text-[#333333]">
-            <UserAvatar
-              class="h-6 w-6"
-              :name="user.nickname"
-              :image-url="user.activeBadgeImageUrl ?? ''"
-              :fallback="false"
-            />
-            <span class="truncate">{{ user.nickname }}</span>
-          </p>
+            <p class="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[14px] font-medium text-[#333333]">
+              <UserAvatar
+                class="h-6 w-6"
+                :name="user.nickname"
+                :image-url="user.activeBadgeImageUrl ?? ''"
+                :fallback="false"
+              />
+              <span class="truncate">{{ user.nickname }}</span>
+            </p>
 
-          <strong class="shrink-0 text-[14px] font-bold" :class="user.rank === 1 ? 'text-[#03C75A]' : 'text-[#333333]'">
-            {{ user.points }}점
-          </strong>
-        </li>
-      </ol>
+            <strong class="shrink-0 text-[14px] font-bold" :class="user.rank === 1 ? 'text-[#03C75A]' : 'text-[#333333]'">
+              {{ currentMini.valueOf(user) }}
+            </strong>
+          </li>
+        </ol>
+      </div>
     </section>
   </section>
 </template>
