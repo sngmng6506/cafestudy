@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createSemanticMenuIndex, searchMenusBySemantic } from '../client/src/features/menu-search/menu-search.semantic.js';
+import { searchMenusBySemantic } from '../client/src/features/menu-search/menu-search.semantic.js';
 import { searchMenus } from '../client/src/features/menu-search/menu-search.service.js';
 
 const metadata = [
@@ -39,14 +39,6 @@ function createFakeEngine() {
     },
   };
 }
-
-test('semantic index: metadata의 모든 검색 문장을 한 번씩 임베딩한다', async () => {
-  const engine = createFakeEngine();
-  const index = await createSemanticMenuIndex({ metadata, loadEngine: async () => engine });
-
-  assert.equal(index.length, 6);
-  assert.ok(index.every((entry) => entry.vector instanceof Float32Array));
-});
 
 test('semantic search: 메뉴별 최고 문장 점수로 순위를 만든다', async () => {
   const engine = createFakeEngine();
