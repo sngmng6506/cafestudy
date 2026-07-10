@@ -1,4 +1,4 @@
-import { Award, CalendarDays, Camera, Coffee, Dices, History, Home, QrCode, SearchCheck, Trophy, Users } from '@lucide/vue';
+import { Award, CalendarDays, Camera, Coffee, Dices, Gamepad2, History, Home, QrCode, SearchCheck, Trophy, Users } from '@lucide/vue';
 import HomePage from './home/HomePage.vue';
 import MeetupPage from './meetups/MeetupPage.vue';
 import RankingPage from './ranking/RankingPage.vue';
@@ -11,6 +11,7 @@ import MeetupHistoryPage from './history/MeetupHistoryPage.vue';
 import BadgesPage from './badges/BadgesPage.vue';
 import QrPage from './qr/QrPage.vue';
 import SearchGuidePage from './menu-search/SearchGuidePage.vue';
+import Game2048Page from './game2048/Game2048Page.vue';
 
 // `primary: true` pins a feature to the bottom tab bar. Features without it
 // (extra/non-core features contributors add later) collect in the "더보기" sheet,
@@ -62,6 +63,13 @@ export const features = [
     order: 100,
     icon: Dices,
     component: DicePage,
+  },
+  {
+    name: 'game2048',
+    label: '2048',
+    order: 102,
+    icon: Gamepad2,
+    component: Game2048Page,
   },
   {
     name: 'badges',
