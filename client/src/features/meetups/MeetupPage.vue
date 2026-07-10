@@ -187,7 +187,7 @@ function toLocalInputValue(date) {
         제목
         <input
           v-model="form.title"
-          class="h-12 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
+          class="h-12 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[#5f6368] focus:border-[#03C75A]"
           placeholder="예: 모여서 각자 코딩"
           required
         />
@@ -197,7 +197,7 @@ function toLocalInputValue(date) {
         내용
         <textarea
           v-model="form.description"
-          class="min-h-[88px] rounded-lg border border-[#dadce0] px-4 py-3 text-[15px] font-medium outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
+          class="min-h-[88px] rounded-lg border border-[#dadce0] px-4 py-3 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[#5f6368] focus:border-[#03C75A]"
           placeholder="호스트는 무엇을 할지 간단히 적어주세요 (예: 사이드 프로젝트, 바이브 코딩)"
           rows="3"
         ></textarea>
@@ -210,7 +210,7 @@ function toLocalInputValue(date) {
           class="focus-ring flex h-12 items-center justify-between gap-2 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium transition hover:border-[#03C75A]"
           @click="openPlaceSearch"
         >
-          <span :class="form.location ? 'text-[#333333]' : 'text-[#5f6368]'">
+          <span :class="form.location ? 'text-[#333333]' : 'text-[14px] text-[#5f6368]'">
             {{ form.location || '카페·장소를 검색하세요' }}
           </span>
           <Search :size="16" class="shrink-0 text-[#5f6368]" />
@@ -237,7 +237,7 @@ function toLocalInputValue(date) {
         최대 참가 인원
         <input
           v-model.number="form.capacity"
-          class="h-12 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
+          class="h-12 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[#5f6368] focus:border-[#03C75A]"
           type="number"
           min="1"
           max="100"
@@ -277,7 +277,7 @@ function toLocalInputValue(date) {
         <form class="flex gap-2 p-4" @submit.prevent="runPlaceSearch">
           <input
             v-model="searchQuery"
-            class="h-11 flex-1 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
+            class="h-11 flex-1 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[#5f6368] focus:border-[#03C75A]"
             placeholder="예: 강남 스타벅스"
           />
           <button
