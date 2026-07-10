@@ -57,6 +57,7 @@ const items = computed(() =>
           `translate(${(radius.value * Math.sin(rad)).toFixed(1)}px, ${(-radius.value * Math.cos(rad)).toFixed(1)}px)`,
         opacity: visible ? String(fade) : '0',
         pointerEvents: visible ? 'auto' : 'none',
+        zIndex: visible ? String(Math.round(100 - Math.abs(angle))) : '0',
       },
       iconStyle: {
         transform: `scale(${(1 + 0.22 * nearApex).toFixed(3)})`,
@@ -191,7 +192,7 @@ function stopAnimation() {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-40">
+  <div class="fixed inset-0 z-[60]">
     <div class="absolute inset-0 bg-[#333333]/20" @click="emit('close')"></div>
 
     <!-- 휠 영역: 하단 중앙이 회전 중심. overflow-hidden으로 원의 아래 반을 잘라 반원만 보인다. -->
