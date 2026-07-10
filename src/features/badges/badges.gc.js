@@ -5,7 +5,9 @@ const BATCH_SIZE = 100;
 
 export function registerBadgeGarbageCollection({ db, storage }) {
   if (process.env.NODE_ENV === 'test') return;
-  if (storage.status?.().configured === false) {
+  // storage 자체가 없을 수 있다(테스트 ctx, 스토리지 미구성 부팅). 그 경우에도
+  // 앱 부팅이 죽으면 안 되므로 GC만 건너뛴다.
+  if (!storage || storage.status?.().configured === false) {
     console.warn('[badges] GC 건너뜀: 이미지 스토리지가 설정되지 않았습니다.');
     return;
   }
