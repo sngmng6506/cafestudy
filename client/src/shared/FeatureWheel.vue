@@ -188,13 +188,13 @@ function stopAnimation() {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-40">
-    <div class="absolute inset-0 bg-[#333333]/20" @click="emit('close')"></div>
+  <!-- 전체 오버레이가 탭바(z-50)보다 위에 있어야 내부 휠도 실제로 탭바를 넘을 수 있다. -->
+  <div class="fixed inset-0 z-[60]">
+    <div class="absolute inset-0 z-0 bg-[#333333]/20" @click="emit('close')"></div>
 
-    <!-- 휠 영역은 하단 탭바보다 위에 렌더링해 라벨이 탭바 배경에 가려지지 않게 한다. -->
     <div
       ref="wheelEl"
-      class="absolute bottom-[68px] left-1/2 z-[60] w-full max-w-md -translate-x-1/2 touch-none select-none overflow-hidden"
+      class="absolute bottom-[68px] left-1/2 z-10 w-full max-w-md -translate-x-1/2 touch-none select-none overflow-hidden"
       :style="zoneStyle"
       role="menu"
       aria-label="기능 휠"
