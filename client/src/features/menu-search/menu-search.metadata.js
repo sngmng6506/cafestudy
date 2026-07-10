@@ -60,6 +60,12 @@ export const menuSearchMetadata = [
     examples: ['지금 안 되는 기능이 있어?', '최근에 뭐가 바뀌었어?'],
   },
   {
+    featureName: 'search-guide',
+    description: '자연어 기능 검색의 동작 방식과 Ternlight 모델 및 한계를 설명합니다.',
+    searchTerms: ['검색 안내', '자연어 검색', 'Ternlight', '임베딩', '검색 원리', '검색 한계'],
+    examples: ['검색은 어떻게 동작해?', 'Ternlight가 뭐야?', '자연어 메뉴 검색 설명 보여줘'],
+  },
+  {
     featureName: 'qr',
     description: '모바일 접속 주소와 QR 코드를 확인하고 공유합니다.',
     searchTerms: ['공유', '접속 주소', 'QR 코드', '링크 복사', '친구에게 보내기'],
