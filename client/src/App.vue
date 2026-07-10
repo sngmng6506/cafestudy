@@ -177,7 +177,7 @@ function openMenuSearch() {
       @close="menuSearchOpen = false"
     />
 
-    <!-- 더보기: 회전 휠 (탭바에 없는 기능 + 깨부수기) -->
+    <!-- 더보기: 탭바에 없는 기능 + 깨부수기 -->
     <FeatureWheel
       v-if="moreOpen && hasOverflow"
       :features="wheelItems"
