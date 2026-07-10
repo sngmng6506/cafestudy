@@ -194,12 +194,18 @@ function openMenuSearch() {
   transform-origin: bottom center;
 }
 
-.bottom-search-enter-active,
+.bottom-search-enter-active {
+  transition:
+    max-height 220ms cubic-bezier(0, 0, 0.2, 1),
+    opacity 180ms cubic-bezier(0, 0, 0.2, 1),
+    transform 220ms cubic-bezier(0, 0, 0.2, 1);
+}
+
 .bottom-search-leave-active {
   transition:
-    max-height 220ms ease,
-    opacity 180ms ease,
-    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    max-height 220ms cubic-bezier(0.4, 0, 1, 1),
+    opacity 160ms cubic-bezier(0.4, 0, 1, 1),
+    transform 220ms cubic-bezier(0.4, 0, 1, 1);
 }
 
 .bottom-search-enter-from,
