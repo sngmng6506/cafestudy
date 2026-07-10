@@ -38,6 +38,7 @@ const moreOpen = ref(false);
 const primaryFeatures = computed(() => sortedFeatures.filter((feature) => feature.primary));
 const overflowFeatures = computed(() => sortedFeatures.filter((feature) => !feature.primary));
 const hasOverflow = computed(() => overflowFeatures.value.length > 0);
+const showBottomSearch = computed(() => activeFeatureName.value === 'home' && !moreOpen.value);
 
 const activeFeature = computed(
   () => sortedFeatures.find((feature) => feature.name === activeFeatureName.value) ?? sortedFeatures[0],
@@ -77,8 +78,8 @@ function openMenuSearch() {
 
 <template>
   <main
-    class="mx-auto min-h-screen w-full max-w-md px-5 pb-44 pt-8 text-[#333333]"
-    :class="{ smashed }"
+    class="mx-auto min-h-screen w-full max-w-md px-5 pt-8 text-[#333333]"
+    :class="[smashed ? 'smashed' : '', showBottomSearch ? 'pb-44' : 'pb-28']"
     :style="smashStyle"
   >
     <div class="relative">
@@ -110,11 +111,12 @@ function openMenuSearch() {
       <component :is="activeFeature.component" />
     </div>
 
-    <!-- Global search entry + bottom tab bar, constrained to the phone-width column -->
+    <!-- Home-only search entry + bottom tab bar, constrained to the phone-width column -->
     <div
       class="fixed bottom-0 left-1/2 z-50 w-full max-w-md -translate-x-1/2 border-t border-[#dadce0] bg-white px-2 pt-2 shadow-[0_-4px_18px_rgba(0,0,0,0.06)]"
     >
       <button
+        v-if="showBottomSearch"
         class="focus-ring mx-2 flex h-11 w-[calc(100%-1rem)] items-center gap-2.5 rounded-xl border border-[#dadce0] bg-[#f7f8f9] px-4 text-left text-[14px] font-medium text-[#5f6368] transition hover:border-[#bfc4c9] hover:bg-[#f1f3f4]"
         type="button"
         aria-label="자연어로 기능 찾기"
@@ -125,7 +127,8 @@ function openMenuSearch() {
       </button>
 
       <nav
-        class="mt-1.5 flex gap-1 pb-[calc(0.375rem+env(safe-area-inset-bottom))]"
+        class="flex gap-1 pb-[calc(0.375rem+env(safe-area-inset-bottom))]"
+        :class="showBottomSearch ? 'mt-1.5' : ''"
         aria-label="기능 탭"
       >
         <button
