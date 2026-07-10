@@ -231,8 +231,7 @@ function formatBytes(bytes) {
 
       <template v-else>
         <p class="mb-5 text-[15px] leading-7 text-[#5f6368]">
-          참여한 모임의 현장 사진을 올려 인증하세요. 모임 시작 시간 이후에 가능하고,
-          원본 대신 압축본만 업로드합니다.
+          참석한 모임의 사진을 올려 인증하세요. 모임 시작 시간 이후에 가능합니다.
         </p>
 
         <label class="mb-1 grid gap-2 text-sm font-semibold text-[#333333]">
