@@ -189,7 +189,7 @@ function toLocalInputValue(date) {
         <input
           v-model="form.title"
           class="h-12 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
-          placeholder="예: 토요일 AI 논문 읽기"
+          placeholder="예: 모여서 각자 코딩"
           required
         />
       </label>
@@ -199,7 +199,7 @@ function toLocalInputValue(date) {
         <textarea
           v-model="form.description"
           class="min-h-[88px] rounded-lg border border-[#dadce0] px-4 py-3 text-[15px] font-medium outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
-          placeholder="호스트가 무엇을 할지 간단히 적어주세요 (예: 알고리즘 문제 풀이, 토익 단어 암기)"
+          placeholder="호스트는 무엇을 할지 간단히 적어주세요 (예: 사이드 프로젝트, 바이브 코딩)"
           rows="3"
         ></textarea>
       </label>
