@@ -77,22 +77,13 @@ function openMenuSearch() {
 
 <template>
   <main
-    class="mx-auto min-h-screen w-full max-w-md px-5 pb-28 pt-8 text-[#333333]"
+    class="mx-auto min-h-screen w-full max-w-md px-5 pb-44 pt-8 text-[#333333]"
     :class="{ smashed }"
     :style="smashStyle"
   >
     <div class="relative">
-      <!-- 현재 사용자 표시와 기능 검색 (페이지 타이틀과 같은 라인) -->
+      <!-- 현재 사용자 표시 (페이지 타이틀과 같은 라인) -->
       <div class="absolute right-0 top-0 z-10 flex items-center gap-1">
-        <button
-          class="focus-ring flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] transition hover:bg-[#f5f6f7] hover:text-[#333333]"
-          type="button"
-          aria-label="기능 검색"
-          @click="openMenuSearch"
-        >
-          <Search :size="19" />
-        </button>
-
         <button
           v-if="currentUserId"
           class="focus-ring flex items-center gap-2 rounded-full py-1 pl-2 pr-3 text-[13px] font-medium text-[#5f6368] transition hover:bg-[#f5f6f7] hover:text-[#333333]"
@@ -119,36 +110,50 @@ function openMenuSearch() {
       <component :is="activeFeature.component" />
     </div>
 
-    <!-- Bottom-fixed tab bar, constrained to the phone-width column -->
-    <nav
-      class="fixed bottom-0 left-1/2 z-50 flex w-full max-w-md -translate-x-1/2 gap-1 border-t border-[#dadce0] bg-white px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]"
-      aria-label="기능 탭"
+    <!-- Global search entry + bottom tab bar, constrained to the phone-width column -->
+    <div
+      class="fixed bottom-0 left-1/2 z-50 w-full max-w-md -translate-x-1/2 border-t border-[#dadce0] bg-white px-2 pt-2 shadow-[0_-4px_18px_rgba(0,0,0,0.06)]"
     >
       <button
-        v-for="feature in primaryFeatures"
-        :key="feature.name"
-        class="focus-ring relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition"
-        :class="feature.name === activeFeatureName ? 'font-bold text-[#03C75A] before:absolute before:-top-1.5 before:left-1/2 before:h-[3px] before:w-8 before:-translate-x-1/2 before:rounded-full before:bg-[#03C75A]' : 'font-medium text-[#5f6368] hover:text-[#333333]'"
+        class="focus-ring mx-2 flex h-11 w-[calc(100%-1rem)] items-center gap-2.5 rounded-xl border border-[#dadce0] bg-[#f7f8f9] px-4 text-left text-[14px] font-medium text-[#5f6368] transition hover:border-[#bfc4c9] hover:bg-[#f1f3f4]"
         type="button"
-        @click="selectFeature(feature.name)"
+        aria-label="자연어로 기능 찾기"
+        @click="openMenuSearch"
       >
-        <component :is="feature.icon" :size="20" />
-        {{ feature.label }}
+        <Search class="shrink-0 text-[#03C75A]" :size="18" />
+        <span class="min-w-0 flex-1 truncate">하고 싶은 기능을 문장으로 찾아보세요</span>
       </button>
 
-      <button
-        v-if="hasOverflow"
-        class="focus-ring relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition"
-        :class="overflowActive || moreOpen ? 'font-bold text-[#03C75A] before:absolute before:-top-1.5 before:left-1/2 before:h-[3px] before:w-8 before:-translate-x-1/2 before:rounded-full before:bg-[#03C75A]' : 'font-medium text-[#5f6368] hover:text-[#333333]'"
-        type="button"
-        aria-haspopup="menu"
-        :aria-expanded="moreOpen"
-        @click="moreOpen = !moreOpen"
+      <nav
+        class="mt-1.5 flex gap-1 pb-[calc(0.375rem+env(safe-area-inset-bottom))]"
+        aria-label="기능 탭"
       >
-        <MoreHorizontal :size="20" />
-        더보기
-      </button>
-    </nav>
+        <button
+          v-for="feature in primaryFeatures"
+          :key="feature.name"
+          class="focus-ring relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition"
+          :class="feature.name === activeFeatureName ? 'font-bold text-[#03C75A] before:absolute before:-top-1.5 before:left-1/2 before:h-[3px] before:w-8 before:-translate-x-1/2 before:rounded-full before:bg-[#03C75A]' : 'font-medium text-[#5f6368] hover:text-[#333333]'"
+          type="button"
+          @click="selectFeature(feature.name)"
+        >
+          <component :is="feature.icon" :size="20" />
+          {{ feature.label }}
+        </button>
+
+        <button
+          v-if="hasOverflow"
+          class="focus-ring relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition"
+          :class="overflowActive || moreOpen ? 'font-bold text-[#03C75A] before:absolute before:-top-1.5 before:left-1/2 before:h-[3px] before:w-8 before:-translate-x-1/2 before:rounded-full before:bg-[#03C75A]' : 'font-medium text-[#5f6368] hover:text-[#333333]'"
+          type="button"
+          aria-haspopup="menu"
+          :aria-expanded="moreOpen"
+          @click="moreOpen = !moreOpen"
+        >
+          <MoreHorizontal :size="20" />
+          더보기
+        </button>
+      </nav>
+    </div>
 
     <ToastContainer />
 
