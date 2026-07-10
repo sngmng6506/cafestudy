@@ -177,10 +177,25 @@ button {
 .smashed .surface-card:nth-of-type(3n + 1) { transform: rotate(var(--sm-r1, -2.5deg)) translate(var(--sm-x1, -7px), var(--sm-y1, 9px)) skewX(var(--sm-k1, -1.5deg)); }
 .smashed .surface-card:nth-of-type(3n + 2) { transform: rotate(var(--sm-r2, 3deg)) translate(var(--sm-x2, 9px), var(--sm-y2, -5px)) skewY(var(--sm-k2, 1deg)); }
 .smashed .surface-card:nth-of-type(3n) { transform: rotate(var(--sm-r3, -1.8deg)) translate(var(--sm-x3, 4px), var(--sm-y3, 6px)) skewX(var(--sm-k3, 1.2deg)); }
+.smashed .member-list-card.surface-card { transform: none; }
 .smashed h1 { transform: rotate(var(--sm-r4, -4deg)) translate(var(--sm-x4, 12px), var(--sm-y4, 0px)); letter-spacing: var(--sm-ls, 3px); }
 .smashed li:nth-child(3n + 1) { transform: rotate(var(--sm-r5, -1.2deg)) translateX(var(--sm-x5, -4px)); }
 .smashed li:nth-child(3n + 2) { transform: rotate(var(--sm-r6, 1.5deg)) translateX(var(--sm-x6, 6px)); }
 .smashed li:nth-child(3n) { transform: rotate(var(--sm-r7, 0.8deg)) translate(var(--sm-x7, -2px), var(--sm-y7, 3px)); }
+.smashed .member-row {
+  transform-origin: var(--sm-origin, 50% 50%);
+  will-change: transform;
+}
+.smashed .member-row:nth-child(10n + 1) { transform: translate(var(--sm-x1, -7px), var(--sm-y1, 9px)) rotate(var(--sm-r1, -2.5deg)) skewX(var(--sm-k1, -1.5deg)) scaleX(0.96); }
+.smashed .member-row:nth-child(10n + 2) { transform: translate(var(--sm-x2, 9px), var(--sm-y2, -5px)) rotate(var(--sm-r2, 3deg)) skewY(var(--sm-k2, 1deg)) scaleY(0.95); }
+.smashed .member-row:nth-child(10n + 3) { transform: translate(var(--sm-x3, 4px), var(--sm-y3, 6px)) rotate(var(--sm-r3, -1.8deg)) skewX(var(--sm-k3, 1.2deg)) scaleX(1.04); }
+.smashed .member-row:nth-child(10n + 4) { transform: translate(var(--sm-x4, 12px), var(--sm-y4, 0px)) rotate(var(--sm-r4, -4deg)) skewY(var(--sm-k4, 1deg)) scale(0.98, 1.05); }
+.smashed .member-row:nth-child(10n + 5) { transform: translate(var(--sm-x5, -4px), var(--sm-y5, 4px)) rotate(var(--sm-r5, -1.2deg)) skewX(var(--sm-k5, -1deg)) scale(1.03, 0.96); }
+.smashed .member-row:nth-child(10n + 6) { transform: translate(var(--sm-x6, 6px), var(--sm-y6, -3px)) rotate(var(--sm-r6, 1.5deg)) skewY(var(--sm-k6, 1.4deg)) scaleX(0.94); }
+.smashed .member-row:nth-child(10n + 7) { transform: translate(var(--sm-x7, -2px), var(--sm-y7, 3px)) rotate(var(--sm-r7, 0.8deg)) skewX(var(--sm-k7, 1.6deg)) scaleY(1.06); }
+.smashed .member-row:nth-child(10n + 8) { transform: translate(var(--sm-x8, 8px), var(--sm-y8, -7px)) rotate(var(--sm-r8, 2deg)) skewY(var(--sm-k8, -1.3deg)) scale(1.05, 0.95); }
+.smashed .member-row:nth-child(10n + 9) { transform: translate(var(--sm-x9, 0px), var(--sm-y9, 2px)) rotate(var(--sm-r9, -1.5deg)) skewX(var(--sm-k9, 1.1deg)) scaleX(1.06); }
+.smashed .member-row:nth-child(10n) { transform: translate(var(--sm-x10, 5px), var(--sm-y10, 4px)) rotate(var(--sm-r10, 1.2deg)) skewY(var(--sm-k10, -1deg)) scale(0.97, 1.04); }
 .smashed img { transform: rotate(var(--sm-r8, 7deg)) skewX(var(--sm-k8, 0deg)); }
 .smashed button { transform: rotate(var(--sm-r9, -1.5deg)) translate(var(--sm-x9, 0px), var(--sm-y9, 2px)); }
 .smashed nav { transform: rotate(var(--sm-r10, 1.2deg)) translateY(var(--sm-y10, 4px)); }

@@ -122,12 +122,12 @@ function highlight(text) {
     </div>
 
     <!-- 멤버 목록 -->
-    <section v-else class="surface-card surface-card--flush">
+    <section v-else class="member-list-card surface-card surface-card--flush">
       <ul class="divide-y divide-[#dadce0]">
         <li
           v-for="member in filtered"
           :key="member.id"
-          class="flex cursor-pointer items-center gap-3 px-4 py-3 transition first:pt-4 last:pb-4 hover:bg-[#f5f6f7]"
+          class="member-row flex cursor-pointer items-center gap-3 px-4 py-3 transition first:pt-4 last:pb-4 hover:bg-[#f5f6f7]"
           role="button"
           tabindex="0"
           :aria-label="`${member.name} 프로필 보기`"
