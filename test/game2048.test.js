@@ -58,3 +58,48 @@ test('submitScore: 0점도 유효하다(경계값)', async () => {
   const result = await service.submitScore('u1', 0);
   assert.equal(result.bestScore, 0);
 });
+
+// --- 게임 상태 저장 검증 ---
+
+const validState = {
+  score: 40,
+  board: [
+    0, { id: 1, value: 2 }, 0, 0,
+    0, 0, { id: 2, value: 4 }, 0,
+    0, 0, 0, 0,
+    { id: 3, value: 2 }, 0, 0, 0,
+  ],
+};
+
+test('saveState: 정상 구조는 저장된다', async () => {
+  const { ctx, calls } = makeCtx();
+  const service = createGame2048Service(ctx);
+  const result = await service.saveState('u1', validState);
+  assert.equal(result.saved, true);
+  assert.match(calls[0].sql, /INSERT INTO game2048_scores/);
+});
+
+test('saveState: board 길이가 16이 아니면 거부', async () => {
+  const { ctx } = makeCtx();
+  const service = createGame2048Service(ctx);
+  await assert.rejects(
+    () => service.saveState('u1', { score: 0, board: [0, 0, 0] }),
+    /게임 상태가 올바르지 않습니다/,
+  );
+});
+
+test('saveState: 타일 구조가 이상하면 거부(변조 방어)', async () => {
+  const { ctx } = makeCtx();
+  const service = createGame2048Service(ctx);
+  const bad = { score: 10, board: Array(16).fill(0) };
+  bad.board[0] = { id: 'x', value: 9999999999 }; // 잘못된 id + 과대 value
+  await assert.rejects(() => service.saveState('u1', bad), /게임 상태가 올바르지 않습니다/);
+});
+
+test('saveState: value가 2 미만인 타일은 거부', async () => {
+  const { ctx } = makeCtx();
+  const service = createGame2048Service(ctx);
+  const bad = { score: 0, board: Array(16).fill(0) };
+  bad.board[0] = { id: 1, value: 1 };
+  await assert.rejects(() => service.saveState('u1', bad), /게임 상태가 올바르지 않습니다/);
+});
