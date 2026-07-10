@@ -3,8 +3,9 @@ import { computed, onMounted, ref } from 'vue';
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from '@lucide/vue';
 import { useMeetups, formatDate, formatTime } from '../../shared/useMeetups.js';
 import MeetupCard from '../../shared/MeetupCard.vue';
+import UserAvatar from '../../shared/UserAvatar.vue';
 import { apiFetch } from '../../shared/api.js';
-import { somoimEventToMeetup } from '../../shared/useSomoimEvents.js';
+import { attendeeStack, somoimEventToMeetup } from '../../shared/useSomoimEvents.js';
 import RefreshSomoimButton from '../../shared/RefreshSomoimButton.vue';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -161,6 +162,10 @@ function toMeetupFromSomoimEvent(event) {
 function sortTime(value) {
   return value ? new Date(value).getTime() : Number.MAX_SAFE_INTEGER;
 }
+
+function calendarAttendeeStack(meetup) {
+  return attendeeStack(meetup.attendees, 3);
+}
 </script>
 
 <template>
@@ -249,9 +254,26 @@ function sortTime(value) {
               <span class="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#333333]">
                 {{ meetup.title }}
               </span>
-              <span class="shrink-0 text-[12px] font-medium text-[#5f6368]">
-                {{ meetup.participantCount }}/{{ meetup.capacity }}
-              </span>
+              <div
+                v-if="calendarAttendeeStack(meetup).shown.length || calendarAttendeeStack(meetup).overflow"
+                class="flex shrink-0 -space-x-1"
+              >
+                <UserAvatar
+                  v-for="attendee in calendarAttendeeStack(meetup).shown"
+                  :key="attendee.id ?? attendee.name"
+                  class="h-5 w-5 text-[9px] ring-2"
+                  :class="attendee.isHost ? 'ring-[#03C75A]' : 'ring-white'"
+                  :name="attendee.name"
+                  :image-url="attendee.badgeUrl ?? ''"
+                  :title="attendee.name"
+                />
+                <span
+                  v-if="calendarAttendeeStack(meetup).overflow"
+                  class="flex h-5 items-center justify-center rounded-full bg-white px-1.5 text-[9px] font-bold text-[#5f6368] ring-2 ring-white"
+                >
+                  +{{ calendarAttendeeStack(meetup).overflow }}
+                </span>
+              </div>
             </li>
           </ul>
         </template>
