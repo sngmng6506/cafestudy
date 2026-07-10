@@ -22,16 +22,16 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[60]">
-    <div class="absolute inset-0 bg-[#333333]/20" @click="emit('close')"></div>
+  <div class="fixed inset-0 z-40">
+    <div class="absolute inset-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] bg-[#333333]/20" @click="emit('close')"></div>
 
     <section
-      class="absolute bottom-0 left-1/2 flex max-h-[72vh] w-full max-w-md -translate-x-1/2 flex-col rounded-t-2xl bg-white shadow-[0_-8px_28px_rgba(0,0,0,0.14)]"
+      class="absolute bottom-[calc(4.25rem+env(safe-area-inset-bottom))] left-1/2 flex max-h-[52vh] w-full max-w-md -translate-x-1/2 flex-col rounded-t-2xl bg-white shadow-[0_-8px_28px_rgba(0,0,0,0.14)]"
       role="menu"
       aria-label="더보기 기능"
     >
-      <div class="shrink-0 border-b border-[#e9ebee] px-5 py-4">
-        <div class="mx-auto mb-3 h-1 w-10 rounded-full bg-[#dadce0]"></div>
+      <div class="shrink-0 border-b border-[#e9ebee] px-5 py-3">
+        <div class="mx-auto mb-2 h-1 w-10 rounded-full bg-[#dadce0]"></div>
         <div class="flex items-center justify-between gap-3">
           <h2 class="text-[17px] font-bold text-[#333333]">더보기</h2>
           <button
@@ -44,7 +44,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div class="overflow-y-auto px-3 py-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <div class="overflow-y-auto px-3 py-2">
         <button
           v-for="feature in props.features"
           :key="feature.name"
