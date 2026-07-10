@@ -1,10 +1,11 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { Hammer, MoreHorizontal, Wrench } from '@lucide/vue';
+import { Hammer, MoreHorizontal, Search, Wrench } from '@lucide/vue';
 import { features } from './features/index.js';
 import ToastContainer from './shared/ToastContainer.vue';
 import MemberSelectModal from './shared/MemberSelectModal.vue';
 import FeatureWheel from './shared/FeatureWheel.vue';
+import MenuSearchSheet from './features/menu-search/MenuSearchSheet.vue';
 import { useCurrentUser } from './shared/useCurrentUser.js';
 import { useActiveBadge } from './shared/useActiveBadge.js';
 import { useSmash } from './shared/useSmash.js';
@@ -20,6 +21,7 @@ const smashStyle = computed(() =>
   smashed.value ? smashStyleVars(smashSeed.value || 'smash') : {},
 );
 const memberSelectOpen = ref(false);
+const menuSearchOpen = ref(false);
 
 onMounted(() => {
   // 유효한 세션 토큰이 있어야 로그인 상태로 본다.
@@ -63,6 +65,12 @@ function selectFeature(name) {
   }
   activeFeatureName.value = name;
   moreOpen.value = false;
+  menuSearchOpen.value = false;
+}
+
+function openMenuSearch() {
+  moreOpen.value = false;
+  menuSearchOpen.value = true;
 }
 
 </script>
@@ -74,8 +82,17 @@ function selectFeature(name) {
     :style="smashStyle"
   >
     <div class="relative">
-      <!-- 현재 사용자 표시 (페이지 타이틀과 같은 라인) -->
-      <div class="absolute right-0 top-0 z-10">
+      <!-- 현재 사용자 표시와 기능 검색 (페이지 타이틀과 같은 라인) -->
+      <div class="absolute right-0 top-0 z-10 flex items-center gap-1">
+        <button
+          class="focus-ring flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] transition hover:bg-[#f5f6f7] hover:text-[#333333]"
+          type="button"
+          aria-label="기능 검색"
+          @click="openMenuSearch"
+        >
+          <Search :size="19" />
+        </button>
+
         <button
           v-if="currentUserId"
           class="focus-ring flex items-center gap-2 rounded-full py-1 pl-2 pr-3 text-[13px] font-medium text-[#5f6368] transition hover:bg-[#f5f6f7] hover:text-[#333333]"
@@ -140,6 +157,13 @@ function selectFeature(name) {
       v-if="memberSelectOpen"
       :dismissable="!!currentToken"
       @close="memberSelectOpen = false"
+    />
+
+    <MenuSearchSheet
+      v-if="menuSearchOpen"
+      :features="sortedFeatures"
+      @select="selectFeature"
+      @close="menuSearchOpen = false"
     />
 
     <!-- 더보기: 회전 휠 (탭바에 없는 기능 + 깨부수기) -->
