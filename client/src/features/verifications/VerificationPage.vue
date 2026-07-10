@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { Camera, History, Image as ImageIcon, MapPin } from '@lucide/vue';
+import { Camera, Clock3, History, Image as ImageIcon, MapPin } from '@lucide/vue';
 import { useMeetups, formatDate } from '../../shared/useMeetups.js';
 import { useToast } from '../../shared/useToast.js';
 import { apiFetch } from '../../shared/api.js';
@@ -35,6 +35,9 @@ const selectedMeetup = computed(
   () => hostMeetups.value.find((meetup) => meetup.id === selectedMeetupId.value) ?? null,
 );
 const verifiedIds = computed(() => new Set(myVerifications.value.map((v) => v.meetupId)));
+const pendingHostMeetups = computed(() =>
+  hostMeetups.value.filter((meetup) => !verifiedIds.value.has(meetup.id)),
+);
 const alreadyVerified = computed(() =>
   selectedMeetup.value ? verifiedIds.value.has(selectedMeetup.value.id) : false,
 );
@@ -80,6 +83,14 @@ async function loadMyVerifications() {
 
 function openCamera() {
   photoInput.value?.click();
+}
+
+function selectPendingMeetup(meetup) {
+  selectedMeetupId.value = meetup.id;
+}
+
+function pendingStatusLabel(meetup) {
+  return meetup.state === 'done' ? '인증 가능' : '시작 전';
 }
 
 async function handlePhotoChange(event) {
@@ -281,24 +292,33 @@ function formatBytes(bytes) {
           @change="handlePhotoChange"
         />
 
-        <button
-          class="focus-ring mb-4 w-full overflow-hidden rounded-xl border-2 border-dashed border-[#dadce0] transition hover:border-[#03C75A] disabled:cursor-not-allowed disabled:opacity-50"
-          type="button"
-          :disabled="!canVerify"
-          @click="openCamera"
-        >
-          <div v-if="previewUrl" class="relative">
-            <img class="block max-h-[200px] w-full object-contain" :src="previewUrl" alt="선택한 사진 미리보기" />
-            <div class="absolute inset-0 flex items-center justify-center bg-[#333333]/40 opacity-0 transition hover:opacity-100">
-              <p class="text-[14px] font-semibold text-white">다시 선택</p>
+        <div class="mb-4 grid gap-3">
+          <div
+            class="flex min-h-[148px] items-center justify-center overflow-hidden rounded-xl border border-[#dadce0] bg-[#f5f6f7]"
+          >
+            <img
+              v-if="previewUrl"
+              class="block max-h-[220px] w-full object-contain"
+              :src="previewUrl"
+              alt="선택한 사진 미리보기"
+            />
+            <div v-else class="flex flex-col items-center gap-2 py-8 text-[#5f6368]">
+              <ImageIcon :size="28" />
+              <p class="text-[13px] font-medium">사진을 찍으면 미리보기가 표시됩니다.</p>
+              <p class="text-[12px]">최대 1600px 자동 압축</p>
             </div>
           </div>
-          <div v-else class="flex flex-col items-center gap-2 py-10">
-            <Camera :size="32" class="text-[#5f6368]" />
-            <p class="text-[14px] font-medium text-[#333333]">사진을 선택하세요</p>
-            <p class="text-[12px] text-[#5f6368]">최대 1600px 자동 압축</p>
-          </div>
-        </button>
+
+          <button
+            class="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-[#dadce0] bg-white text-[15px] font-semibold text-[#333333] transition hover:bg-[#f5f6f7] disabled:cursor-not-allowed disabled:opacity-50"
+            type="button"
+            :disabled="!canVerify"
+            @click="openCamera"
+          >
+            <Camera :size="18" />
+            {{ previewUrl ? '사진 다시 찍기' : '사진 찍기' }}
+          </button>
+        </div>
 
         <button
           class="focus-ring flex h-12 w-full items-center justify-center rounded bg-[#03C75A] text-[15px] font-semibold text-white transition hover:bg-[#02b350] disabled:cursor-not-allowed disabled:opacity-50"
@@ -340,6 +360,51 @@ function formatBytes(bytes) {
           <dd class="mt-1 text-base font-bold text-[#333333]">{{ compressionRatio || '-' }}</dd>
         </div>
       </dl>
+    </section>
+
+    <section v-if="hostMeetups.length > 0" class="surface-card">
+      <div class="mb-5 flex items-center gap-2">
+        <Clock3 :size="18" class="text-[#03C75A]" />
+        <h2 class="text-lg font-semibold text-[#333333]">인증 대기</h2>
+      </div>
+
+      <p v-if="pendingHostMeetups.length === 0" class="py-4 text-[15px] text-[#5f6368]">
+        대기 중인 모임이 없어요.
+      </p>
+      <ul v-else class="grid gap-2">
+        <li v-for="meetup in pendingHostMeetups" :key="meetup.id">
+          <button
+            class="focus-ring flex w-full items-center gap-3 rounded-lg border p-3 text-left transition hover:bg-[#f5f6f7]"
+            :class="
+              meetup.id === selectedMeetupId
+                ? 'border-[#03C75A] bg-[#e9f8ef]'
+                : 'border-[#dadce0] bg-[#f5f6f7]'
+            "
+            type="button"
+            @click="selectPendingMeetup(meetup)"
+          >
+            <span
+              class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#03C75A]"
+            >
+              <Camera :size="17" />
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-[14px] font-semibold text-[#333333]">{{ meetup.title }}</span>
+              <span class="mt-0.5 block text-[12px] text-[#5f6368]">{{ formatDate(meetup.scheduledAt) }}</span>
+            </span>
+            <span
+              class="shrink-0 rounded-full px-2 py-1 text-[12px] font-semibold"
+              :class="
+                meetup.state === 'done'
+                  ? 'bg-[#e9f8ef] text-[#03883f]'
+                  : 'bg-white text-[#5f6368]'
+              "
+            >
+              {{ pendingStatusLabel(meetup) }}
+            </span>
+          </button>
+        </li>
+      </ul>
     </section>
 
     <section class="surface-card">
