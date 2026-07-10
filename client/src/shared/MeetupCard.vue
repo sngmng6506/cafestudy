@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { ChevronDown, ChevronUp, MapPin, Map } from '@lucide/vue';
+import { ChevronDown, ChevronUp, ExternalLink, MapPin, Map } from '@lucide/vue';
 import { formatDate, formatTime, naverMapUrl, googleMapUrl } from './useMeetups.js';
 import UserAvatar from './UserAvatar.vue';
 import { attendeeStack as buildStack } from './useSomoimEvents.js';
@@ -32,12 +32,6 @@ const attendeeStack = computed(() => buildStack(attendees.value));
     <div>
       <p class="flex flex-wrap items-center gap-1.5 text-[15px] font-semibold text-[#333333]">
         {{ meetup.title }}
-        <span
-          v-if="meetup.readonly"
-          class="rounded bg-[#D1FAE5] px-1.5 py-0.5 text-[11px] font-semibold text-[#047857]"
-        >
-          소모임
-        </span>
         <span
           v-if="meetup.state === 'done'"
           class="rounded bg-[#f5f6f7] px-1.5 py-0.5 text-xs font-semibold text-[#5f6368]"
@@ -78,10 +72,9 @@ const attendeeStack = computed(() => buildStack(attendees.value));
       </h4>
       <span
         v-if="meetup.readonly"
-        class="shrink-0 rounded bg-[#D1FAE5] px-2 py-0.5 text-[11px] font-semibold text-[#047857]"
-      >
-        소모임
-      </span>
+        class="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#10B981]"
+        aria-label="소모임"
+      ></span>
     </div>
     <p class="text-[12px] text-[#5f6368]">
       <time :datetime="meetup.scheduledAt">{{ formatDate(meetup.scheduledAt) }}</time>
@@ -116,7 +109,7 @@ const attendeeStack = computed(() => buildStack(attendees.value));
             :class="attendee.isHost ? 'ring-[#03C75A]' : 'ring-white'"
             :name="attendee.name"
             :image-url="attendee.badgeUrl ?? ''"
-            :title="attendee.isHost ? `${attendee.name} · 주최자` : attendee.name"
+            :title="attendee.name"
           />
           <span
             v-if="attendeeStack.overflow"
@@ -146,7 +139,6 @@ const attendeeStack = computed(() => buildStack(attendees.value));
           :class="attendee.isHost ? 'border-[#03C75A] bg-[#e9f8ef] text-[#03883f]' : 'border-transparent bg-[#f5f6f7] text-[#333333]'"
         >
           <span class="min-w-0 break-words">{{ attendee.name }}</span>
-          <span v-if="attendee.isHost" class="shrink-0 text-[10px] font-bold text-[#03883f]">주최자</span>
         </li>
       </ul>
     </div>
@@ -154,13 +146,13 @@ const attendeeStack = computed(() => buildStack(attendees.value));
     <div class="mt-auto flex flex-wrap items-center gap-2">
       <!-- 지도: 기본 네이버 버튼 + 구글 아이콘 버튼으로 압축 -->
       <a
-        class="focus-ring inline-flex h-9 items-center justify-center gap-1.5 rounded-[10px] border border-[#dadce0] px-3 text-sm font-semibold text-[#03C75A] transition hover:bg-[#f5f6f7]"
+        class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#dadce0] text-[#03C75A] transition hover:bg-[#f5f6f7]"
         :href="naverMapUrl(meetup)"
         target="_blank"
         rel="noreferrer"
+        aria-label="네이버지도에서 보기"
       >
         <MapPin :size="16" />
-        네이버지도
       </a>
       <a
         class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#dadce0] text-[#5f6368] transition hover:bg-[#f5f6f7]"
@@ -176,12 +168,13 @@ const attendeeStack = computed(() => buildStack(attendees.value));
       <div class="ml-auto flex items-center gap-2">
         <a
           v-if="meetup.readonly"
-          class="focus-ring inline-flex h-9 items-center justify-center gap-1 rounded-[10px] bg-[#059669] px-3 text-sm font-semibold text-white transition hover:bg-[#047857]"
+          class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#059669] text-white transition hover:bg-[#047857]"
           href="https://www.somoim.co.kr"
           target="_blank"
           rel="noreferrer"
+          aria-label="소모임에서 참여하기"
         >
-          참여하기
+          <ExternalLink :size="16" />
         </a>
         <div v-else-if="meetup.isHost" class="flex items-center gap-2">
           <span class="text-sm font-semibold text-[#5f6368]">개설자</span>

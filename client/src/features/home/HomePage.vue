@@ -325,7 +325,7 @@ function sortTime(value) {
     </div>
 
     <!-- 모임 안내 (접기/펼치기) -->
-    <!-- TODO(multi-group): 아래 시간/장소/타임라인/모임장 소개는 현재 단일 모임
+    <!-- TODO(multi-group): 아래 시간/장소/타임라인은 현재 단일 모임
          ([홍대] it&ai 스터디) 전용으로 하드코딩됨. 여러 모임을 지원하게 되면
          모임 설정(meetup_config 등)에서 불러오도록 분리 필요. -->
     <section class="surface-card surface-card--flush">
@@ -340,7 +340,7 @@ function sortTime(value) {
       </button>
       <div
         class="overflow-hidden"
-        :style="{ maxHeight: infoOpen ? '1200px' : '0px', transition: 'max-height 0.3s ease-in-out' }"
+        :style="{ maxHeight: infoOpen ? '900px' : '0px', transition: 'max-height 0.3s ease-in-out' }"
       >
         <div class="grid gap-3.5 px-5 pb-5">
           <div>
@@ -368,10 +368,6 @@ function sortTime(value) {
             <p class="text-[14px] text-[#333333]">노트북 혹은 책</p>
           </div>
 
-          <p class="rounded-lg bg-[#f5f6f7] px-3 py-2.5 text-[13px] leading-snug text-[#03C75A]">
-            정기모임 5회 이상 참여 시 비정기 모임을 자유롭게 개설할 수 있는 운영진 권한을 드려요.
-          </p>
-
           <div class="border-t border-[#dadce0]"></div>
 
           <div>
@@ -394,19 +390,7 @@ function sortTime(value) {
                 <span class="text-[14px] text-[#333333]">희망 인원 점심</span>
               </li>
             </ul>
-            <p class="mt-3 text-[13px] text-[#5f6368]">10:15 이후에 오셔도 괜찮아요. 11:45 공유 시간에 함께 참여해 주세요.</p>
           </div>
-
-          <div class="border-t border-[#dadce0]"></div>
-
-          <div>
-            <p class="mb-0.5 text-[12px] font-semibold text-[#5f6368]">모임장 소개</p>
-            <p class="mt-0.5 text-[14px] leading-relaxed text-[#333333]">
-              제조업에서 AI 개발자로 일하고 있어요. 주말 아침이 사라져서 모임을 만들었습니다. 같이 작업하고 이야기해요.
-            </p>
-          </div>
-          <p class="text-[13px] text-[#5f6368]">증원 신청 및 문의·건의는 메시지 주세요.</p>
-          <p class="text-[13px] text-[#5f6368]">웹에 추가하고 싶은 기능 있으시면 언제든 말씀해주세요.</p>
         </div>
       </div>
     </section>

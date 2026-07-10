@@ -87,12 +87,12 @@ onUnmounted(stopTicker);
   <div class="flex flex-col items-end gap-1">
     <button
       type="button"
-      class="focus-ring inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-[#dadce0] bg-white px-3 text-[13px] font-semibold text-[#5f6368] transition hover:bg-[#f5f6f7] disabled:cursor-not-allowed disabled:opacity-60"
+      class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#dadce0] bg-white text-[#5f6368] transition hover:bg-[#f5f6f7] disabled:cursor-not-allowed disabled:opacity-60"
       :disabled="disabled"
+      :aria-label="label"
       @click="refresh"
     >
       <RefreshCw :size="15" :class="loading ? 'animate-spin' : ''" />
-      {{ label }}
     </button>
     <p v-if="errorMessage" class="text-[11px] text-[#e74c3c]">{{ errorMessage }}</p>
   </div>
