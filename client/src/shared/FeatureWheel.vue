@@ -214,7 +214,7 @@ function stopAnimation() {
       <button
         v-for="item in items"
         :key="item.feature.name"
-        class="absolute left-1/2 top-full flex w-16 flex-col items-center gap-0.5 rounded-xl py-1.5 text-[10px] transition-colors"
+        class="absolute left-1/2 top-full flex h-[68px] w-20 flex-col items-center gap-0.5 rounded-xl py-1.5 text-[10px] transition-colors"
         :class="item.isApex ? 'font-bold text-[#03C75A]' : 'font-medium text-[#5f6368]'"
         :style="item.style"
         :data-feature="item.feature.name"
@@ -223,12 +223,14 @@ function stopAnimation() {
         @click="emit('select', item.feature.name)"
       >
         <span
-          class="flex h-11 w-11 items-center justify-center rounded-full border transition-colors"
+          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-colors"
           :class="item.isApex ? 'border-[#03C75A] bg-[#e9f8ef]' : 'border-[#dadce0] bg-white'"
         >
           <component :is="item.feature.icon" :size="20" />
         </span>
-        {{ item.feature.label }}
+        <span class="block w-full truncate whitespace-nowrap px-0.5 leading-4">
+          {{ item.feature.label }}
+        </span>
       </button>
     </div>
   </div>
