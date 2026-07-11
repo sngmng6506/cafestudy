@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { ChevronDown, ChevronUp, ExternalLink, MapPin, Map } from '@lucide/vue';
 import { formatDate, formatTime, naverMapUrl, googleMapUrl } from './useMeetups.js';
 import UserAvatar from './UserAvatar.vue';
-import { attendeeStack as buildStack } from './useSomoimEvents.js';
+import { attendeeStack as buildStack, somoimAppLink } from './useSomoimEvents.js';
 
 const props = defineProps({
   meetup: { type: Object, required: true },
@@ -21,6 +21,9 @@ const attendees = computed(() =>
   [...(props.meetup.attendees ?? [])].sort((a, b) => Number(Boolean(b.isHost)) - Number(Boolean(a.isHost))),
 );
 const attendeeStack = computed(() => buildStack(attendees.value));
+
+// 참석은 소모임 앱에서만 가능 → 모바일이면 앱 실행 링크. UA는 안 바뀌므로 1회 계산.
+const somoimLink = somoimAppLink();
 </script>
 
 <template>
@@ -170,10 +173,10 @@ const attendeeStack = computed(() => buildStack(attendees.value));
         <a
           v-if="meetup.readonly"
           class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#059669] text-white transition hover:bg-[#047857]"
-          href="https://www.somoim.co.kr"
-          target="_blank"
+          :href="somoimLink.href"
+          :target="somoimLink.target"
           rel="noreferrer"
-          aria-label="소모임에서 참여하기"
+          aria-label="소모임 앱에서 참여하기"
         >
           <ExternalLink :size="16" />
         </a>

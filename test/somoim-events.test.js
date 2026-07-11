@@ -4,6 +4,7 @@ import {
   somoimAttendees,
   somoimEventToMeetup,
   attendeeStack,
+  somoimAppLink,
 } from '../client/src/shared/useSomoimEvents.js';
 
 test('somoimAttendees: 매핑된 이름 + 미매핑은 "외 N명" 항목으로', () => {
@@ -91,4 +92,28 @@ test('attendeeStack: 과거 형태(이름 문자열 배열)도 그대로 처리'
 test('attendeeStack: 빈 입력 안전', () => {
   assert.deepEqual(attendeeStack(null), { shown: [], overflow: 0 });
   assert.deepEqual(attendeeStack([]), { shown: [], overflow: 0 });
+});
+
+test('somoimAppLink: Android는 intent로 앱 실행 + Play 스토어 폴백', () => {
+  const ua = 'Mozilla/5.0 (Linux; Android 14; SM-S921N) AppleWebKit/537.36 Chrome/124 Mobile';
+  const link = somoimAppLink(ua);
+  assert.ok(link.href.startsWith('intent:'));
+  assert.ok(link.href.includes('package=com.friendscube.somoim'));
+  assert.ok(link.href.includes('S.browser_fallback_url='));
+  // intent: 링크는 새 탭에서 동작하지 않음
+  assert.equal(link.target, '_self');
+});
+
+test('somoimAppLink: iPhone은 App Store로', () => {
+  const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15';
+  const link = somoimAppLink(ua);
+  assert.equal(link.href, 'https://apps.apple.com/kr/app/id582910479');
+  assert.equal(link.target, '_blank');
+});
+
+test('somoimAppLink: 데스크톱은 기존 웹 링크 유지', () => {
+  const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124';
+  const link = somoimAppLink(ua);
+  assert.equal(link.href, 'https://www.somoim.co.kr');
+  assert.equal(link.target, '_blank');
 });

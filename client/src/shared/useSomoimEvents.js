@@ -33,6 +33,23 @@ export function somoimEventToMeetup(event) {
   };
 }
 
+// 소모임 참여 링크: 참석은 소모임 앱에서만 가능하므로 플랫폼별로 앱 실행을 시도.
+// 공개 딥링크가 없어(스킴·App Links 미제공) 특정 정모로는 못 가고 앱 실행까지만 지원.
+export function somoimAppLink(userAgent = navigator.userAgent) {
+  if (/android/i.test(userAgent)) {
+    // 앱 실행, 미설치면 Play 스토어 폴백. intent: 링크는 새 탭에서 동작 안 함 → _self.
+    return {
+      href: 'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.friendscube.somoim;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.friendscube.somoim;end',
+      target: '_self',
+    };
+  }
+  if (/iPhone|iPad|iPod/i.test(userAgent)) {
+    // 스킴 미공개라 App Store로 → 설치돼 있으면 "열기" 버튼으로 앱 진입.
+    return { href: 'https://apps.apple.com/kr/app/id582910479', target: '_blank' };
+  }
+  return { href: 'https://www.somoim.co.kr', target: '_blank' };
+}
+
 // 참석자 배열 → 아바타 스택 데이터. 항목은 { name, badgeUrl? } 객체
 // (과거 형태인 이름 문자열도 허용). "외 N명" 항목(unmappedCount)은
 // 집계용이므로 스택에서 제외하고 overflow 카운트로 환산.
