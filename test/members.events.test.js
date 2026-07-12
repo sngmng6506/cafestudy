@@ -17,24 +17,29 @@ test('extractFaceId: 얼굴 URL에서 UUID 추출 (1t/1n 접미사)', () => {
   assert.equal(extractFaceId('https://cdn.example/i_clock.svg'), null);
 });
 
-test('extractDateTimeFromThumbnail: 썸네일 URL에서 연도 포함 시각 추출', () => {
+// 기대값은 절대 UTC 인스턴트로 고정한다 (KST = UTC+9).
+// 로컬 getter로 검증하면 테스트 러너의 타임존에 따라 같은 버그를 놓친다.
+test('extractDateTimeFromThumbnail: 썸네일 URL의 KST 시각 -> UTC 인스턴트', () => {
   const url = 'https://cdn.example/eb377bbe...667c1202607041000s1.png';
   const dt = extractDateTimeFromThumbnail(url);
-  assert.equal(dt.getFullYear(), 2026);
-  assert.equal(dt.getMonth(), 6); // 0-indexed = 7월
-  assert.equal(dt.getDate(), 4);
-  assert.equal(dt.getHours(), 10);
+  assert.equal(dt.toISOString(), '2026-07-04T01:00:00.000Z'); // KST 7/4 10:00
   assert.equal(extractDateTimeFromThumbnail('no-date.png'), null);
 });
 
-test('parseDateTimeText: 오전/오후 12시간제 변환', () => {
+test('parseDateTimeText: 오전/오후 12시간제 변환 (KST -> UTC)', () => {
   const pm = parseDateTimeText('7/5(일) 오후 1:00', 2026);
-  assert.equal(pm.getHours(), 13);
+  assert.equal(pm.toISOString(), '2026-07-05T04:00:00.000Z'); // KST 13:00
   const am = parseDateTimeText('7/4(토) 오전 10:00', 2026);
-  assert.equal(am.getHours(), 10);
+  assert.equal(am.toISOString(), '2026-07-04T01:00:00.000Z'); // KST 10:00
   // 정오/자정 경계
-  assert.equal(parseDateTimeText('1/1(수) 오후 12:00', 2026).getHours(), 12);
-  assert.equal(parseDateTimeText('1/1(수) 오전 12:00', 2026).getHours(), 0);
+  assert.equal(
+    parseDateTimeText('1/1(수) 오후 12:00', 2026).toISOString(),
+    '2026-01-01T03:00:00.000Z', // KST 12:00
+  );
+  assert.equal(
+    parseDateTimeText('1/1(수) 오전 12:00', 2026).toISOString(),
+    '2025-12-31T15:00:00.000Z', // KST 1/1 00:00
+  );
   assert.equal(parseDateTimeText('잘못된 텍스트', 2026), null);
 });
 
@@ -70,7 +75,7 @@ test('normalizeEvent: 썸네일 날짜 우선, 참가자 이름 매핑, 미매�
   const ev = normalizeEvent(card, { crawlYear: 2026, memberByFaceId });
 
   assert.equal(ev.title, '26.');
-  assert.equal(ev.scheduledAt, new Date(2026, 6, 4, 10, 0).toISOString());
+  assert.equal(ev.scheduledAt, '2026-07-04T01:00:00.000Z'); // KST 7/4 10:00
   assert.equal(ev.location, '아비아채 지하1층');
   assert.equal(ev.joinedCount, 7);
   assert.equal(ev.capacity, 10);
@@ -90,7 +95,7 @@ test('normalizeEvent: 썸네일 날짜 없으면 텍스트 fallback', () => {
     capacityText: null,
   };
   const ev = normalizeEvent(card, { crawlYear: 2026 });
-  assert.equal(ev.scheduledAt, new Date(2026, 6, 5, 13, 0).toISOString());
+  assert.equal(ev.scheduledAt, '2026-07-05T04:00:00.000Z'); // KST 7/5 13:00
   assert.equal(ev.joinedCount, null);
 });
 

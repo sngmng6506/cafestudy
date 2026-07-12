@@ -5,6 +5,15 @@
 // { thumbnailSrc, title, dateTimeText, location, cost, attendeeFaceSrcs, capacityText }
 // 형태의 raw 카드를 뽑고, 여기 함수들로 정규화한다.
 
+// 크롤링된 시각은 KST 벽시계다. 서버 로컬 타임존으로 해석하면 UTC 컨테이너에서
+// 9시간 밀리므로, 항상 UTC+9 고정 오프셋으로 절대 시각을 만든다 (KST는 DST 없음).
+const SEOUL_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+function kstDate(year, month0, day, hour, minute) {
+  const date = new Date(Date.UTC(year, month0, day, hour, minute) - SEOUL_OFFSET_MS);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 // 얼굴 이미지 URL에서 UUID(36자) 추출. 예: ".../<uuid>1t.png", ".../<uuid>1n.png"
 export function extractFaceId(url) {
   if (!url) return null;
@@ -18,8 +27,7 @@ export function extractDateTimeFromThumbnail(url) {
   const m = url.match(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})s\d+\.png$/);
   if (!m) return null;
   const [, y, mo, d, h, mi] = m;
-  const date = new Date(+y, +mo - 1, +d, +h, +mi);
-  return Number.isNaN(date.getTime()) ? null : date;
+  return kstDate(+y, +mo - 1, +d, +h, +mi);
 }
 
 // 텍스트 fallback: "7/4(토) 오전 10:00" + 크롤링 연도.
@@ -32,8 +40,7 @@ export function parseDateTimeText(text, crawlYear = new Date().getFullYear()) {
   let hh = +hhRaw;
   if (ampm === '오후' && hh !== 12) hh += 12;
   if (ampm === '오전' && hh === 12) hh = 0;
-  const date = new Date(crawlYear, +mo - 1, +d, hh, +mi);
-  return Number.isNaN(date.getTime()) ? null : date;
+  return kstDate(crawlYear, +mo - 1, +d, hh, +mi);
 }
 
 // "7/10" -> { joined: 7, capacity: 10 }
