@@ -33,6 +33,6 @@ COPY --from=build /app/client/dist ./client/dist
 COPY --from=build /app/migrations ./migrations
 COPY --from=build /app/scripts ./scripts
 
-EXPOSE 3000
+EXPOSE 3001
 
 CMD ["sh", "-c", "npm run db:migrate && npm start"]
