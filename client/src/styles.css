@@ -44,9 +44,12 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* textarea 포함: 빠뜨리면 input(16px 상속)과 textarea(유틸리티 15px)의
+   입력 글자 크기가 달라진다 — 이 규칙은 레이어 밖이라 유틸리티보다 우선한다. */
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
