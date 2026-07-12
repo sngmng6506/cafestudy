@@ -1,10 +1,14 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import { Plus, Search, X } from '@lucide/vue';
+import { ChevronDown, Plus, Search, X } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
+import { formatDate } from '../../shared/useMeetups.js';
 import { useToast } from '../../shared/useToast.js';
 
 const toast = useToast();
+
+// 서버 한도는 100이지만, 셀렉트 박스에서 고르기 쉬운 현실적인 범위만 노출한다.
+const CAPACITY_CHOICES = 20;
 
 const form = ref({
   title: '',
@@ -117,7 +121,12 @@ onBeforeUnmount(() => {
   }
 });
 
-async function createMeetup() {
+// --- 개설 확인 팝업 ---
+const showConfirm = ref(false);
+const creating = ref(false);
+
+// 개설 버튼: 입력 검증만 통과하면 바로 만들지 않고 장소·일시 확인 팝업을 띄운다.
+function requestCreateMeetup() {
   const scheduled = new Date(form.value.scheduledAt);
   if (Number.isNaN(scheduled.getTime()) || scheduled.getTime() < Date.now() + 30 * 60 * 1000) {
     toast.error('모임은 지금부터 30분 이후 시간으로만 개설할 수 있습니다.');
@@ -134,6 +143,13 @@ async function createMeetup() {
     toast.error('위치(주소)를 검색해서 선택해주세요.');
     return;
   }
+
+  showConfirm.value = true;
+}
+
+async function createMeetup() {
+  if (creating.value) return;
+  creating.value = true;
 
   try {
     await apiFetch('/api/meetups', {
@@ -159,6 +175,9 @@ async function createMeetup() {
     toast.success('모임이 생성되었습니다.');
   } catch (error) {
     toast.error(error.message);
+  } finally {
+    creating.value = false;
+    showConfirm.value = false;
   }
 }
 
@@ -182,7 +201,7 @@ function toLocalInputValue(date) {
       <h1 class="text-[22px] font-bold leading-snug text-[#333333]">모임 개설</h1>
     </div>
 
-    <form class="surface-card" @submit.prevent="createMeetup">
+    <form class="surface-card" @submit.prevent="requestCreateMeetup">
       <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#333333]">
         제목
         <input
@@ -235,14 +254,19 @@ function toLocalInputValue(date) {
 
       <label class="mb-5 grid gap-1.5 text-[13px] font-medium text-[#333333]">
         최대 참가 인원
-        <input
-          v-model.number="form.capacity"
-          class="h-12 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[#5f6368] focus:border-[#03C75A]"
-          type="number"
-          min="1"
-          max="100"
-          required
-        />
+        <div class="relative">
+          <ChevronDown
+            :size="16"
+            class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#5f6368]"
+          />
+          <select
+            v-model.number="form.capacity"
+            class="h-12 w-full appearance-none rounded-lg border border-[#dadce0] bg-white pl-10 pr-4 text-[15px] font-medium outline-none transition focus:border-[#03C75A]"
+            required
+          >
+            <option v-for="n in CAPACITY_CHOICES" :key="n" :value="n">{{ n }}명</option>
+          </select>
+        </div>
         <span class="text-[12px] font-medium text-[#5f6368]">개설자(나) 포함 인원입니다.</span>
       </label>
 
@@ -307,6 +331,45 @@ function toLocalInputValue(date) {
               </button>
             </li>
           </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 개설 확인 팝업 -->
+    <div
+      v-if="showConfirm"
+      class="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      @click.self="showConfirm = false"
+    >
+      <div class="absolute inset-0 bg-[#333333]/30" @click="showConfirm = false"></div>
+      <div class="relative z-10 w-full max-w-md rounded-t-xl bg-white p-5 shadow-sm sm:rounded-xl">
+        <p class="text-[17px] font-bold text-[#333333]">이 내용으로 모임을 개설할까요?</p>
+        <dl class="mt-4 grid gap-2.5 rounded-lg bg-[#f5f6f7] p-4 text-[14px]">
+          <div class="flex gap-3">
+            <dt class="w-8 shrink-0 font-semibold text-[#5f6368]">장소</dt>
+            <dd class="min-w-0 break-keep font-medium text-[#333333]">{{ form.location }}</dd>
+          </div>
+          <div class="flex gap-3">
+            <dt class="w-8 shrink-0 font-semibold text-[#5f6368]">일시</dt>
+            <dd class="font-medium text-[#333333]">{{ formatDate(form.scheduledAt) }}</dd>
+          </div>
+        </dl>
+        <div class="mt-5 flex gap-2">
+          <button
+            type="button"
+            class="focus-ring h-12 flex-1 rounded border border-[#dadce0] text-[15px] font-semibold text-[#333333] transition hover:bg-[#f5f6f7]"
+            @click="showConfirm = false"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            class="focus-ring h-12 flex-1 rounded bg-[#03C75A] text-[15px] font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-60"
+            :disabled="creating"
+            @click="createMeetup"
+          >
+            {{ creating ? '개설 중…' : '개설하기' }}
+          </button>
         </div>
       </div>
     </div>
