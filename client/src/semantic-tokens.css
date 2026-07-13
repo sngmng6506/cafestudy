@@ -3,26 +3,32 @@
   --ui-color-canvas: var(--color-page-bg);
   --ui-color-surface: var(--color-bg);
   --ui-color-surface-subtle: var(--color-sub-bg);
+  --ui-color-surface-hover: var(--color-surface-hover);
   --ui-color-content: var(--color-text);
   --ui-color-content-muted: var(--color-muted);
   --ui-color-content-caption: var(--color-caption);
+  --ui-color-content-disabled: var(--color-disabled);
   --ui-color-stroke: var(--color-border);
   --ui-color-stroke-subtle: var(--color-border-subtle);
+  --ui-color-stroke-hover: var(--color-border-hover);
   --ui-color-brand: var(--color-accent);
   --ui-color-brand-hover: var(--color-accent-hover);
   --ui-color-brand-active: var(--color-accent-active);
   --ui-color-destructive: var(--color-danger);
   --ui-color-link: var(--color-safe);
 
+  --ui-radius-badge: 4px;
   --ui-radius-control: 10px;
   --ui-radius-item: 12px;
   --ui-radius-card: 16px;
+  --ui-radius-overlay: 20px;
   --ui-radius-pill: 9999px;
 
   --ui-font-page-title-size: var(--text-page-title);
   --ui-font-page-title-weight: 700;
   --ui-font-section-title-size: var(--text-card-title);
   --ui-font-section-title-weight: 700;
+  --ui-font-body-large-size: var(--text-body-lg);
   --ui-font-body-size: var(--text-body);
   --ui-font-caption-size: var(--text-caption);
 }
@@ -30,15 +36,19 @@
 .ui-text { color: var(--ui-color-content); }
 .ui-text-muted { color: var(--ui-color-content-muted); }
 .ui-text-caption { color: var(--ui-color-content-caption); }
+.ui-text-disabled { color: var(--ui-color-content-disabled); }
 .ui-text-brand { color: var(--ui-color-brand); }
 .ui-text-danger { color: var(--ui-color-destructive); }
+.ui-text-link { color: var(--ui-color-link); }
 .ui-bg-surface { background-color: var(--ui-color-surface); }
 .ui-bg-subtle { background-color: var(--ui-color-surface-subtle); }
 .ui-border { border-color: var(--ui-color-stroke); }
 .ui-border-subtle { border-color: var(--ui-color-stroke-subtle); }
+.ui-radius-badge { border-radius: var(--ui-radius-badge); }
 .ui-radius-control { border-radius: var(--ui-radius-control); }
 .ui-radius-item { border-radius: var(--ui-radius-item); }
 .ui-radius-card { border-radius: var(--ui-radius-card); }
+.ui-radius-overlay { border-radius: var(--ui-radius-overlay); }
 .ui-radius-pill { border-radius: var(--ui-radius-pill); }
 
 .ui-page-title {
@@ -65,8 +75,8 @@
 }
 
 .ui-search-trigger:hover {
-  border-color: #bfc4c9;
-  background: #f1f3f4;
+  border-color: var(--ui-color-stroke-hover);
+  background: var(--ui-color-surface-hover);
 }
 
 .ui-nav-item {
