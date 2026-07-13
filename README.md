@@ -130,6 +130,7 @@ test/          # node:test 테스트
 | [ROADMAP.md](./ROADMAP.md) | 앞으로 구현하면 좋은 기능 후보와 검색 개선 계획 | 구현할 기능을 고를 때 |
 | [CLAUDE.md](./CLAUDE.md) | AGENTS.md로의 포인터 | 안 봐도 됨 (도구 자동 인식용) |
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | 데이터 모델, 포인트 규칙, 트랜잭션, 설계 한계 | DB나 도메인 로직을 건드리기 전 |
-| [DESIGN_GUIDE.md](./DESIGN_GUIDE.md) | 색상/타이포/컴포넌트 디자인 토큰 | UI를 만들거나 고치기 전 |
+| [DESIGN_GUIDE.md](./DESIGN_GUIDE.md) | semantic token, 색상, 타이포, 컴포넌트, 접근성 | UI를 만들거나 고치기 전 |
+| [WRITING_GUIDE.md](./WRITING_GUIDE.md) | 사용자 문구의 목소리, 용어, 버튼·빈 상태·오류 기준 | 사용자에게 보이는 문구를 만들거나 고치기 전 |
 
 변경 이력은 `git log` 참고 (커밋에 배경이 `Why:`로 남아있습니다).
