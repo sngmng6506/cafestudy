@@ -1,16 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  /* Naver palette — single green accent over achromatic chrome */
+  /* Primitive palette. Components should consume semantic aliases from semantic-tokens.css. */
   --color-bg: #ffffff;
   --color-page-bg: #f7f8f9;
   --color-sub-bg: #f5f6f7;
+  --color-surface-hover: #f1f3f4;
   --color-text: #333333;
   --color-muted: #5f6368;
   --color-caption: #767676;
   --color-disabled: #999999;
   --color-border: #dadce0;
   --color-border-subtle: #e9ebee;
+  --color-border-hover: #bfc4c9;
   --color-accent: #03c75a;
   --color-accent-hover: #02b350;
   --color-accent-active: #02a046;
@@ -76,7 +78,7 @@ button {
 /* Shared keyboard-focus ring — Naver brand green, applied to interactive chrome */
 .focus-ring:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #03c75a;
+  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent);
 }
 
 /*
@@ -85,7 +87,7 @@ button {
  * 테두리 없는 흰 카드로 구획한다(여백으로 분리). 답답함을 줄이고 위계를 살린다.
  */
 .surface-card {
-  background: #ffffff;
+  background: var(--color-bg);
   border-radius: 16px;
   padding: 20px;
 }

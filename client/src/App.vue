@@ -78,7 +78,7 @@ function openMenuSearch() {
 
 <template>
   <main
-    class="mx-auto min-h-screen w-full max-w-md px-5 pt-8 text-[#333333]"
+    class="ui-text mx-auto min-h-screen w-full max-w-md px-5 pt-8"
     :class="[smashed ? 'smashed' : '', showBottomSearch ? 'pb-44' : 'pb-28']"
     :style="smashStyle"
   >
@@ -87,7 +87,7 @@ function openMenuSearch() {
       <div class="absolute right-0 top-0 z-10 flex items-center gap-1">
         <button
           v-if="currentUserId"
-          class="focus-ring flex items-center gap-2 rounded-full py-1 pl-2 pr-3 text-[13px] font-medium text-[#5f6368] transition hover:bg-[#f5f6f7] hover:text-[#333333]"
+          class="focus-ring ui-text-muted ui-radius-pill flex items-center gap-2 py-1 pl-2 pr-3 text-[13px] font-medium transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
           type="button"
           @click="memberSelectOpen = true"
         >
@@ -100,7 +100,7 @@ function openMenuSearch() {
         </button>
         <button
           v-else
-          class="focus-ring rounded-full px-3 py-1 text-[13px] font-medium text-[#03C75A] transition hover:bg-[#f5f6f7]"
+          class="focus-ring ui-text-brand ui-radius-pill px-3 py-1 text-[13px] font-medium transition hover:bg-[var(--ui-color-surface-subtle)]"
           type="button"
           @click="memberSelectOpen = true"
         >
@@ -113,17 +113,17 @@ function openMenuSearch() {
 
     <!-- Home-only search entry + bottom tab bar, constrained to the phone-width column -->
     <div
-      class="fixed bottom-0 left-1/2 z-50 w-full max-w-md -translate-x-1/2 border-t border-[#dadce0] bg-white px-2 pt-2 shadow-[0_-4px_18px_rgba(0,0,0,0.06)]"
+      class="ui-bg-surface ui-border fixed bottom-0 left-1/2 z-50 w-full max-w-md -translate-x-1/2 border-t px-2 pt-2 shadow-[0_-4px_18px_rgba(0,0,0,0.06)]"
     >
       <Transition name="bottom-search">
         <div v-if="showBottomSearch" class="bottom-search-slot overflow-hidden px-2">
           <button
-            class="focus-ring flex h-11 w-full items-center gap-2.5 rounded-xl border border-[#dadce0] bg-[#f7f8f9] px-4 text-left text-[14px] font-medium text-[#5f6368] transition hover:border-[#bfc4c9] hover:bg-[#f1f3f4]"
+            class="focus-ring ui-search-trigger flex h-11 w-full items-center gap-2.5 px-4 text-left transition"
             type="button"
             aria-label="자연어로 기능 찾기"
             @click="openMenuSearch"
           >
-            <Search class="shrink-0 text-[#03C75A]" :size="18" />
+            <Search class="ui-text-brand shrink-0" :size="18" />
             <span class="min-w-0 flex-1 truncate">찾고 싶은 기능 검색</span>
           </button>
         </div>
@@ -138,7 +138,7 @@ function openMenuSearch() {
           v-for="feature in primaryFeatures"
           :key="feature.name"
           class="focus-ring relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition"
-          :class="feature.name === activeFeatureName ? 'font-bold text-[#03C75A] before:absolute before:-top-1.5 before:left-1/2 before:h-[3px] before:w-8 before:-translate-x-1/2 before:rounded-full before:bg-[#03C75A]' : 'font-medium text-[#5f6368] hover:text-[#333333]'"
+          :class="feature.name === activeFeatureName ? 'ui-nav-item-active' : 'ui-nav-item'"
           type="button"
           @click="selectFeature(feature.name)"
         >
@@ -149,7 +149,7 @@ function openMenuSearch() {
         <button
           v-if="hasOverflow"
           class="focus-ring relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition"
-          :class="overflowActive || moreOpen ? 'font-bold text-[#03C75A] before:absolute before:-top-1.5 before:left-1/2 before:h-[3px] before:w-8 before:-translate-x-1/2 before:rounded-full before:bg-[#03C75A]' : 'font-medium text-[#5f6368] hover:text-[#333333]'"
+          :class="overflowActive || moreOpen ? 'ui-nav-item-active' : 'ui-nav-item'"
           type="button"
           aria-haspopup="menu"
           :aria-expanded="moreOpen"
