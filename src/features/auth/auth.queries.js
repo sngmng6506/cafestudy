@@ -2,8 +2,13 @@ export function createAuthQueries(db) {
   return {
     async getAuthUserById(id) {
       const result = await db.query(
-        `SELECT id, nickname, password_hash AS "passwordHash", is_admin AS "isAdmin"
-           FROM users WHERE id = $1`,
+        `SELECT
+           id,
+           nickname,
+           password_hash AS "passwordHash",
+           COALESCE(admin_role, CASE WHEN is_admin THEN 'admin' ELSE 'member' END) AS "adminRole"
+         FROM users
+         WHERE id = $1`,
         [id],
       );
       return result.rows[0] ?? null;
@@ -16,7 +21,6 @@ export function createAuthQueries(db) {
       );
     },
 
-    // 비밀번호를 지우고(초기화), 대상의 모든 세션을 무효화한다.
     async clearPassword(id) {
       await db.transaction(async (client) => {
         await client.query(
