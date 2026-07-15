@@ -8,7 +8,9 @@ export function createNoticesRouter(ctx) {
 
   router.get('/', ctx.auth.requireUser, async (req, res, next) => {
     try {
-      sendOk(res, await service.list(req.user.id));
+      const limit = req.query.limit === undefined ? null : Number(req.query.limit);
+      const summary = req.query.summary === 'true';
+      sendOk(res, await service.list(req.user.id, { limit, summary }));
     } catch (error) {
       next(error);
     }
@@ -36,6 +38,14 @@ export function createNoticesRouter(ctx) {
     }
   });
 
+  router.post('/read-all', ctx.auth.requireUser, async (req, res, next) => {
+    try {
+      sendOk(res, await service.markAllRead(req.user.id));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.patch('/:id', ctx.auth.requireAdmin, async (req, res, next) => {
     try {
       sendOk(res, await service.update(req.params.id, req.body ?? {}));
@@ -55,14 +65,6 @@ export function createNoticesRouter(ctx) {
   router.post('/:id/read', ctx.auth.requireUser, async (req, res, next) => {
     try {
       sendOk(res, await service.markRead(req.params.id, req.user.id));
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  router.post('/read-all', ctx.auth.requireUser, async (req, res, next) => {
-    try {
-      sendOk(res, await service.markAllRead(req.user.id));
     } catch (error) {
       next(error);
     }
