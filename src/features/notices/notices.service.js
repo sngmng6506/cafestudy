@@ -3,6 +3,7 @@ import { createNoticesQueries } from './notices.queries.js';
 
 const TITLE_MAX = 100;
 const BODY_MAX = 5000;
+const LIST_LIMIT_MAX = 50;
 
 export function createNoticesService({ db }) {
   const queries = createNoticesQueries(db);
@@ -18,7 +19,13 @@ export function createNoticesService({ db }) {
   }
 
   return {
-    list: (userId) => queries.list(userId),
+    list(userId, { limit = null, summary = false } = {}) {
+      if (limit !== null && (!Number.isInteger(limit) || limit < 1 || limit > LIST_LIMIT_MAX)) {
+        throwValidation(`공지 조회 개수는 1~${LIST_LIMIT_MAX} 사이여야 합니다.`);
+      }
+      return queries.list(userId, { limit, summary: summary === true });
+    },
+
     unreadCount: (userId) => queries.unreadCount(userId),
 
     async create(input) {
