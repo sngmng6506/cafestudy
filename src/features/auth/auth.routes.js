@@ -10,8 +10,7 @@ export function createAuthRouter(ctx) {
 
   router.post('/set-password', async (req, res, next) => {
     try {
-      const result = await service.setPassword(req.body ?? {});
-      sendOk(res, result);
+      sendOk(res, await service.setPassword(req.body ?? {}));
     } catch (err) {
       next(err);
     }
@@ -19,8 +18,15 @@ export function createAuthRouter(ctx) {
 
   router.post('/login', async (req, res, next) => {
     try {
-      const result = await service.login(req.body ?? {});
-      sendOk(res, result);
+      sendOk(res, await service.login(req.body ?? {}));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get('/me', ctx.auth.requireUser, async (req, res, next) => {
+    try {
+      sendOk(res, await service.currentUser(req.user.id));
     } catch (err) {
       next(err);
     }
@@ -30,8 +36,7 @@ export function createAuthRouter(ctx) {
     try {
       const authHeader = req.header('authorization') ?? '';
       const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-      const result = await service.logout(token);
-      sendOk(res, result);
+      sendOk(res, await service.logout(token));
     } catch (err) {
       next(err);
     }
@@ -39,8 +44,10 @@ export function createAuthRouter(ctx) {
 
   router.post('/reset-password', ctx.auth.requireAdmin, async (req, res, next) => {
     try {
-      const result = await service.resetPassword({ targetMemberId: req.body?.memberId });
-      sendOk(res, result);
+      sendOk(res, await service.resetPassword({
+        actorId: req.user.id,
+        targetMemberId: req.body?.memberId,
+      }));
     } catch (err) {
       next(err);
     }
