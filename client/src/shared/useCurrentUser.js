@@ -5,25 +5,27 @@ const STORAGE_NAME_KEY = 'cafestudy_user_name';
 const STORAGE_TOKEN_KEY = 'cafestudy_token';
 const STORAGE_ADMIN_KEY = 'cafestudy_is_admin';
 const STORAGE_ROLE_KEY = 'cafestudy_admin_role';
+const ROLES = new Set(['member', 'admin', 'owner']);
+
+function normalizeRole(value) {
+  if (typeof value === 'string' && ROLES.has(value)) return value;
+  return value === true ? 'admin' : 'member';
+}
 
 const currentUserId = ref(localStorage.getItem(STORAGE_KEY) ?? '');
 const currentUserName = ref(localStorage.getItem(STORAGE_NAME_KEY) ?? '');
 const currentToken = ref(localStorage.getItem(STORAGE_TOKEN_KEY) ?? '');
-const storedRole = localStorage.getItem(STORAGE_ROLE_KEY)
-  ?? (localStorage.getItem(STORAGE_ADMIN_KEY) === 'true' ? 'admin' : 'member');
+const storedRole = normalizeRole(
+  localStorage.getItem(STORAGE_ROLE_KEY)
+    ?? (localStorage.getItem(STORAGE_ADMIN_KEY) === 'true'),
+);
 const adminRole = ref(storedRole);
 const isAdmin = ref(storedRole === 'admin' || storedRole === 'owner');
 const isOwner = ref(storedRole === 'owner');
 
 export function useCurrentUser() {
-  function setCurrentUser(id, name, token = '', roleOrAdmin = 'member') {
-    const role = typeof roleOrAdmin === 'string'
-      ? roleOrAdmin
-      : roleOrAdmin && name === '이상명'
-        ? 'owner'
-        : roleOrAdmin
-          ? 'admin'
-          : 'member';
+  function setCurrentUser(id, name, token = '', roleValue = 'member') {
+    const role = normalizeRole(roleValue);
     currentUserId.value = id;
     currentUserName.value = name;
     currentToken.value = token;
