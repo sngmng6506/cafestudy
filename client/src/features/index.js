@@ -1,4 +1,4 @@
-import { Award, CalendarDays, Camera, Coffee, Dices, Gamepad2, History, Home, Megaphone, QrCode, SearchCheck, ShieldCheck, Trophy, Users } from '@lucide/vue';
+import { Award, Calculator, CalendarDays, Camera, Coffee, Dices, Gamepad2, History, Home, Megaphone, QrCode, SearchCheck, ShieldCheck, Trophy, Users } from '@lucide/vue';
 import HomePage from './home/HomePage.vue';
 import MeetupPage from './meetups/MeetupPage.vue';
 import RankingPage from './ranking/RankingPage.vue';
@@ -14,6 +14,7 @@ import SearchGuidePage from './menu-search/SearchGuidePage.vue';
 import Game2048Page from './game2048/Game2048Page.vue';
 import NoticesPage from './notices/NoticesPage.vue';
 import AdminPage from './admin/AdminPage.vue';
+import SettlementsPage from './settlements/SettlementsPage.vue';
 
 export const features = [
   { name: 'home', label: '홈', order: 0, icon: Home, component: HomePage, primary: true },
@@ -23,6 +24,7 @@ export const features = [
   { name: 'members', label: '멤버', order: 40, icon: Users, component: MembersPage, primary: true },
   { name: 'notices', label: '공지사항', order: 90, icon: Megaphone, component: NoticesPage },
   { name: 'admin', label: '관리자', order: 95, icon: ShieldCheck, component: AdminPage, adminOnly: true },
+  { name: 'settlements', label: '정산', order: 98, icon: Calculator, component: SettlementsPage },
   { name: 'dice', label: '주사위', order: 100, icon: Dices, component: DicePage },
   { name: 'game2048', label: '2048', order: 102, icon: Gamepad2, component: Game2048Page },
   { name: 'badges', label: '뱃지', order: 105, icon: Award, component: BadgesPage },
