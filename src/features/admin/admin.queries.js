@@ -1,4 +1,14 @@
 export function createAdminQueries(db) {
+  async function findUser(id, client = db) {
+    const result = await client.query(
+      `SELECT id, nickname,
+              COALESCE(admin_role, CASE WHEN is_admin THEN 'admin' ELSE 'member' END) AS role
+       FROM users WHERE id = $1`,
+      [id],
+    );
+    return result.rows[0] ?? null;
+  }
+
   return {
     async listUsers() {
       const result = await db.query(
@@ -16,19 +26,11 @@ export function createAdminQueries(db) {
       return result.rows;
     },
 
-    async findUser(id, client = db) {
-      const result = await client.query(
-        `SELECT id, nickname,
-                COALESCE(admin_role, CASE WHEN is_admin THEN 'admin' ELSE 'member' END) AS role
-         FROM users WHERE id = $1`,
-        [id],
-      );
-      return result.rows[0] ?? null;
-    },
+    findUser,
 
     async updateRole({ targetUserId, changedBy, role }) {
       return db.transaction(async (client) => {
-        const target = await this.findUser(targetUserId, client);
+        const target = await findUser(targetUserId, client);
         if (!target) return null;
         if (target.role === role) return target;
 
