@@ -7,7 +7,12 @@ const unreadCount = ref(0);
 const loading = ref(false);
 const notificationLoading = ref(false);
 const errorMessage = ref('');
+const notificationErrorMessage = ref('');
 const loaded = ref(false);
+const hasMore = ref(false);
+const nextOffset = ref(0);
+let fullRequestGeneration = 0;
+let notificationRequestGeneration = 0;
 
 function setReadState(noticeId, isRead) {
   for (const collection of [notices.value, recentNotices.value]) {
@@ -16,38 +21,63 @@ function setReadState(noticeId, isRead) {
   }
 }
 
+function appendUnique(current, incoming) {
+  const known = new Set(current.map((notice) => notice.id));
+  return [...current, ...incoming.filter((notice) => !known.has(notice.id))];
+}
+
 export function useNotices() {
-  async function loadNotices() {
+  async function loadNotices({ append = false, pageSize = 20 } = {}) {
+    const generation = ++fullRequestGeneration;
+    const offset = append ? nextOffset.value : 0;
     loading.value = true;
-    errorMessage.value = '';
+    if (!append) errorMessage.value = '';
+
     try {
-      const body = await apiFetch('/api/notices');
-      notices.value = body.data ?? [];
-      unreadCount.value = notices.value.filter((notice) => !notice.isRead).length;
+      const body = await apiFetch(`/api/notices?limit=${pageSize}&offset=${offset}`);
+      if (generation !== fullRequestGeneration) return;
+
+      const page = body.data ?? { items: [], hasMore: false, nextOffset: offset };
+      notices.value = append
+        ? appendUnique(notices.value, page.items ?? [])
+        : (page.items ?? []);
+      hasMore.value = page.hasMore === true;
+      nextOffset.value = page.nextOffset ?? notices.value.length;
       loaded.value = true;
     } catch (error) {
-      errorMessage.value = error.message;
+      if (generation === fullRequestGeneration) errorMessage.value = error.message;
       throw error;
     } finally {
-      loading.value = false;
+      if (generation === fullRequestGeneration) loading.value = false;
     }
   }
 
+  async function loadMoreNotices(pageSize = 20) {
+    if (loading.value || !hasMore.value) return;
+    return loadNotices({ append: true, pageSize });
+  }
+
   async function loadNotificationSummary() {
+    const generation = ++notificationRequestGeneration;
     notificationLoading.value = true;
-    errorMessage.value = '';
+    notificationErrorMessage.value = '';
+
     try {
       const [recentBody, countBody] = await Promise.all([
-        apiFetch('/api/notices?limit=8&summary=true'),
+        apiFetch('/api/notices?limit=8&offset=0&summary=true'),
         apiFetch('/api/notices/unread-count'),
       ]);
-      recentNotices.value = recentBody.data ?? [];
+      if (generation !== notificationRequestGeneration) return;
+
+      recentNotices.value = recentBody.data?.items ?? [];
       unreadCount.value = countBody.data?.count ?? 0;
     } catch (error) {
-      errorMessage.value = error.message;
+      if (generation === notificationRequestGeneration) {
+        notificationErrorMessage.value = error.message;
+      }
       throw error;
     } finally {
-      notificationLoading.value = false;
+      if (generation === notificationRequestGeneration) notificationLoading.value = false;
     }
   }
 
@@ -67,11 +97,18 @@ export function useNotices() {
   }
 
   function resetNotices() {
+    fullRequestGeneration += 1;
+    notificationRequestGeneration += 1;
     notices.value = [];
     recentNotices.value = [];
     unreadCount.value = 0;
+    loading.value = false;
+    notificationLoading.value = false;
     errorMessage.value = '';
+    notificationErrorMessage.value = '';
     loaded.value = false;
+    hasMore.value = false;
+    nextOffset.value = 0;
   }
 
   return {
@@ -81,8 +118,11 @@ export function useNotices() {
     loading,
     notificationLoading,
     loaded,
+    hasMore,
     errorMessage,
+    notificationErrorMessage,
     loadNotices,
+    loadMoreNotices,
     loadNotificationSummary,
     markRead,
     markAllRead,
