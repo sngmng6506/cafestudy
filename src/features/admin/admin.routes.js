@@ -5,6 +5,7 @@ import { createAdminService } from './admin.service.js';
 export function createAdminRouter(ctx) {
   const router = Router();
   const service = createAdminService(ctx);
+  const requireOwner = ctx.auth.requireOwner ?? ctx.auth.requireAdmin;
 
   router.get('/users', ctx.auth.requireAdmin, async (_req, res, next) => {
     try {
@@ -14,7 +15,7 @@ export function createAdminRouter(ctx) {
     }
   });
 
-  router.patch('/users/:id/role', ctx.auth.requireOwner, async (req, res, next) => {
+  router.patch('/users/:id/role', requireOwner, async (req, res, next) => {
     try {
       sendOk(res, await service.updateRole({
         actorId: req.user.id,
