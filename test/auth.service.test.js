@@ -18,6 +18,13 @@ function stubQueries({ users = {} } = {}) {
       async getAuthUserById(id) {
         return state.users[id] ?? null;
       },
+      async setInitialPassword(id, passwordHash) {
+        const target = state.users[id];
+        if (!target || target.passwordHash || target.passwordUpdatedAt) return false;
+        target.passwordHash = passwordHash;
+        target.passwordUpdatedAt = new Date();
+        return true;
+      },
       async consumeSetupToken({ userId, tokenHash, passwordHash }) {
         const token = setupTokens.get(tokenHash);
         if (!token || token.userId !== userId || token.used || token.expiresAt <= Date.now()) return false;
@@ -66,29 +73,21 @@ test('hashPassword/verifyPassword round-trips and rejects wrong password', () =>
   assert.equal(verifyPassword('nope', stored), false);
 });
 
-test('first password setup requires an administrator-issued token', async () => {
+test('first password setup succeeds without an administrator token', async () => {
   const { state, queries } = stubQueries({
-    users: {
-      [ADMIN]: user(ADMIN, '관리자', 'admin', hashPassword('adminpw')),
-      [MEMBER]: user(MEMBER, '홍길동', 'member'),
-    },
+    users: { [MEMBER]: user(MEMBER, '홍길동', 'member') },
   });
   const service = createAuthService(queries);
 
-  await assert.rejects(
-    () => service.setPassword({ memberId: MEMBER, password: 'pw123' }),
-    (err) => err.code === 'SETUP_TOKEN_REQUIRED',
-  );
-
-  const reset = await service.resetPassword({ actorId: ADMIN, targetMemberId: MEMBER });
   const { token, user: resultUser } = await service.setPassword({
     memberId: MEMBER,
     password: 'pw123',
-    setupToken: reset.setupToken,
   });
+
   assert.ok(token);
   assert.equal(resultUser.adminRole, 'member');
   assert.ok(state.users[MEMBER].passwordHash);
+  assert.ok(state.users[MEMBER].passwordUpdatedAt);
   assert.equal(state.sessions.get(token), MEMBER);
 });
 
