@@ -1,0 +1,42 @@
+name: Verify admin notices
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'client/**'
+      - 'migrations/**'
+      - 'test/**'
+      - 'package*.json'
+      - '.github/workflows/verify-admin-notices.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run tests
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test.log
+      - name: Build client
+        if: always()
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-notices-diagnostics
+          path: |
+            test.log
+            build.log
+          if-no-files-found: ignore
