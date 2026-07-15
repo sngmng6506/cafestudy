@@ -282,7 +282,7 @@ function formatExpiry(value) {
               <p class="ui-text-caption mt-0.5">{{ user.role === 'owner' ? '최고 관리자' : user.role === 'admin' ? '관리자' : '멤버' }}</p>
             </div>
             <span v-if="user.role === 'owner'" class="ui-text-brand text-[12px] font-semibold">권한 유지</span>
-            <button v-else-if="user.role === 'admin' class="focus-ring ui-radius-control ui-border h-9 border px-3 text-[12px] font-medium" type="button" @click="changeRole(user, 'member')">관리자 해제</button>
+            <button v-else-if="user.role === 'admin'" class="focus-ring ui-radius-control ui-border h-9 border px-3 text-[12px] font-medium" type="button" @click="changeRole(user, 'member')">관리자 해제</button>
             <button v-else class="focus-ring ui-radius-control h-9 bg-[var(--ui-color-brand)] px-3 text-[12px] font-semibold text-white" type="button" @click="changeRole(user, 'admin')">관리자로 임명</button>
           </li>
         </ul>
