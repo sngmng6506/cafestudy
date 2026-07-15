@@ -27,11 +27,11 @@ test('notice summary polling requests a bounded recent list', async () => {
   assert.match(calls[0].sql, /LIMIT \$3/);
 });
 
-test('notice list rejects invalid limits before querying the database', async () => {
+test('notice list rejects invalid limits before querying the database', () => {
   const { db, calls } = stubDb();
   const service = createNoticesService({ db });
 
-  await assert.rejects(
+  assert.throws(
     () => service.list('user-1', { limit: 500, summary: true }),
     (error) => error.code === 'VALIDATION_ERROR',
   );
