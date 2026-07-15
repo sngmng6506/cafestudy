@@ -116,15 +116,16 @@ async function changeRole(user, role) {
 
 function canIssueSetupToken(user) {
   if (user.id === currentUserId.value || user.role === 'owner') return false;
+  if (!user.hasPassword && !user.requiresSetupToken) return false;
   if (adminRole.value === 'owner') return user.role === 'admin' || user.role === 'member';
   return adminRole.value === 'admin' && user.role === 'member';
 }
 
 async function issueSetupToken(user) {
-  const action = user.hasPassword ? '비밀번호를 초기화' : '비밀번호 설정 코드를 발급';
+  const action = user.hasPassword ? '비밀번호를 초기화' : '설정 코드를 재발급';
   const impact = user.hasPassword
     ? '기존 로그인은 종료되고 새 설정 코드가 발급돼요.'
-    : '새 비밀번호를 만들 때 사용할 일회용 코드가 발급돼요.';
+    : '기존 설정 코드는 폐기되고 새 코드가 발급돼요.';
   if (!window.confirm(`${user.name} 님의 ${action}할까요?\n${impact}`)) return;
 
   resettingId.value = user.id;
@@ -243,8 +244,8 @@ function formatExpiry(value) {
       </section>
 
       <section class="surface-card">
-        <h2 class="ui-section-title">비밀번호 설정 코드</h2>
-        <p class="ui-text-muted mt-1 text-[13px]">관리자는 멤버만, 최고 관리자는 관리자와 멤버의 설정 코드를 발급할 수 있어요.</p>
+        <h2 class="ui-section-title">비밀번호 초기화</h2>
+        <p class="ui-text-muted mt-1 text-[13px]">처음 사용하는 계정은 본인이 바로 비밀번호를 만들 수 있어요. 이미 설정된 계정을 초기화하면 일회용 코드를 전달해야 해요.</p>
         <p v-if="loadingUsers" class="ui-text-muted py-8 text-center text-[14px]">멤버를 불러오고 있어요.</p>
         <ul v-else class="ui-border-subtle mt-4 divide-y">
           <li v-for="user in users" :key="user.id" class="flex items-center justify-between gap-3 py-3">
@@ -252,7 +253,7 @@ function formatExpiry(value) {
               <p class="ui-text truncate text-[14px] font-semibold">{{ user.name }}</p>
               <p class="ui-text-caption mt-0.5">
                 {{ user.role === 'owner' ? '최고 관리자' : user.role === 'admin' ? '관리자' : '멤버' }} ·
-                {{ user.hasPassword ? '비밀번호 사용 중' : user.requiresSetupToken ? '설정 코드 발급됨' : '설정 코드 필요' }}
+                {{ user.hasPassword ? '비밀번호 사용 중' : user.requiresSetupToken ? '설정 코드 발급됨' : '최초 설정 가능' }}
               </p>
             </div>
             <button
@@ -262,9 +263,11 @@ function formatExpiry(value) {
               :disabled="resettingId === user.id"
               @click="issueSetupToken(user)"
             >
-              {{ user.hasPassword ? '초기화' : user.requiresSetupToken ? '코드 재발급' : '코드 발급' }}
+              {{ user.hasPassword ? '초기화' : '코드 재발급' }}
             </button>
-            <span v-else class="ui-text-caption shrink-0 text-[12px]">발급 불가</span>
+            <span v-else class="ui-text-caption shrink-0 text-[12px]">
+              {{ !user.hasPassword && !user.requiresSetupToken ? '직접 설정 가능' : '초기화 불가' }}
+            </span>
           </li>
         </ul>
       </section>
