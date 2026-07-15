@@ -70,6 +70,10 @@ async function submitAuth() {
     authError.value = '비밀번호가 일치하지 않습니다.';
     return;
   }
+  if (isSetup.value && !setupToken.value.trim()) {
+    authError.value = '관리자에게 받은 비밀번호 설정 코드를 입력해 주세요.';
+    return;
+  }
 
   submitting.value = true;
   try {
@@ -160,7 +164,7 @@ async function submitAuth() {
               <div class="min-w-0 flex-1">
                 <p class="truncate text-[15px] font-semibold text-[#333333]">{{ member.name }}</p>
                 <p class="truncate text-[13px] text-[#767676]">
-                  {{ member.hasPassword ? '비밀번호로 로그인' : '비밀번호 설정 필요' }}
+                  {{ member.hasPassword ? '비밀번호로 로그인' : '설정 코드로 비밀번호 만들기' }}
                 </p>
               </div>
               <Check v-if="member.id === currentUserId" :size="18" class="shrink-0 text-[#03C75A]" />
@@ -189,7 +193,7 @@ async function submitAuth() {
           <div class="min-w-0">
             <h2 class="truncate text-[18px] font-bold text-[#333333]">{{ selectedMember.name }}</h2>
             <p class="text-[13px] text-[#5f6368]">
-              {{ isSetup ? '사용할 비밀번호를 설정해 주세요.' : '비밀번호를 입력해 주세요.' }}
+              {{ isSetup ? '관리자에게 받은 코드로 비밀번호를 설정해 주세요.' : '비밀번호를 입력해 주세요.' }}
             </p>
           </div>
         </div>
@@ -215,11 +219,12 @@ async function submitAuth() {
             v-model="setupToken"
             type="text"
             autocomplete="one-time-code"
-            placeholder="관리자에게 받은 설정 코드 (초기화 후에만)"
+            required
+            placeholder="관리자에게 받은 설정 코드"
             class="focus-ring h-10 w-full rounded border border-[#dadce0] bg-[#f5f6f7] px-3 text-[16px] text-[#333333] placeholder:text-[#999999] focus:border-[#03C75A] focus:bg-white focus:outline-none"
           />
           <p v-if="isSetup" class="text-[12px] leading-5 text-[#5f6368]">
-            처음 비밀번호를 만드는 경우 설정 코드는 비워 두세요. 관리자가 초기화한 계정은 전달받은 코드가 필요해요.
+            설정 코드가 없다면 관리자에게 발급을 요청해 주세요. 코드는 한 번만 사용할 수 있어요.
           </p>
 
           <p v-if="authError" class="text-[13px] font-semibold text-[#e74c3c]">{{ authError }}</p>
