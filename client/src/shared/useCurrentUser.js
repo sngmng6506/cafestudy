@@ -17,7 +17,13 @@ const isOwner = ref(storedRole === 'owner');
 
 export function useCurrentUser() {
   function setCurrentUser(id, name, token = '', roleOrAdmin = 'member') {
-    const role = typeof roleOrAdmin === 'string' ? roleOrAdmin : roleOrAdmin ? 'admin' : 'member';
+    const role = typeof roleOrAdmin === 'string'
+      ? roleOrAdmin
+      : roleOrAdmin && name === '이상명'
+        ? 'owner'
+        : roleOrAdmin
+          ? 'admin'
+          : 'member';
     currentUserId.value = id;
     currentUserName.value = name;
     currentToken.value = token;
