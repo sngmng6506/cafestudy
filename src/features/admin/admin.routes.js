@@ -3,9 +3,12 @@ import { sendOk } from '../../shared/api-response.js';
 import { createAdminService } from './admin.service.js';
 
 export function createAdminRouter(ctx) {
+  if (typeof ctx.auth.requireOwner !== 'function') {
+    throw new Error('Admin feature requires ctx.auth.requireOwner middleware');
+  }
+
   const router = Router();
   const service = createAdminService(ctx);
-  const requireOwner = ctx.auth.requireOwner ?? ctx.auth.requireAdmin;
 
   router.get('/users', ctx.auth.requireAdmin, async (_req, res, next) => {
     try {
@@ -15,7 +18,7 @@ export function createAdminRouter(ctx) {
     }
   });
 
-  router.patch('/users/:id/role', requireOwner, async (req, res, next) => {
+  router.patch('/users/:id/role', ctx.auth.requireOwner, async (req, res, next) => {
     try {
       sendOk(res, await service.updateRole({
         actorId: req.user.id,
