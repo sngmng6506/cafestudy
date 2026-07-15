@@ -7,7 +7,13 @@ import { useNotices } from '../../shared/useNotices.js';
 import { useToast } from '../../shared/useToast.js';
 
 const { adminRole, currentUserId, isOwner } = useCurrentUser();
-const { notices, loadNotices } = useNotices();
+const {
+  notices,
+  loading: noticesLoading,
+  hasMore: hasMoreNotices,
+  loadNotices,
+  loadMoreNotices,
+} = useNotices();
 const toast = useToast();
 const activeSection = ref('notices');
 const users = ref([]);
@@ -24,8 +30,18 @@ const submitLabel = computed(() => editingId.value ? '공지 수정하기' : '�
 const tabColumns = computed(() => isOwner.value ? 'grid-cols-3' : 'grid-cols-2');
 
 onMounted(async () => {
-  await Promise.allSettled([loadNotices(), loadUsers()]);
+  await Promise.allSettled([loadAdminNotices(), loadUsers()]);
 });
+
+async function loadAdminNotices(append = false) {
+  try {
+    if (append) await loadMoreNotices(50);
+    else await loadNotices({ pageSize: 50 });
+  } catch (error) {
+    toast.error(error.message);
+    throw error;
+  }
+}
 
 async function loadUsers() {
   loadingUsers.value = true;
@@ -65,7 +81,7 @@ async function saveNotice() {
     });
     toast.success(editingId.value ? '공지를 수정했어요.' : '새 공지를 올렸어요.');
     resetForm();
-    await loadNotices();
+    await loadAdminNotices();
   } catch (error) {
     toast.error(error.message);
   } finally {
@@ -78,7 +94,7 @@ async function deleteNotice(notice) {
   try {
     await apiFetch(`/api/notices/${notice.id}`, { method: 'DELETE' });
     toast.success('공지를 삭제했어요.');
-    await loadNotices();
+    await loadAdminNotices();
   } catch (error) {
     toast.error(error.message);
   }
@@ -203,6 +219,16 @@ function formatExpiry(value) {
           </div>
         </li>
       </ul>
+
+      <button
+        v-if="hasMoreNotices"
+        class="focus-ring ui-radius-control ui-border h-11 w-full border text-[14px] font-semibold disabled:opacity-50"
+        type="button"
+        :disabled="noticesLoading"
+        @click="loadAdminNotices(true)"
+      >
+        {{ noticesLoading ? '공지를 불러오고 있어요.' : '이전 공지 더 보기' }}
+      </button>
     </template>
 
     <template v-else-if="activeSection === 'accounts'">
@@ -256,7 +282,7 @@ function formatExpiry(value) {
               <p class="ui-text-caption mt-0.5">{{ user.role === 'owner' ? '최고 관리자' : user.role === 'admin' ? '관리자' : '멤버' }}</p>
             </div>
             <span v-if="user.role === 'owner'" class="ui-text-brand text-[12px] font-semibold">권한 유지</span>
-            <button v-else-if="user.role === 'admin'" class="focus-ring ui-radius-control ui-border h-9 border px-3 text-[12px] font-medium" type="button" @click="changeRole(user, 'member')">관리자 해제</button>
+            <button v-else-if="user.role === 'admin' class="focus-ring ui-radius-control ui-border h-9 border px-3 text-[12px] font-medium" type="button" @click="changeRole(user, 'member')">관리자 해제</button>
             <button v-else class="focus-ring ui-radius-control h-9 bg-[var(--ui-color-brand)] px-3 text-[12px] font-semibold text-white" type="button" @click="changeRole(user, 'admin')">관리자로 임명</button>
           </li>
         </ul>
