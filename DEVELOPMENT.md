@@ -19,7 +19,10 @@ users
 - active_badge_id는 헤더 아바타에 표시할 대표 뱃지. 뱃지 적용(apply) 시
   자동으로 갱신되고, /api/badges/:id/activate로 직접 바꿀 수 있다.
 - 실제 owner 판정은 admin_role 문자열이나 nickname이 아니라 app_owner.user_id가 기준이다.
-- password_hash가 null이면 설정 코드로 새 비밀번호를 만들어야 한다.
+- password_hash와 password_updated_at이 모두 null이면 아직 한 번도 설정하지 않은 계정이다.
+  모임 내부 사용자가 자신의 이름을 선택해 최초 비밀번호를 바로 만들 수 있다.
+- password_hash는 null이지만 password_updated_at이 남아 있으면 관리자가 초기화한 계정이다.
+  이 경우 관리자에게 받은 일회용 설정 코드가 있어야 새 비밀번호를 만들 수 있다.
 
 app_owner                     -- 최고 관리자 UUID 잠금(항상 한 행)
 - singleton(PK, true만 허용), user_id(UNIQUE FK users, RESTRICT), created_at
@@ -31,13 +34,14 @@ sessions                      -- 로그인 세션 (비밀번호 인증)
 - 로그인 성공 시 발급, 클라이언트는 Authorization: Bearer <token>으로 전송.
   전역 미들웨어(resolveUser)가 만료 전 세션만 인정한다.
 
-password_setup_tokens         -- 최초 설정/초기화 후 사용하는 일회용 코드
+password_setup_tokens         -- 관리자 초기화 후 사용하는 일회용 코드
 - token_hash(PK), user_id(FK users, CASCADE), created_by(FK users, RESTRICT),
   expires_at, used_at(nullable), created_at
 - 원문 코드는 응답으로 한 번만 관리자에게 전달하고 DB에는 SHA-256 해시만 저장한다.
 - 새 코드를 발급하면 기존 코드와 대상의 모든 세션을 삭제하고 password_hash를 null로 만든다.
 - 코드는 24시간 안에 한 번만 사용할 수 있으며 비밀번호 저장과 같은 트랜잭션에서 소비한다.
 - admin은 member만, owner는 admin/member만 코드를 발급할 수 있다.
+- 한 번도 비밀번호를 만들지 않은 계정에는 코드가 필요하지 않으며 최초 설정을 직접 허용한다.
 
 admin_role_logs               -- 관리자 역할 변경 감사 이력
 - id, target_user_id(FK users, CASCADE), changed_by(FK users, RESTRICT),
@@ -184,6 +188,8 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
 
 관리자/인증 기능도 다음 묶음을 원자적으로 처리한다.
 
+- 최초 비밀번호 설정은 `password_hash IS NULL AND password_updated_at IS NULL` 조건부
+  UPDATE로 한 요청만 성공하게 한다.
 - 관리자 역할 변경 + `admin_role_logs` 기록
 - 비밀번호 설정 코드 발급 + 기존 코드 삭제 + 비밀번호 초기화 + 세션 삭제
 - 설정 코드 소비 + 새 비밀번호 저장
