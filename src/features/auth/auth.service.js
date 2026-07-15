@@ -36,25 +36,17 @@ export function createAuthService(queries) {
       if (user.passwordHash) {
         throwConflict('PASSWORD_ALREADY_SET', '이미 비밀번호가 설정되어 있습니다');
       }
+      if (typeof setupToken !== 'string' || !setupToken.trim()) {
+        throwForbidden('SETUP_TOKEN_REQUIRED', '관리자에게 받은 비밀번호 설정 코드를 입력해 주세요.');
+      }
 
-      const passwordHash = hashPassword(password);
-      if (user.passwordUpdatedAt) {
-        if (typeof setupToken !== 'string' || !setupToken.trim()) {
-          throwForbidden('SETUP_TOKEN_REQUIRED', '관리자에게 받은 비밀번호 설정 코드를 입력해 주세요.');
-        }
-        const consumed = await queries.consumeSetupToken({
-          userId: memberId,
-          tokenHash: hashOpaqueToken(setupToken.trim()),
-          passwordHash,
-        });
-        if (!consumed) {
-          throwForbidden('INVALID_SETUP_TOKEN', '설정 코드가 올바르지 않거나 만료됐어요. 관리자에게 새 코드를 요청해 주세요.');
-        }
-      } else {
-        const created = await queries.setInitialPassword(memberId, passwordHash);
-        if (!created) {
-          throwConflict('PASSWORD_SETUP_CHANGED', '비밀번호 설정 상태가 바뀌었어요. 다시 시도해 주세요.');
-        }
+      const consumed = await queries.consumeSetupToken({
+        userId: memberId,
+        tokenHash: hashOpaqueToken(setupToken.trim()),
+        passwordHash: hashPassword(password),
+      });
+      if (!consumed) {
+        throwForbidden('INVALID_SETUP_TOKEN', '설정 코드가 올바르지 않거나 만료됐어요. 관리자에게 새 코드를 요청해 주세요.');
       }
 
       return issueSession(user);
@@ -96,10 +88,10 @@ export function createAuthService(queries) {
         throwForbidden('OWNER_PASSWORD_LOCKED', '최고 관리자 비밀번호는 이 기능으로 초기화할 수 없어요.');
       }
       if (actor.adminRole === 'admin' && target.adminRole !== 'member') {
-        throwForbidden('RESET_ROLE_FORBIDDEN', '관리자는 일반 멤버의 비밀번호만 초기화할 수 있어요.');
+        throwForbidden('RESET_ROLE_FORBIDDEN', '관리자는 일반 멤버의 비밀번호 설정 코드만 발급할 수 있어요.');
       }
       if (actor.adminRole !== 'owner' && actor.adminRole !== 'admin') {
-        throwForbidden('ADMIN_REQUIRED', '관리자만 비밀번호를 초기화할 수 있어요.');
+        throwForbidden('ADMIN_REQUIRED', '관리자만 비밀번호 설정 코드를 발급할 수 있어요.');
       }
 
       const setupToken = createSetupToken();
