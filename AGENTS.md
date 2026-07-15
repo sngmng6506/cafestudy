@@ -127,8 +127,11 @@ git blame <파일>                 # 줄 단위 출처
   폴백은 금지하며, 미들웨어가 없으면 시작 단계에서 실패시킨다.
 - 프론트는 로그인 응답과 `GET /api/auth/me`의 `adminRole`을 그대로 사용한다.
   이름이나 `isAdmin` boolean만으로 owner를 추론하지 않는다.
-- 비밀번호가 없는 계정도 `memberId`만으로 설정할 수 없다. admin/owner가 발급한
-  `password_setup_tokens` 일회용 코드가 항상 필요하다. 코드 원문은 DB·로그에 저장하지 않는다.
+- `password_hash IS NULL`이고 `password_updated_at IS NULL`인 계정은 모임 내부의 최초
+  사용자 선점을 허용한다. 최초 설정은 조건부 UPDATE로 한 번만 성공해야 한다.
+- 관리자가 초기화한 계정은 `password_updated_at`이 남으므로 `memberId`만으로 다시
+  설정할 수 없다. admin/owner가 발급한 `password_setup_tokens` 일회용 코드가 필요하며,
+  코드 원문은 DB·로그에 저장하지 않는다.
 - 비밀번호 설정 코드 발급 계층: admin → member만, owner → admin/member. owner 계정은
   애플리케이션에서 초기화하지 않는다. 발급 시 대상의 기존 세션과 이전 코드를 삭제한다.
 - 라우트/서비스는 **`req.user.id`(또는 `ctx.auth.userId(req)`)에만 의존**하고,
@@ -180,7 +183,8 @@ git blame <파일>                 # 줄 단위 출처
 - 순수 로직(파서·서비스)은 `test/`에 `node --test`로 단위 테스트 추가.
 - DB가 필요한 통합 테스트는 `DATABASE_URL` 없으면 skip되도록 작성.
 - 버그를 고치면 회귀 방지 테스트를 함께 추가한다.
-- 인증 변경은 최소한 owner/admin/member 역할 조합, 설정 코드 재사용, owner 보호를 테스트한다.
+- 인증 변경은 최소한 owner/admin/member 역할 조합, 최초 설정의 조건부 선점,
+  초기화 후 설정 코드 재사용, owner 보호를 테스트한다.
 - UI 변경은 최소한 build와 주요 상태(기본, loading, empty, error, disabled)를 확인한다.
 
 ## 하지 말 것
