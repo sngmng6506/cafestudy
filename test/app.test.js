@@ -19,6 +19,9 @@ before(async () => {
       requireAdmin(_req, _res, next) {
         next();
       },
+      requireOwner(_req, _res, next) {
+        next();
+      },
     },
     config: { env: 'test' },
   });

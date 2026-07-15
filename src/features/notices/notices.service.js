@@ -3,6 +3,8 @@ import { createNoticesQueries } from './notices.queries.js';
 
 const TITLE_MAX = 100;
 const BODY_MAX = 5000;
+const PAGE_LIMIT_MAX = 50;
+const OFFSET_MAX = 100_000;
 
 export function createNoticesService({ db }) {
   const queries = createNoticesQueries(db);
@@ -18,7 +20,27 @@ export function createNoticesService({ db }) {
   }
 
   return {
-    list: (userId) => queries.list(userId),
+    async listPage(userId, { limit = 20, offset = 0, summary = false } = {}) {
+      if (!Number.isInteger(limit) || limit < 1 || limit > PAGE_LIMIT_MAX) {
+        throwValidation(`공지 조회 개수는 1~${PAGE_LIMIT_MAX} 사이여야 합니다.`);
+      }
+      if (!Number.isInteger(offset) || offset < 0 || offset > OFFSET_MAX) {
+        throwValidation('공지 조회 위치가 올바르지 않습니다.');
+      }
+
+      const rows = await queries.list(userId, {
+        limit: limit + 1,
+        offset,
+        summary: summary === true,
+      });
+      const items = rows.slice(0, limit);
+      return {
+        items,
+        hasMore: rows.length > limit,
+        nextOffset: offset + items.length,
+      };
+    },
+
     unreadCount: (userId) => queries.unreadCount(userId),
 
     async create(input) {

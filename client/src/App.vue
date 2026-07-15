@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { Hammer, MoreHorizontal, Search, Wrench } from '@lucide/vue';
 import { features } from './features/index.js';
 import ToastContainer from './shared/ToastContainer.vue';
@@ -7,13 +7,21 @@ import MemberSelectModal from './shared/MemberSelectModal.vue';
 import FeatureWheel from './shared/FeatureWheel.vue';
 import NotificationBell from './shared/NotificationBell.vue';
 import MenuSearchSheet from './features/menu-search/MenuSearchSheet.vue';
+import { apiFetch } from './shared/api.js';
 import { useCurrentUser } from './shared/useCurrentUser.js';
 import { useActiveBadge } from './shared/useActiveBadge.js';
 import { useSmash } from './shared/useSmash.js';
 import { smashStyleVars } from './shared/smash-style.js';
 import UserAvatar from './shared/UserAvatar.vue';
 
-const { currentUserId, currentUserName, currentToken, isAdmin } = useCurrentUser();
+const {
+  currentUserId,
+  currentUserName,
+  currentToken,
+  isAdmin,
+  setCurrentUser,
+  clearCurrentUser,
+} = useCurrentUser();
 const { activeBadgeImageUrl } = useActiveBadge();
 const { smashed, smashSeed, toggleSmash } = useSmash();
 
@@ -23,9 +31,36 @@ const smashStyle = computed(() =>
 const memberSelectOpen = ref(false);
 const menuSearchOpen = ref(false);
 const moreOpen = ref(false);
+let sessionTimer;
 
-onMounted(() => {
+async function syncSession() {
+  if (!currentToken.value) return;
+  try {
+    const response = await apiFetch('/api/auth/me');
+    const user = response.data;
+    setCurrentUser(user.id, user.name, currentToken.value, user.adminRole);
+  } catch (error) {
+    if (error.status === 401) {
+      clearCurrentUser();
+      memberSelectOpen.value = true;
+    }
+  }
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') void syncSession();
+}
+
+onMounted(async () => {
   if (!currentToken.value) memberSelectOpen.value = true;
+  else await syncSession();
+  sessionTimer = window.setInterval(syncSession, 60_000);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+});
+
+onUnmounted(() => {
+  window.clearInterval(sessionTimer);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 
 const visibleFeatures = computed(() =>

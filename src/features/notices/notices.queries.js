@@ -1,11 +1,11 @@
 export function createNoticesQueries(db) {
   return {
-    async list(userId) {
+    async list(userId, { limit, offset = 0, summary = false }) {
       const result = await db.query(
         `SELECT
            n.id,
            n.title,
-           n.body,
+           CASE WHEN $2::boolean THEN left(n.body, 240) ELSE n.body END AS body,
            n.is_pinned AS "isPinned",
            n.published_at AS "publishedAt",
            n.updated_at AS "updatedAt",
@@ -14,8 +14,12 @@ export function createNoticesQueries(db) {
          FROM notices n
          JOIN users u ON u.id = n.created_by
          LEFT JOIN notice_reads nr ON nr.notice_id = n.id AND nr.user_id = $1
-         ORDER BY n.is_pinned DESC, n.published_at DESC`,
-        [userId],
+         ORDER BY
+           CASE WHEN $2::boolean THEN false ELSE n.is_pinned END DESC,
+           n.published_at DESC,
+           n.id DESC
+         LIMIT $3 OFFSET $4`,
+        [userId, summary, limit, offset],
       );
       return result.rows;
     },
