@@ -8,9 +8,14 @@ export function createAuth({ env, db }) {
     const result = await db.query(
       `SELECT
          s.user_id AS id,
-         COALESCE(u.admin_role, CASE WHEN u.is_admin THEN 'admin' ELSE 'member' END) AS "adminRole"
+         CASE
+           WHEN ao.user_id IS NOT NULL THEN 'owner'
+           WHEN u.admin_role = 'owner' THEN 'admin'
+           ELSE COALESCE(u.admin_role, CASE WHEN u.is_admin THEN 'admin' ELSE 'member' END)
+         END AS "adminRole"
        FROM sessions s
        JOIN users u ON u.id = s.user_id
+       LEFT JOIN app_owner ao ON ao.user_id = u.id
        WHERE s.token = $1 AND s.expires_at > now()`,
       [token],
     );
