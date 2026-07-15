@@ -115,15 +115,26 @@ git blame <파일>                 # 줄 단위 출처
   `error.statusCode`/`error.code`를 읽어 자동으로 응답한다.
 
 ### 인증 경계 — 중요
-- 인증은 **비밀번호 + 세션 토큰** 방식으로 구현되어 있다: 로그인(`POST /api/auth/login`)
-  성공 시 세션 토큰 발급 → 클라이언트가 `Authorization: Bearer <token>`으로 전송 →
-  전역 미들웨어(`resolveUser`)가 sessions 테이블에서 검증해 `req.user`를 세팅.
-  관리자 전용 라우트는 `ctx.auth.requireAdmin`(users.is_admin) 사용.
+- 인증은 **비밀번호 + 세션 토큰** 방식이다: 로그인(`POST /api/auth/login`) 성공 시
+  세션 토큰 발급 → 클라이언트가 `Authorization: Bearer <token>` 전송 → 전역
+  `resolveUser`가 `sessions`와 현재 DB 역할을 조회해 `req.user`를 세팅한다.
+- 역할은 `member | admin | owner`. `users.is_admin`은 legacy 호환 컬럼일 뿐 새 권한
+  판단에 직접 사용하지 않는다.
+- owner의 source of truth는 `app_owner.user_id` 단일 UUID다. 닉네임 `이상명` 비교나
+  localStorage 값으로 owner를 추측하지 않는다.
+- 관리자 라우트는 `ctx.auth.requireAdmin`, owner 전용 라우트는 반드시
+  `ctx.auth.requireOwner`를 사용한다. `requireOwner ?? requireAdmin` 같은 fail-open
+  폴백은 금지하며, 미들웨어가 없으면 시작 단계에서 실패시킨다.
+- 프론트는 로그인 응답과 `GET /api/auth/me`의 `adminRole`을 그대로 사용한다.
+  이름이나 `isAdmin` boolean만으로 owner를 추론하지 않는다.
+- 비밀번호가 없는 계정도 `memberId`만으로 설정할 수 없다. admin/owner가 발급한
+  `password_setup_tokens` 일회용 코드가 항상 필요하다. 코드 원문은 DB·로그에 저장하지 않는다.
+- 비밀번호 설정 코드 발급 계층: admin → member만, owner → admin/member. owner 계정은
+  애플리케이션에서 초기화하지 않는다. 발급 시 대상의 기존 세션과 이전 코드를 삭제한다.
 - 라우트/서비스는 **`req.user.id`(또는 `ctx.auth.userId(req)`)에만 의존**하고,
-  헤더나 세션 테이블을 직접 읽지 않는다. auth 내부가 바뀌어도 나머지 코드가
-  안 깨지도록.
+  헤더나 세션 테이블을 직접 읽지 않는다. auth 내부가 바뀌어도 나머지 코드가 안 깨지도록.
 - dev 환경(`NODE_ENV !== 'production'`)에서는 토큰 없이 `x-user-id` 헤더 폴백이
-  아직 동작한다(로컬 개발 편의). 프로덕션 동작을 가정하는 코드를 짤 때 주의.
+  아직 동작한다(로컬 개발 편의). 프로덕션 권한 검증 테스트는 실제 세션 역할로 작성한다.
 
 ### DB 마이그레이션
 - `migrations/`에 `YYYYMMDD_설명.sql`. 파일명 사전순으로 실행된다.
@@ -169,6 +180,7 @@ git blame <파일>                 # 줄 단위 출처
 - 순수 로직(파서·서비스)은 `test/`에 `node --test`로 단위 테스트 추가.
 - DB가 필요한 통합 테스트는 `DATABASE_URL` 없으면 skip되도록 작성.
 - 버그를 고치면 회귀 방지 테스트를 함께 추가한다.
+- 인증 변경은 최소한 owner/admin/member 역할 조합, 설정 코드 재사용, owner 보호를 테스트한다.
 - UI 변경은 최소한 build와 주요 상태(기본, loading, empty, error, disabled)를 확인한다.
 
 ## 하지 말 것
