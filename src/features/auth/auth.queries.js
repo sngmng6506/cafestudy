@@ -6,6 +6,7 @@ export function createAuthQueries(db) {
            u.id,
            u.nickname,
            u.password_hash AS "passwordHash",
+           u.password_updated_at AS "passwordUpdatedAt",
            CASE
              WHEN ao.user_id IS NOT NULL THEN 'owner'
              WHEN u.admin_role = 'owner' THEN 'admin'
@@ -17,6 +18,19 @@ export function createAuthQueries(db) {
         [id],
       );
       return result.rows[0] ?? null;
+    },
+
+    async setInitialPassword(id, passwordHash) {
+      const result = await db.query(
+        `UPDATE users
+         SET password_hash = $2, password_updated_at = now()
+         WHERE id = $1
+           AND password_hash IS NULL
+           AND password_updated_at IS NULL
+         RETURNING id`,
+        [id, passwordHash],
+      );
+      return result.rowCount > 0;
     },
 
     async consumeSetupToken({ userId, tokenHash, passwordHash }) {
