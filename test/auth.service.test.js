@@ -18,13 +18,6 @@ function stubQueries({ users = {} } = {}) {
       async getAuthUserById(id) {
         return state.users[id] ?? null;
       },
-      async setInitialPassword(id, hash) {
-        const user = state.users[id];
-        if (!user || user.passwordHash || user.passwordUpdatedAt) return false;
-        user.passwordHash = hash;
-        user.passwordUpdatedAt = new Date();
-        return true;
-      },
       async consumeSetupToken({ userId, tokenHash, passwordHash }) {
         const token = setupTokens.get(tokenHash);
         if (!token || token.userId !== userId || token.used || token.expiresAt <= Date.now()) return false;
@@ -73,13 +66,26 @@ test('hashPassword/verifyPassword round-trips and rejects wrong password', () =>
   assert.equal(verifyPassword('nope', stored), false);
 });
 
-test('initial password setup issues a member session', async () => {
+test('first password setup requires an administrator-issued token', async () => {
   const { state, queries } = stubQueries({
-    users: { [MEMBER]: user(MEMBER, '홍길동', 'member') },
+    users: {
+      [ADMIN]: user(ADMIN, '관리자', 'admin', hashPassword('adminpw')),
+      [MEMBER]: user(MEMBER, '홍길동', 'member'),
+    },
   });
   const service = createAuthService(queries);
 
-  const { token, user: resultUser } = await service.setPassword({ memberId: MEMBER, password: 'pw123' });
+  await assert.rejects(
+    () => service.setPassword({ memberId: MEMBER, password: 'pw123' }),
+    (err) => err.code === 'SETUP_TOKEN_REQUIRED',
+  );
+
+  const reset = await service.resetPassword({ actorId: ADMIN, targetMemberId: MEMBER });
+  const { token, user: resultUser } = await service.setPassword({
+    memberId: MEMBER,
+    password: 'pw123',
+    setupToken: reset.setupToken,
+  });
   assert.ok(token);
   assert.equal(resultUser.adminRole, 'member');
   assert.ok(state.users[MEMBER].passwordHash);
@@ -93,7 +99,7 @@ test('setPassword rejects when a password is already set', async () => {
   const service = createAuthService(queries);
 
   await assert.rejects(
-    () => service.setPassword({ memberId: MEMBER, password: 'newpw' }),
+    () => service.setPassword({ memberId: MEMBER, password: 'newpw', setupToken: 'unused' }),
     (err) => err.statusCode === 409 && err.code === 'PASSWORD_ALREADY_SET',
   );
 });
