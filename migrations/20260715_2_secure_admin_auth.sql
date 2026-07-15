@@ -29,6 +29,24 @@ UPDATE users
 SET admin_role = 'owner', is_admin = true
 WHERE id = (SELECT user_id FROM app_owner WHERE singleton = true);
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM users u
+    JOIN app_owner ao ON ao.user_id = u.id
+    WHERE u.password_hash IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Owner must have a password before secure reset migration';
+  END IF;
+END $$;
+
+-- 과거 초기화로 password_updated_at만 남은 일반 계정은 한 번만 최초 설정 흐름을 허용한다.
+UPDATE users
+SET password_updated_at = NULL
+WHERE password_hash IS NULL
+  AND id <> (SELECT user_id FROM app_owner WHERE singleton = true);
+
 CREATE TABLE IF NOT EXISTS password_setup_tokens (
   token_hash text PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
