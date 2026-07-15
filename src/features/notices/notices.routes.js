@@ -8,9 +8,10 @@ export function createNoticesRouter(ctx) {
 
   router.get('/', ctx.auth.requireUser, async (req, res, next) => {
     try {
-      const limit = req.query.limit === undefined ? null : Number(req.query.limit);
+      const limit = req.query.limit === undefined ? 20 : Number(req.query.limit);
+      const offset = req.query.offset === undefined ? 0 : Number(req.query.offset);
       const summary = req.query.summary === 'true';
-      sendOk(res, await service.list(req.user.id, { limit, summary }));
+      sendOk(res, await service.listPage(req.user.id, { limit, offset, summary }));
     } catch (error) {
       next(error);
     }
