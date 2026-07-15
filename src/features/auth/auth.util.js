@@ -1,9 +1,7 @@
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
 const KEYLEN = 64;
 
-// 비밀번호 해싱: 의존성 없이 Node 내장 scrypt 사용.
-// 저장 포맷: scrypt$<saltHex>$<hashHex>
 export function hashPassword(password) {
   const salt = randomBytes(16);
   const hash = scryptSync(password, salt, KEYLEN);
@@ -22,4 +20,12 @@ export function verifyPassword(password, stored) {
 
 export function createToken() {
   return randomBytes(32).toString('hex');
+}
+
+export function createSetupToken() {
+  return randomBytes(18).toString('base64url');
+}
+
+export function hashOpaqueToken(token) {
+  return createHash('sha256').update(token).digest('hex');
 }
