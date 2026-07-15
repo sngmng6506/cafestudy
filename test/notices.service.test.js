@@ -32,15 +32,15 @@ test('notice summary polling returns a bounded page and prioritizes recent notic
   assert.equal(page.nextOffset, 8);
 });
 
-test('notice page rejects invalid limits and offsets before querying the database', () => {
+test('notice page rejects invalid limits and offsets before querying the database', async () => {
   const { db, calls } = stubDb();
   const service = createNoticesService({ db });
 
-  assert.throws(
+  await assert.rejects(
     () => service.listPage('user-1', { limit: 500, summary: true }),
     (error) => error.code === 'VALIDATION_ERROR',
   );
-  assert.throws(
+  await assert.rejects(
     () => service.listPage('user-1', { limit: 20, offset: -1 }),
     (error) => error.code === 'VALIDATION_ERROR',
   );
