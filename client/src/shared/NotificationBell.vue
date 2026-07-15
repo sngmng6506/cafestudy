@@ -11,7 +11,7 @@ const { currentToken, currentUserId } = useCurrentUser();
 const {
   recentNotices,
   notificationLoading,
-  errorMessage,
+  notificationErrorMessage,
   unreadCount,
   loadNotificationSummary,
   markRead,
@@ -29,7 +29,7 @@ async function refresh() {
   try {
     await loadNotificationSummary();
   } catch {
-    // 팝오버 안의 errorMessage로 재시도 가능한 상태를 보여준다.
+    // 팝오버 안의 오류 상태에서 재시도할 수 있다.
   }
 }
 
@@ -98,8 +98,8 @@ async function readAll() {
       </div>
 
       <div v-if="notificationLoading && !recentNotices.length" class="ui-text-muted px-4 py-8 text-center text-[14px]">공지를 불러오고 있어요.</div>
-      <div v-else-if="errorMessage" class="px-4 py-6 text-center">
-        <p class="ui-text-danger text-[14px]">{{ errorMessage }}</p>
+      <div v-else-if="notificationErrorMessage" class="px-4 py-6 text-center">
+        <p class="ui-text-danger text-[14px]">{{ notificationErrorMessage }}</p>
         <button class="focus-ring ui-text-brand mt-2 text-[12px] font-semibold" type="button" @click="refresh">다시 불러오기</button>
       </div>
       <div v-else-if="!recentNotices.length" class="px-4 py-8 text-center">
