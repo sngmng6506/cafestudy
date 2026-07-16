@@ -12,6 +12,8 @@ const cafes = ref([]);
 const loading = ref(true);
 const errorMessage = ref('');
 const commentInputs = reactive({});
+const anonymousInputs = reactive({});
+const editing = reactive({}); // location -> true면 입력 폼 표시(수정 중)
 const pendingLocation = ref('');
 const selectedCafe = ref(null);
 
@@ -30,7 +32,9 @@ async function loadCafes() {
     const body = await apiFetch('/api/cafes');
     cafes.value = body.data ?? [];
     for (const cafe of cafes.value) {
-      commentInputs[cafe.location] = cafe.comments?.find((comment) => comment.isMine)?.body ?? '';
+      const mine = cafe.comments?.find((comment) => comment.isMine);
+      commentInputs[cafe.location] = mine?.body ?? '';
+      anonymousInputs[cafe.location] = mine?.isAnonymous ?? false;
     }
     void renderMap();
   } catch (error) {
@@ -119,6 +123,22 @@ onBeforeUnmount(() => {
   }
 });
 
+// 내 코멘트(있으면). 있으면 수정 버튼을, 없거나 수정 중이면 입력 폼을 보여준다.
+function myComment(cafe) {
+  return cafe.comments?.find((comment) => comment.isMine) ?? null;
+}
+
+function startEdit(cafe) {
+  const mine = myComment(cafe);
+  commentInputs[cafe.location] = mine?.body ?? '';
+  anonymousInputs[cafe.location] = mine?.isAnonymous ?? false;
+  editing[cafe.location] = true;
+}
+
+function cancelEdit(cafe) {
+  editing[cafe.location] = false;
+}
+
 async function saveComment(cafe) {
   const body = (commentInputs[cafe.location] ?? '').trim();
   if (!body) {
@@ -131,9 +151,14 @@ async function saveComment(cafe) {
     await apiFetch('/api/cafes/comments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ location: cafe.location, body }),
+      body: JSON.stringify({
+        location: cafe.location,
+        body,
+        isAnonymous: Boolean(anonymousInputs[cafe.location]),
+      }),
     });
     toast.success('코멘트를 저장했습니다.');
+    editing[cafe.location] = false;
     await loadCafes();
   } catch (error) {
     toast.error(error.message);
@@ -211,13 +236,31 @@ async function saveComment(cafe) {
               <div class="mb-1 flex items-center gap-1.5 text-[12px] font-semibold text-[#5f6368]">
                 <MessageSquare :size="14" />
                 {{ comment.authorName }}
+                <span
+                  v-if="comment.isMine && comment.isAnonymous"
+                  class="rounded bg-[#EDE7FB] px-1.5 py-0.5 text-[10px] font-semibold text-[#7C3AED]"
+                >
+                  익명
+                </span>
+                <button
+                  v-if="comment.isMine && !editing[cafe.location]"
+                  type="button"
+                  class="focus-ring ml-auto rounded px-1 text-[12px] font-semibold text-[#03883f] hover:underline"
+                  @click="startEdit(cafe)"
+                >
+                  수정
+                </button>
               </div>
               <p class="text-[13px] leading-relaxed text-[#333333]">{{ comment.body }}</p>
             </div>
           </div>
           <p v-else class="text-[13px] text-[#5f6368]">아직 남겨진 코멘트가 없습니다.</p>
 
-          <form v-if="cafe.canComment" class="grid gap-1" @submit.prevent="saveComment(cafe)">
+          <form
+            v-if="cafe.canComment && (!myComment(cafe) || editing[cafe.location])"
+            class="grid gap-2"
+            @submit.prevent="saveComment(cafe)"
+          >
             <div class="flex gap-2">
               <input
                 v-model="commentInputs[cafe.location]"
@@ -232,12 +275,30 @@ async function saveComment(cafe) {
               >
                 저장
               </button>
+              <button
+                v-if="editing[cafe.location]"
+                class="focus-ring h-10 shrink-0 rounded border border-[#dadce0] px-3 text-sm font-semibold text-[#5f6368] transition hover:bg-[#f5f6f7]"
+                type="button"
+                @click="cancelEdit(cafe)"
+              >
+                취소
+              </button>
             </div>
-            <span class="pr-1 text-right text-[11px] text-[#5f6368]">
-              {{ (commentInputs[cafe.location] ?? '').length }}/120
-            </span>
+            <div class="flex items-center justify-between">
+              <label class="flex cursor-pointer items-center gap-1.5 text-[12px] text-[#5f6368]">
+                <input
+                  v-model="anonymousInputs[cafe.location]"
+                  type="checkbox"
+                  class="h-4 w-4 accent-[#7C3AED]"
+                />
+                익명으로 남기기
+              </label>
+              <span class="pr-1 text-[11px] text-[#5f6368]">
+                {{ (commentInputs[cafe.location] ?? '').length }}/120
+              </span>
+            </div>
           </form>
-          <p v-else class="text-[12px] text-[#5f6368]">
+          <p v-else-if="!cafe.canComment" class="text-[12px] text-[#5f6368]">
             참석 이력이 있는 카페에만 코멘트를 남길 수 있습니다.
           </p>
         </li>
