@@ -164,6 +164,20 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
   로그인 기준으로 검증할 것.
 - **로컬 전용 DB가 없음**: 로컬 `DATABASE_URL`이 보통 팀이 공유하는 Railway DB.
   마이그레이션을 로컬에서 직접 실행하지 않는다(`AGENTS.md` 참고).
+- **owner를 닉네임으로 정한다**: `20260715_admin_roles_notices.sql`이
+  `WHERE nickname = '이상명'`으로 최초 owner를 지정한다. `users.nickname`은 UNIQUE가
+  아니고 값이 크롤러에서 오므로(동기화마다 덮어씀) 신뢰할 수 있는 키가 아니다.
+  이어지는 `20260715_secure_admin_auth.sql`은 "owner 정확히 1명 + 비밀번호 보유"를
+  `RAISE EXCEPTION`으로 강제하는데, 빈 DB에는 그 닉네임의 유저가 없어 0명이 되고
+  마이그레이션이 실패해 컨테이너가 뜨지 못했다. `20260715_b_owner_bootstrap.sql`이
+  owner가 없거나 여럿일 때 상태를 정리해 부트스트랩만 통과시킨다.
+  - 빈 DB에서는 가장 오래된 유저(시드된 Demo User)가 **잠긴 임시 owner**가 된다.
+    로그인 불가능한 자리표시자 해시라 아무도 그 계정으로 들어올 수 없다.
+  - 실제 소유자 지정은 크롤링 후 수동: `app_owner.user_id`와 `users.admin_role`을
+    실제 UUID로 바꾸고 그 유저의 `password_hash`/`password_updated_at`을 NULL로 만들어
+    최초 설정을 열어 준다(마이그레이션 파일 상단 주석에 절차 있음).
+  - 근본 해결(미구현): owner를 닉네임이 아니라 UUID 환경변수나 앱 부팅 시 멱등
+    처리로 정하고, 마이그레이션에서 운영 불변식을 `RAISE EXCEPTION`으로 강제하지 않는다.
 
 ## 포인트 규칙
 
