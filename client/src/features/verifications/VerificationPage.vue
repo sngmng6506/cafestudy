@@ -235,6 +235,20 @@ function formatBytes(bytes) {
       <p v-if="verifiableMeetups.length === 0" class="mt-4 text-[13px] text-[#5f6368]">
         아직 인증할 수 있는 참여 모임이 없습니다.
       </p>
+
+      <!-- 인증 성공 효과. 인증하면 그 모임이 pendingMeetups에서 빠져 아래 카드가
+           언마운트되므로, 효과는 항상 렌더되는 이 섹션에 둬야 보인다. -->
+      <div v-if="showSuccessEffect" class="success-burst" aria-hidden="true">
+        <span v-for="index in 12" :key="index" />
+      </div>
+
+      <div
+        v-if="showSuccessEffect"
+        class="mt-4 rounded-xl border border-[#03C75A] bg-[#e9f8ef] p-4 text-center"
+      >
+        <p class="text-sm font-semibold text-[#03883f]">인증이 완료됐어요.</p>
+        <p class="mt-1 text-2xl font-bold text-[#333333]">+10 포인트</p>
+      </div>
     </section>
 
     <section v-if="previewUrl" class="surface-card">
@@ -354,17 +368,12 @@ function formatBytes(bytes) {
                 인증 제출
               </button>
 
-              <div v-if="showSuccessEffect" class="success-burst" aria-hidden="true">
-                <span v-for="index in 12" :key="index" />
-              </div>
-
-              <div
-                v-if="status || showSuccessEffect"
-                class="mt-4 rounded-xl border border-[#dadce0] bg-[#f5f6f7] p-4"
-              >
-                <p v-if="status" class="text-sm font-semibold text-[#03C75A]">{{ status }}</p>
-                <p v-if="showSuccessEffect" class="mt-1 text-2xl font-bold text-[#333333]">+10 포인트</p>
-              </div>
+              <!-- 업로드 중 상태. 성공하면 status가 비고 카드 자체가 사라지므로
+                   (인증된 모임은 pendingMeetups에서 빠짐) 여기엔 진행 상태만 뜬다.
+                   성공 효과는 위 '사진 인증' 섹션에 있다. -->
+              <p v-if="status" class="mt-3 text-center text-sm font-semibold text-[#03C75A]">
+                {{ status }}
+              </p>
             </template>
           </div>
         </li>
