@@ -33,6 +33,7 @@ export function createCafesRouter(ctx) {
         userId: req.user.id,
         location: req.body.location,
         body: req.body.body,
+        isAnonymous: req.body.isAnonymous,
       });
       sendOk(res, comment, 201);
     } catch (error) {

@@ -87,7 +87,7 @@ export function createCafesService({ db, storage, searchPlacesFn = searchPlaces 
       );
     },
 
-    async upsertComment({ userId, location, body }) {
+    async upsertComment({ userId, location, body, isAnonymous }) {
       const normalizedLocation = (location ?? '').toString().trim();
       const normalizedBody = (body ?? '').toString().replace(/\s+/g, ' ').trim();
 
@@ -103,7 +103,12 @@ export function createCafesService({ db, storage, searchPlacesFn = searchPlaces 
         throwForbidden('COMMENT_NOT_ALLOWED', '참석 이력이 있는 카페에만 코멘트를 남길 수 있습니다.');
       }
 
-      return queries.upsertComment({ userId, location: normalizedLocation, body: normalizedBody });
+      return queries.upsertComment({
+        userId,
+        location: normalizedLocation,
+        body: normalizedBody,
+        isAnonymous: Boolean(isAnonymous),
+      });
     },
   };
 

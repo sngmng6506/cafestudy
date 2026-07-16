@@ -51,7 +51,9 @@ export function createCafesQueries(db) {
             c.body,
             c.created_at AS "createdAt",
             c.updated_at AS "updatedAt",
-            u.nickname AS "authorName",
+            CASE WHEN c.is_anonymous AND c.user_id IS DISTINCT FROM $1 THEN '익명'
+                 ELSE u.nickname END AS "authorName",
+            c.is_anonymous AS "isAnonymous",
             c.user_id = $1 AS "isMine"
           FROM cafe_comments c
           JOIN users u ON u.id = c.user_id
@@ -166,21 +168,24 @@ export function createCafesQueries(db) {
       return result.rows[0]?.allowed ?? false;
     },
 
-    async upsertComment({ userId, location, body }) {
+    async upsertComment({ userId, location, body, isAnonymous }) {
       const result = await db.query(
         `
-          INSERT INTO cafe_comments (cafe_location, user_id, body)
-          VALUES ($1, $2, $3)
+          INSERT INTO cafe_comments (cafe_location, user_id, body, is_anonymous)
+          VALUES ($1, $2, $3, $4)
           ON CONFLICT (cafe_location, user_id)
-          DO UPDATE SET body = EXCLUDED.body, updated_at = now()
+          DO UPDATE SET body = EXCLUDED.body,
+                        is_anonymous = EXCLUDED.is_anonymous,
+                        updated_at = now()
           RETURNING
             id,
             cafe_location AS location,
             body,
+            is_anonymous AS "isAnonymous",
             created_at AS "createdAt",
             updated_at AS "updatedAt"
         `,
-        [location, userId, body],
+        [location, userId, body, isAnonymous],
       );
 
       return result.rows[0];

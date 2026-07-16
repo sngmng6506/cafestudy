@@ -149,3 +149,43 @@ test('listCafePhotos: 위치가 비면 검증 에러', async () => {
     (err) => err.code === 'VALIDATION_ERROR',
   );
 });
+
+// --- 코멘트 익명 옵션 ---
+function commentServiceWith({ visited = true } = {}) {
+  const calls = { upsert: [] };
+  const db = {
+    async query(sql, params) {
+      if (sql.includes('AS allowed')) return { rows: [{ allowed: visited }] };
+      if (sql.includes('INSERT INTO cafe_comments')) {
+        const [location, userId, body, isAnonymous] = params;
+        calls.upsert.push({ location, userId, body, isAnonymous });
+        return { rows: [{ id: 'c1', location, body, isAnonymous }] };
+      }
+      return { rows: [] };
+    },
+  };
+  return {
+    service: createCafesService({ db, storage: {}, searchPlacesFn: async () => [] }),
+    calls,
+  };
+}
+
+test('upsertComment: isAnonymous를 boolean으로 변환해 저장한다', async () => {
+  const { service, calls } = commentServiceWith();
+  await service.upsertComment({ userId: USER_ID, location: '아비아채', body: '좋아요', isAnonymous: 'truthy' });
+  assert.equal(calls.upsert[0].isAnonymous, true);
+});
+
+test('upsertComment: isAnonymous 미지정이면 false', async () => {
+  const { service, calls } = commentServiceWith();
+  await service.upsertComment({ userId: USER_ID, location: '아비아채', body: '좋아요' });
+  assert.equal(calls.upsert[0].isAnonymous, false);
+});
+
+test('upsertComment: 방문 이력이 없으면 거부한다', async () => {
+  const { service } = commentServiceWith({ visited: false });
+  await assert.rejects(
+    () => service.upsertComment({ userId: USER_ID, location: '아비아채', body: '좋아요' }),
+    (err) => err.code === 'COMMENT_NOT_ALLOWED',
+  );
+});
