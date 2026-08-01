@@ -4,6 +4,7 @@ import { Award, Check, Sparkles, Trash2 } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { useToast } from '../../shared/useToast.js';
 import { useActiveBadge } from '../../shared/useActiveBadge.js';
+import { BADGE_LIMITS } from '../../../../shared/domain-constraints.js';
 
 const toast = useToast();
 const { setActiveBadgeImageUrl } = useActiveBadge();
@@ -19,8 +20,9 @@ const activatingId = ref('');
 const deletingId = ref('');
 const errorMessage = ref('');
 
-// 서버(badges.service.js MAX_BADGES_PER_USER)와 같은 값. 서버가 최종 검증한다.
-const MAX_BADGES = 5;
+const MAX_BADGES = BADGE_LIMITS.maxPerUser;
+const MAX_PROMPT_LENGTH = BADGE_LIMITS.maxPromptLength;
+const MAX_TITLE_LENGTH = BADGE_LIMITS.maxTitleLength;
 const atLimit = computed(() => badges.value.length >= MAX_BADGES);
 
 onMounted(loadBadges);
@@ -54,7 +56,7 @@ async function generateBadge() {
       body: JSON.stringify({ prompt: normalizedPrompt }),
     });
     preview.value = body.data;
-    title.value = normalizedPrompt.slice(0, 40);
+    title.value = normalizedPrompt.slice(0, MAX_TITLE_LENGTH);
   } catch (error) {
     toast.error(error.message);
   } finally {
@@ -140,7 +142,7 @@ async function activateBadge(badge) {
         <textarea
           v-model="prompt"
           class="min-h-[92px] rounded-lg border border-[#dadce0] px-4 py-3 text-[15px] outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
-          maxlength="200"
+          :maxlength="MAX_PROMPT_LENGTH"
           placeholder="예: 주말마다 카페에서 코딩하는 사람"
         ></textarea>
       </label>
@@ -173,7 +175,7 @@ async function activateBadge(badge) {
           <input
             v-model="title"
             class="h-11 rounded-lg border border-[#dadce0] px-4 text-[15px] outline-none transition focus:border-[#03C75A]"
-            maxlength="40"
+            :maxlength="MAX_TITLE_LENGTH"
           />
         </label>
         <button

@@ -1,10 +1,11 @@
 import { createMeetupQueries } from './meetup.queries.js';
 import { throwError } from '../../shared/errors.js';
 import { attachBadgeImageUrls } from '../../shared/badge-image.js';
+import { MEETUP_LIMITS } from '../../../shared/domain-constraints.js';
 
 // A meetup must be scheduled at least this far ahead of "now".
-export const MIN_LEAD_MS = 30 * 60 * 1000;
-export const MAX_CAPACITY = 100;
+export const MIN_LEAD_MS = MEETUP_LIMITS.minLeadMs;
+export const MAX_CAPACITY = MEETUP_LIMITS.maxCapacity;
 
 export function createMeetupService({ db, storage }) {
   const queries = createMeetupQueries(db);

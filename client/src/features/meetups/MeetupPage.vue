@@ -4,11 +4,12 @@ import { ChevronDown, Plus, Search, X } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { formatDate } from '../../shared/useMeetups.js';
 import { useToast } from '../../shared/useToast.js';
+import { MEETUP_LIMITS } from '../../../../shared/domain-constraints.js';
 
 const toast = useToast();
 
 // 서버 한도는 100이지만, 셀렉트 박스에서 고르기 쉬운 현실적인 범위만 노출한다.
-const CAPACITY_CHOICES = 20;
+const CAPACITY_CHOICES = MEETUP_LIMITS.capacityChoiceCount;
 
 const form = ref({
   title: '',
@@ -17,10 +18,10 @@ const form = ref({
   lat: null,
   lng: null,
   scheduledAt: getDefaultScheduledAt(),
-  capacity: 6,
+  capacity: MEETUP_LIMITS.defaultCapacity,
 });
 
-const minScheduledAt = computed(() => toLocalInputValue(new Date(Date.now() + 30 * 60 * 1000)));
+const minScheduledAt = computed(() => toLocalInputValue(new Date(Date.now() + MEETUP_LIMITS.minLeadMs)));
 
 // --- Place search ---
 const showSearch = ref(false);
@@ -128,14 +129,14 @@ const creating = ref(false);
 // 개설 버튼: 입력 검증만 통과하면 바로 만들지 않고 장소·일시 확인 팝업을 띄운다.
 function requestCreateMeetup() {
   const scheduled = new Date(form.value.scheduledAt);
-  if (Number.isNaN(scheduled.getTime()) || scheduled.getTime() < Date.now() + 30 * 60 * 1000) {
+  if (Number.isNaN(scheduled.getTime()) || scheduled.getTime() < Date.now() + MEETUP_LIMITS.minLeadMs) {
     toast.error('모임은 지금부터 30분 이후 시간으로만 개설할 수 있습니다.');
     return;
   }
 
   const capacity = Number(form.value.capacity);
-  if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100) {
-    toast.error('최대 참가 인원은 1~100 사이로 입력해주세요.');
+  if (!Number.isInteger(capacity) || capacity < 1 || capacity > MEETUP_LIMITS.maxCapacity) {
+    toast.error(`최대 참가 인원은 1~${MEETUP_LIMITS.maxCapacity} 사이로 입력해주세요.`);
     return;
   }
 
@@ -170,7 +171,7 @@ async function createMeetup() {
     form.value.lat = null;
     form.value.lng = null;
     form.value.scheduledAt = getDefaultScheduledAt();
-    form.value.capacity = 6;
+    form.value.capacity = MEETUP_LIMITS.defaultCapacity;
 
     toast.success('모임이 생성되었습니다.');
   } catch (error) {

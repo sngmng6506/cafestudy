@@ -2,11 +2,12 @@ import crypto from 'node:crypto';
 import { createBadgesQueries } from './badges.queries.js';
 import { createHuggingFaceBadgeProvider } from './huggingface.provider.js';
 import { throwError, throwNotFound, throwValidation } from '../../shared/errors.js';
+import { BADGE_LIMITS } from '../../../shared/domain-constraints.js';
 
 const POINT_COST = 0;
-const MAX_PROMPT_LENGTH = 200;
-const MAX_TITLE_LENGTH = 40;
-const MAX_BADGES_PER_USER = 5;
+const MAX_PROMPT_LENGTH = BADGE_LIMITS.maxPromptLength;
+const MAX_TITLE_LENGTH = BADGE_LIMITS.maxTitleLength;
+const MAX_BADGES_PER_USER = BADGE_LIMITS.maxPerUser;
 const BADGE_LIMIT_MESSAGE = `뱃지는 최대 ${MAX_BADGES_PER_USER}개까지 보관할 수 있어요. 기존 뱃지를 삭제한 뒤 다시 시도해 주세요.`;
 
 export function createBadgesService({ db, storage, config, badgeProvider }) {
