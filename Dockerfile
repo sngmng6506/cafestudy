@@ -29,6 +29,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev --ignore-scripts
 
 COPY --from=build /app/src ./src
+COPY --from=build /app/shared ./shared
 COPY --from=build /app/client/dist ./client/dist
 COPY --from=build /app/migrations ./migrations
 COPY --from=build /app/scripts ./scripts
