@@ -16,6 +16,8 @@ CafeStudy — 카페 스터디 모임 플랫폼. 여러 명이 AI를 써서 협�
 이 파일은 **코딩 규칙**만 다룬다. 아래는 다른 정보가 필요할 때:
 - [README.md](./README.md) — 시작하기, 현재 기능 목록, 스크립트
 - [ROADMAP.md](./ROADMAP.md) — 앞으로 구현하면 좋은 기능 후보
+- [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md) — 소모임 앱 자동화 job API 계약,
+  worker payload, dry-run/submit 안전 규칙. **미니PC worker나 자동화 API를 건드리기 전에 읽을 것.**
 - [DEVELOPMENT.md](./DEVELOPMENT.md) — 데이터 모델(스키마), 포인트 규칙, 트랜잭션
   요구사항, 알려진 설계 한계. **DB나 도메인 로직을 건드리기 전에 읽을 것.**
 - [DESIGN_GUIDE.md](./DESIGN_GUIDE.md) — semantic token, 색상, 타이포, 컴포넌트, 접근성.
@@ -106,6 +108,9 @@ git blame <파일>                 # 줄 단위 출처
 - `ctx`(= `{ db, auth, storage, config }`)로만 의존성을 받는다. 전역 import 금지 —
   테스트에서 주입 가능해야 한다.
 - 다른 feature를 직접 import하지 않는다. 필요한 공유 의존성은 `ctx`에서 받는다.
+- 프론트와 백엔드가 함께 의존하는 도메인 제한값(예: 모임 정원, 뱃지 최대 개수,
+  소모임 자동화 payload 길이)은 `shared/domain-constraints.js`에 둔다. 같은 숫자를
+  Vue 컴포넌트와 service에 따로 하드코딩하지 않는다.
 
 ### 응답·에러
 - 응답은 항상 `shared/api-response.js`의 `sendOk`/`sendFail` 형식(`{data, error}`).
@@ -127,6 +132,8 @@ git blame <파일>                 # 줄 단위 출처
   폴백은 금지하며, 미들웨어가 없으면 시작 단계에서 실패시킨다.
 - 프론트는 로그인 응답과 `GET /api/auth/me`의 `adminRole`을 그대로 사용한다.
   이름이나 `isAdmin` boolean만으로 owner를 추론하지 않는다.
+- `adminRole`에서 `isAdmin`/`isOwner` 같은 공개 플래그를 만들 때는 `src/shared/roles.js`의
+  helper를 사용한다. 같은 조건식을 라우트, 서비스, 프론트에 새로 복붙하지 않는다.
 - `password_hash IS NULL`이고 `password_updated_at IS NULL`인 계정은 모임 내부의 최초
   사용자 선점을 허용한다. 최초 설정은 조건부 UPDATE로 한 번만 성공해야 한다.
 - 관리자가 초기화한 계정은 `password_updated_at`이 남으므로 `memberId`만으로 다시
