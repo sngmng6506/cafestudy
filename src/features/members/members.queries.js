@@ -89,10 +89,15 @@ export function createMembersQueries(db) {
             m.created_at AS "createdAt",
             m.updated_at AS "updatedAt",
             (u.password_hash IS NOT NULL) AS "hasPassword",
-            COALESCE(u.is_admin, false) AS "isAdmin",
+            CASE
+              WHEN ao.user_id IS NOT NULL THEN 'owner'
+              WHEN u.admin_role = 'owner' THEN 'admin'
+              ELSE COALESCE(u.admin_role, CASE WHEN u.is_admin THEN 'admin' ELSE 'member' END)
+            END AS "adminRole",
             b.image_object_key AS "activeBadgeObjectKey"
           FROM somoim_members m
           LEFT JOIN users u ON u.id = m.id
+          LEFT JOIN app_owner ao ON ao.user_id = u.id
           LEFT JOIN badges b ON b.id = u.active_badge_id
           ORDER BY m.name ASC
         `,

@@ -1,4 +1,5 @@
 import { fail } from '../shared/api-response.js';
+import { publicRoleFlags } from '../shared/roles.js';
 
 const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -31,12 +32,9 @@ export function createAuth({ env, db }) {
         if (token) {
           const session = await lookupSession(token);
           if (session) {
-            const adminRole = session.adminRole ?? 'member';
             req.user = {
               id: session.id,
-              adminRole,
-              isAdmin: adminRole === 'admin' || adminRole === 'owner',
-              isOwner: adminRole === 'owner',
+              ...publicRoleFlags(session.adminRole),
             };
             req.userId = session.id;
             return next();
@@ -46,7 +44,7 @@ export function createAuth({ env, db }) {
         if (env !== 'production') {
           const headerUserId = req.header('x-user-id');
           const userId = headerUserId || DEMO_USER_ID;
-          req.user = { id: userId, adminRole: 'member', isAdmin: false, isOwner: false };
+          req.user = { id: userId, ...publicRoleFlags('member') };
           req.userId = userId;
         }
 

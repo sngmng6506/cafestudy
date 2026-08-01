@@ -1,4 +1,5 @@
 import { throwValidation, throwNotFound, throwForbidden, throwConflict } from '../../shared/errors.js';
+import { publicRoleFlags } from '../../shared/roles.js';
 import { createSetupToken, createToken, hashOpaqueToken, hashPassword, verifyPassword } from './auth.util.js';
 
 const MIN_PASSWORD_LENGTH = 4;
@@ -6,13 +7,10 @@ const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const SETUP_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
 function publicUser(user) {
-  const adminRole = user.adminRole ?? 'member';
   return {
     id: user.id,
     name: user.nickname,
-    adminRole,
-    isAdmin: adminRole === 'admin' || adminRole === 'owner',
-    isOwner: adminRole === 'owner',
+    ...publicRoleFlags(user.adminRole),
   };
 }
 
