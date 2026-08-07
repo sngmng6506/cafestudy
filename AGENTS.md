@@ -40,7 +40,7 @@ Decision: <판단이 개입된 경우만>
 - feature contract는 `{ name, basePath, createRoutes(ctx), onLoad?(ctx) }`다.
 - `basePath`는 feature마다 고유해야 한다.
 - 비동기 `onLoad(ctx)`는 초기화가 끝날 때까지 반환하지 않는다.
-- 환경 의존 초기화는 `process.env`보다 주입된 `ctx.config.env`를 우선한다.
+- 환경 의존 설정은 composition root의 `createConfig()`에서 만들고 `ctx.config`로 주입한다.
 - 의존성은 `ctx = { db, auth, storage, config }`로 주입한다. feature 간 직접 import 금지.
 - 프론트·백엔드 공통 제한값은 `shared/domain-constraints.js`에 둔다.
 - `app.js`에 feature 라우트를 직접 추가하지 않는다.
