@@ -62,15 +62,6 @@
 
 새 환경변수를 추가하거나 이름을 바꿀 때는 Railway Variables와 `.env.example`을 함께 갱신합니다.
 
-## Scripts
-
-```bash
-npm run dev         # backend server
-npm run dev:web     # frontend dev server
-npm test            # tests
-npm run build       # frontend production build
-npm run db:migrate  # Railway 배포 시 자동 실행 — 로컬에서 직접 돌리지 말 것
-```
 
 ## Project Structure
 
