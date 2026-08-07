@@ -81,15 +81,15 @@ export function createAuthQueries(db) {
       });
     },
 
-    async insertSession(token, userId, expiresAt) {
+    async insertSession(tokenHash, userId, expiresAt) {
       await db.query(
         `INSERT INTO sessions (token, user_id, expires_at) VALUES ($1, $2, $3)`,
-        [token, userId, expiresAt],
+        [tokenHash, userId, expiresAt],
       );
     },
 
-    async deleteSession(token) {
-      await db.query(`DELETE FROM sessions WHERE token = $1`, [token]);
+    async deleteSession(tokenHash) {
+      await db.query(`DELETE FROM sessions WHERE token = $1`, [tokenHash]);
     },
   };
 }

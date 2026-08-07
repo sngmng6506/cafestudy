@@ -1,11 +1,16 @@
 import { fail } from '../shared/api-response.js';
 import { publicRoleFlags } from '../shared/roles.js';
+import { hashOpaqueToken } from '../features/auth/auth.util.js';
 
 const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
 
-export function createAuth({ env, db }) {
-  async function lookupSession(token) {
-    if (!db) return null;
+export function createAuth({ env, db, config = {} }) {
+  const cookieName = config.cookieName || 'cafestudy_session';
+  const allowBearerAuth = config.allowBearerAuth === true;
+
+  async function lookupSession(rawToken) {
+    if (!db || !rawToken) return null;
+    const tokenHash = hashOpaqueToken(rawToken);
     const result = await db.query(
       `SELECT
          s.user_id AS id,
@@ -18,17 +23,27 @@ export function createAuth({ env, db }) {
        JOIN users u ON u.id = s.user_id
        LEFT JOIN app_owner ao ON ao.user_id = u.id
        WHERE s.token = $1 AND s.expires_at > now()`,
-      [token],
+      [tokenHash],
     );
     return result.rows[0] ?? null;
   }
 
+  function tokenFromRequest(req) {
+    const cookieToken = readCookie(req.header('cookie') ?? '', cookieName);
+    if (cookieToken) return cookieToken;
+
+    if (!allowBearerAuth) return '';
+    const authHeader = req.header('authorization') ?? '';
+    return authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  }
+
   return {
+    cookieName,
+    config,
+
     async resolveUser(req, _res, next) {
       try {
-        const authHeader = req.header('authorization') ?? '';
-        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-
+        const token = tokenFromRequest(req);
         if (token) {
           const session = await lookupSession(token);
           if (session) {
@@ -37,6 +52,7 @@ export function createAuth({ env, db }) {
               ...publicRoleFlags(session.adminRole),
             };
             req.userId = session.id;
+            req.authToken = token;
             return next();
           }
         }
@@ -79,8 +95,24 @@ export function createAuth({ env, db }) {
       return next();
     },
 
+    tokenFromRequest,
+
     userId(req) {
       return req.userId ?? (env !== 'production' ? DEMO_USER_ID : null);
     },
   };
+}
+
+function readCookie(header, name) {
+  const prefix = `${name}=`;
+  for (const part of header.split(';')) {
+    const value = part.trim();
+    if (!value.startsWith(prefix)) continue;
+    try {
+      return decodeURIComponent(value.slice(prefix.length));
+    } catch {
+      return '';
+    }
+  }
+  return '';
 }

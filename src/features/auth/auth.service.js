@@ -1,9 +1,15 @@
 import { throwValidation, throwNotFound, throwForbidden, throwConflict } from '../../shared/errors.js';
 import { publicRoleFlags } from '../../shared/roles.js';
-import { createSetupToken, createToken, hashOpaqueToken, hashPassword, verifyPassword } from './auth.util.js';
+import {
+  createSetupToken,
+  createToken,
+  hashOpaqueToken,
+  hashPassword,
+  verifyPassword,
+} from './auth.util.js';
 
 const MIN_PASSWORD_LENGTH = 4;
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const DEFAULT_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const SETUP_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
 function publicUser(user) {
@@ -14,12 +20,12 @@ function publicUser(user) {
   };
 }
 
-export function createAuthService(queries) {
+export function createAuthService(queries, { sessionTtlMs = DEFAULT_SESSION_TTL_MS } = {}) {
   async function issueSession(user) {
     const token = createToken();
-    const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-    await queries.insertSession(token, user.id, expiresAt);
-    return { token, user: publicUser(user) };
+    const expiresAt = new Date(Date.now() + sessionTtlMs);
+    await queries.insertSession(hashOpaqueToken(token), user.id, expiresAt);
+    return { token, expiresAt, user: publicUser(user) };
   }
 
   return {
@@ -112,8 +118,8 @@ export function createAuthService(queries) {
       return { memberId: targetMemberId, setupToken, expiresAt };
     },
 
-    async logout(token) {
-      if (token) await queries.deleteSession(token);
+    async logout(rawToken) {
+      if (rawToken) await queries.deleteSession(hashOpaqueToken(rawToken));
       return { ok: true };
     },
   };

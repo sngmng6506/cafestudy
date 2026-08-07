@@ -4,18 +4,10 @@ const DEFAULT_SCHEDULE = '30 3 * * *';
 const BATCH_SIZE = 100;
 
 export function registerBadgeGarbageCollection({ db, storage, config }) {
-  // 앱은 테스트 환경을 ctx.config로 주입한다. 전역 NODE_ENV만 보면
-  // node --test 실행 시 훅이 잘못 켜져 테스트용 storage stub을 호출할 수 있다.
-  if (config?.env === 'test' || process.env.NODE_ENV === 'test') return;
+  if (config?.env === 'test') return;
+  if (!storage || storage.status?.().configured === false) return;
 
-  // storage 자체가 없을 수 있다(테스트 ctx, 스토리지 미구성 부팅). 그 경우에도
-  // 앱 부팅이 죽으면 안 되므로 GC만 건너뛴다.
-  if (!storage || storage.status?.().configured === false) {
-    console.warn('[badges] GC 건너뜀: 이미지 스토리지가 설정되지 않았습니다.');
-    return;
-  }
-
-  const schedule = process.env.BADGE_GC_SCHEDULE ?? DEFAULT_SCHEDULE;
+  const schedule = config?.badges?.gcSchedule ?? DEFAULT_SCHEDULE;
   if (!cron.validate(schedule)) {
     console.error(`[badges] 유효하지 않은 BADGE_GC_SCHEDULE: "${schedule}"`);
     return;
@@ -25,62 +17,53 @@ export function registerBadgeGarbageCollection({ db, storage, config }) {
   const run = async () => {
     if (running) return;
     running = true;
-
     try {
-      let removedCount = 0;
+      await db.query(
+        `UPDATE badge_generations SET status = 'failed', error_message = 'stale_processing'
+          WHERE status = 'processing' AND created_at < now() - interval '30 minutes'`,
+      );
 
-      while (true) {
-        const result = await db.query(
-          `
-            SELECT b.id, b.image_object_key AS "imageObjectKey"
-            FROM badges b
-            WHERE NOT EXISTS (
-              SELECT 1 FROM user_badges ub WHERE ub.badge_id = b.id
-            )
-            ORDER BY b.created_at
-            LIMIT $1
-          `,
-          [BATCH_SIZE],
-        );
-
-        if (result.rows.length === 0) break;
-
-        for (const badge of result.rows) {
-          // S3 삭제는 idempotent하다. DB 삭제가 실패하더라도 다음 GC에서 재시도할 수
-          // 있도록 이미지부터 지운 뒤, 여전히 미참조 상태인 경우에만 DB 행을 삭제한다.
-          if (badge.imageObjectKey) {
-            await storage.deleteObject(badge.imageObjectKey);
-          }
-
-          const deleted = await db.query(
-            `
-              DELETE FROM badges b
-              WHERE b.id = $1
-                AND NOT EXISTS (
-                  SELECT 1 FROM user_badges ub WHERE ub.badge_id = b.id
-                )
-              RETURNING b.id
-            `,
-            [badge.id],
-          );
-          removedCount += deleted.rowCount;
+      const generations = await db.query(
+        `SELECT id, image_object_key AS "imageObjectKey"
+           FROM badge_generations
+          WHERE (status = 'failed' AND created_at < now() - interval '1 day')
+             OR (status = 'preview' AND created_at < now() - interval '7 days')
+          ORDER BY created_at LIMIT $1`,
+        [BATCH_SIZE],
+      );
+      for (const generation of generations.rows) {
+        if (generation.imageObjectKey && !generation.imageObjectKey.startsWith('pending:')) {
+          await storage.deleteObject(generation.imageObjectKey).catch(() => {});
         }
-
-        if (result.rows.length < BATCH_SIZE) break;
+        await db.query(
+          `DELETE FROM badge_generations
+            WHERE id = $1 AND status IN ('failed', 'preview')`,
+          [generation.id],
+        );
       }
 
-      if (removedCount > 0) {
-        console.log(`[badges] 고아 뱃지 GC 완료: ${removedCount}개 삭제`);
+      const badges = await db.query(
+        `SELECT b.id, b.image_object_key AS "imageObjectKey"
+           FROM badges b
+          WHERE NOT EXISTS (SELECT 1 FROM user_badges ub WHERE ub.badge_id = b.id)
+          ORDER BY b.created_at LIMIT $1`,
+        [BATCH_SIZE],
+      );
+      for (const badge of badges.rows) {
+        if (badge.imageObjectKey) await storage.deleteObject(badge.imageObjectKey).catch(() => {});
+        await db.query(
+          `DELETE FROM badges b WHERE b.id = $1
+            AND NOT EXISTS (SELECT 1 FROM user_badges ub WHERE ub.badge_id = b.id)`,
+          [badge.id],
+        );
       }
     } catch (error) {
-      console.error('[badges] 고아 뱃지 GC 오류:', error.message);
+      console.error('[badges] GC 오류:', error.message);
     } finally {
       running = false;
     }
   };
 
-  // 기존에 누적된 고아 데이터도 배포 직후 정리한다.
   void run();
   cron.schedule(schedule, run, { timezone: 'Asia/Seoul' });
-  console.log(`[badges] GC 스케줄 등록: "${schedule}" (Asia/Seoul)`);
 }

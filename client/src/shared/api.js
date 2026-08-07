@@ -1,4 +1,4 @@
-import { clearCurrentUserState, STORAGE_KEY, STORAGE_TOKEN_KEY } from './useCurrentUser.js';
+import { clearCurrentUserState, STORAGE_KEY } from './useCurrentUser.js';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
@@ -32,10 +32,9 @@ export async function apiFetch(path, options = {}) {
     ...fetchOptions
   } = options;
   const userId = localStorage.getItem(STORAGE_KEY);
-  const token = localStorage.getItem(STORAGE_TOKEN_KEY);
   const headers = new Headers(optionHeaders ?? {});
-  if (token) headers.set('Authorization', `Bearer ${token}`);
-  // dev 폴백 및 최초 로그인 전 개인화 읽기를 위해 병행 전송 (서버는 토큰을 우선한다).
+
+  // 개발 환경의 x-user-id 폴백만 유지한다. 운영 인증은 HttpOnly 쿠키가 담당한다.
   if (userId) headers.set('x-user-id', userId);
 
   const timeoutController = new AbortController();
@@ -46,7 +45,12 @@ export async function apiFetch(path, options = {}) {
 
   let response;
   try {
-    response = await fetch(path, { ...fetchOptions, headers, signal });
+    response = await fetch(path, {
+      ...fetchOptions,
+      headers,
+      signal,
+      credentials: fetchOptions.credentials ?? 'same-origin',
+    });
   } catch (error) {
     if (timeoutController.signal.aborted && !callerSignal?.aborted) {
       const timeoutError = new Error('요청 시간이 초과되었습니다.');
@@ -67,7 +71,6 @@ export async function apiFetch(path, options = {}) {
   const body = await response.json();
 
   if (!response.ok || body.error) {
-    // 세션 만료/무효: 저장소와 Vue 반응 상태를 함께 지워 모든 화면을 즉시 로그아웃 상태로 맞춘다.
     if (response.status === 401) clearCurrentUserState();
 
     const error = new Error(body.error?.message ?? '요청에 실패했습니다.');

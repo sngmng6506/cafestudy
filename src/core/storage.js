@@ -1,11 +1,19 @@
-import { DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  CopyObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'node:crypto';
 
 const DEFAULT_UPLOAD_TTL_SECONDS = 300;
 
-export function createStorage(env) {
-  const config = readStorageConfig(env);
+export function createStorage(input = {}) {
+  const config = normalizeStorageConfig(input);
   const configured = Boolean(
     config.bucket &&
     config.endpoint &&
@@ -26,7 +34,7 @@ export function createStorage(env) {
       })
     : null;
 
-  return {
+  const storage = {
     status() {
       return {
         configured,
@@ -43,66 +51,103 @@ export function createStorage(env) {
       if (config.publicBaseUrl) {
         return `${config.publicBaseUrl.replace(/\/$/, '')}/${objectKey}`;
       }
-
       return objectKey;
     },
 
-    async createUploadUrl({ prefix, contentType }) {
-      if (!configured) {
-        const error = new Error('Storage bucket is not configured');
-        error.statusCode = 503;
-        error.code = 'STORAGE_NOT_CONFIGURED';
-        throw error;
+    async createUploadUrl({
+      objectKey,
+      prefix,
+      contentType,
+      contentLength,
+      expiresIn = config.uploadTtlSeconds || DEFAULT_UPLOAD_TTL_SECONDS,
+    }) {
+      requireConfigured();
+      if (!Number.isInteger(contentLength) || contentLength <= 0) {
+        throwStorageError(400, 'UPLOAD_SIZE_REQUIRED', 'Upload content length is required');
       }
 
-      const objectKey = `${prefix}/${crypto.randomUUID()}.jpg`;
+      const key = objectKey || `${prefix}/${crypto.randomUUID()}${extensionForContentType(contentType)}`;
       const command = new PutObjectCommand({
         Bucket: config.bucket,
-        Key: objectKey,
+        Key: key,
         ContentType: contentType,
+        ContentLength: contentLength,
       });
+      const uploadUrl = await getSignedUrl(client, command, { expiresIn });
+      return { objectKey: key, uploadUrl, expiresIn };
+    },
 
-      const uploadUrl = await getSignedUrl(client, command, {
-        expiresIn: DEFAULT_UPLOAD_TTL_SECONDS,
-      });
-
+    async inspectObject(objectKey) {
+      requireConfigured();
+      const result = await client.send(new HeadObjectCommand({
+        Bucket: config.bucket,
+        Key: objectKey,
+      }));
       return {
         objectKey,
-        uploadUrl,
-        photoUrl: this.objectUrl(objectKey),
-        expiresIn: DEFAULT_UPLOAD_TTL_SECONDS,
+        contentType: result.ContentType ?? '',
+        contentLength: Number(result.ContentLength ?? 0),
       };
     },
 
-    async putObject({ objectKey, body, contentType }) {
-      if (!configured) {
-        const error = new Error('Storage bucket is not configured');
-        error.statusCode = 503;
-        error.code = 'STORAGE_NOT_CONFIGURED';
-        throw error;
+    async readObject(objectKey, { maxBytes = 10 * 1024 * 1024 } = {}) {
+      requireConfigured();
+      const result = await client.send(new GetObjectCommand({
+        Bucket: config.bucket,
+        Key: objectKey,
+      }));
+      const declaredLength = Number(result.ContentLength ?? 0);
+      if (declaredLength > maxBytes) {
+        throwStorageError(400, 'OBJECT_TOO_LARGE', 'Stored object exceeds the allowed size');
       }
 
+      const chunks = [];
+      let total = 0;
+      for await (const chunk of result.Body ?? []) {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        total += buffer.length;
+        if (total > maxBytes) {
+          throwStorageError(400, 'OBJECT_TOO_LARGE', 'Stored object exceeds the allowed size');
+        }
+        chunks.push(buffer);
+      }
+
+      return {
+        objectKey,
+        contentType: result.ContentType ?? '',
+        contentLength: total,
+        body: Buffer.concat(chunks, total),
+      };
+    },
+
+    async moveObject(sourceKey, destinationKey) {
+      requireConfigured();
+      await client.send(new CopyObjectCommand({
+        Bucket: config.bucket,
+        Key: destinationKey,
+        CopySource: encodeCopySource(config.bucket, sourceKey),
+        MetadataDirective: 'COPY',
+      }));
+      await client.send(new DeleteObjectCommand({
+        Bucket: config.bucket,
+        Key: sourceKey,
+      }));
+      return { objectKey: destinationKey, url: storage.objectUrl(destinationKey) };
+    },
+
+    async putObject({ objectKey, body, contentType }) {
+      requireConfigured();
       await client.send(new PutObjectCommand({
         Bucket: config.bucket,
         Key: objectKey,
         Body: body,
         ContentType: contentType,
       }));
-
-      return {
-        objectKey,
-        url: this.objectUrl(objectKey),
-      };
+      return { objectKey, url: storage.objectUrl(objectKey) };
     },
 
     async deleteObject(objectKey) {
-      if (!configured) {
-        const error = new Error('Storage bucket is not configured');
-        error.statusCode = 503;
-        error.code = 'STORAGE_NOT_CONFIGURED';
-        throw error;
-      }
-
+      requireConfigured();
       await client.send(new DeleteObjectCommand({
         Bucket: config.bucket,
         Key: objectKey,
@@ -110,13 +155,7 @@ export function createStorage(env) {
     },
 
     async getPrefixUsage(prefix) {
-      if (!configured) {
-        const error = new Error('Storage bucket is not configured');
-        error.statusCode = 503;
-        error.code = 'STORAGE_NOT_CONFIGURED';
-        throw error;
-      }
-
+      requireConfigured();
       let continuationToken;
       let objectCount = 0;
       let totalBytes = 0;
@@ -127,7 +166,6 @@ export function createStorage(env) {
           Prefix: prefix,
           ContinuationToken: continuationToken,
         }));
-
         for (const object of result.Contents ?? []) {
           objectCount += 1;
           totalBytes += Number(object.Size ?? 0);
@@ -140,32 +178,65 @@ export function createStorage(env) {
 
     async createDownloadUrl(objectKey) {
       if (!configured) return null;
-
-      const command = new GetObjectCommand({
-        Bucket: config.bucket,
-        Key: objectKey,
-      });
-
+      const command = new GetObjectCommand({ Bucket: config.bucket, Key: objectKey });
       return getSignedUrl(client, command, { expiresIn: 600 });
     },
   };
+
+  return storage;
+
+  function requireConfigured() {
+    if (!configured) {
+      throwStorageError(503, 'STORAGE_NOT_CONFIGURED', 'Storage bucket is not configured');
+    }
+  }
 }
 
-function readStorageConfig(env) {
+export function extensionForContentType(contentType) {
+  if (contentType === 'image/png') return '.png';
+  if (contentType === 'image/webp') return '.webp';
+  return '.jpg';
+}
+
+function throwStorageError(statusCode, code, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.code = code;
+  throw error;
+}
+
+function encodeCopySource(bucket, objectKey) {
+  const encodedKey = objectKey.split('/').map(encodeURIComponent).join('/');
+  return `${encodeURIComponent(bucket)}/${encodedKey}`;
+}
+
+function normalizeStorageConfig(input) {
+  if (input.bucket || input.endpoint || input.accessKeyId || input.secretAccessKey) {
+    return {
+      bucket: input.bucket || '',
+      endpoint: input.endpoint || '',
+      region: input.region || 'auto',
+      accessKeyId: input.accessKeyId || '',
+      secretAccessKey: input.secretAccessKey || '',
+      publicBaseUrl: input.publicBaseUrl || '',
+      uploadTtlSeconds: input.uploadTtlSeconds || DEFAULT_UPLOAD_TTL_SECONDS,
+    };
+  }
+
   return {
-    bucket: firstValue(env, ['S3_BUCKET', 'S3_BUCKET_NAME', 'AWS_S3_BUCKET_NAME', 'BUCKET_NAME', 'RAILWAY_BUCKET_NAME']),
-    endpoint: firstValue(env, ['S3_ENDPOINT', 'S3_ENDPOINT_URL', 'AWS_ENDPOINT_URL', 'AWS_ENDPOINT_URL_S3', 'RAILWAY_S3_ENDPOINT']),
-    region: firstValue(env, ['S3_REGION', 'AWS_REGION', 'AWS_DEFAULT_REGION']) ?? 'auto',
-    accessKeyId: firstValue(env, ['S3_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID']),
-    secretAccessKey: firstValue(env, ['S3_SECRET_ACCESS_KEY', 'AWS_SECRET_ACCESS_KEY']),
-    publicBaseUrl: firstValue(env, ['S3_PUBLIC_BASE_URL', 'BUCKET_PUBLIC_BASE_URL', 'STORAGE_PUBLIC_BASE_URL']),
+    bucket: firstValue(input, ['S3_BUCKET', 'S3_BUCKET_NAME', 'AWS_S3_BUCKET_NAME', 'BUCKET_NAME', 'RAILWAY_BUCKET_NAME']),
+    endpoint: firstValue(input, ['S3_ENDPOINT', 'S3_ENDPOINT_URL', 'AWS_ENDPOINT_URL', 'AWS_ENDPOINT_URL_S3', 'RAILWAY_S3_ENDPOINT']),
+    region: firstValue(input, ['S3_REGION', 'AWS_REGION', 'AWS_DEFAULT_REGION']) || 'auto',
+    accessKeyId: firstValue(input, ['S3_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID']),
+    secretAccessKey: firstValue(input, ['S3_SECRET_ACCESS_KEY', 'AWS_SECRET_ACCESS_KEY']),
+    publicBaseUrl: firstValue(input, ['S3_PUBLIC_BASE_URL', 'BUCKET_PUBLIC_BASE_URL', 'STORAGE_PUBLIC_BASE_URL']),
+    uploadTtlSeconds: DEFAULT_UPLOAD_TTL_SECONDS,
   };
 }
 
-function firstValue(env, names) {
+function firstValue(input, names) {
   for (const name of names) {
-    if (env[name]) return env[name];
+    if (input[name]) return input[name];
   }
-
   return '';
 }
