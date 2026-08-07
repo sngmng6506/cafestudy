@@ -30,9 +30,10 @@ app_owner                     -- 최고 관리자 UUID 잠금(항상 한 행)
 - 애플리케이션에서 owner 임명·해제와 owner 비밀번호 초기화는 허용하지 않는다.
 
 sessions                      -- 로그인 세션 (비밀번호 인증)
-- token(PK), user_id(FK users, CASCADE), created_at, expires_at
-- 로그인 성공 시 발급, 클라이언트는 Authorization: Bearer <token>으로 전송.
-  전역 미들웨어(resolveUser)가 만료 전 세션만 인정한다.
+- token(PK, SHA-256 해시), user_id(FK users, CASCADE), created_at, expires_at
+- 로그인 성공 시 원문 토큰을 HttpOnly/SameSite=Lax 쿠키로 한 번만 전달하고,
+  DB에는 원문이 아닌 해시만 저장한다. 전역 미들웨어(resolveUser)는 쿠키 토큰을
+  해시해 만료 전 세션만 인정한다. 프로덕션 bearer 인증은 기본 비활성화다.
 
 password_setup_tokens         -- 관리자 초기화 후 사용하는 일회용 코드
 - token_hash(PK), user_id(FK users, CASCADE), created_by(FK users, RESTRICT),
@@ -66,16 +67,30 @@ meetups                       -- 앱 안에서 직접 만든 모임
 participants                  -- meetup 참가 (UNIQUE meetup_id+user_id)
 - id, meetup_id, user_id, joined_at
 
+verification_uploads          -- 사진 인증 업로드 ticket
+- id, meetup_id(FK), user_id(FK), object_key(UNIQUE), content_type,
+  content_length, status(pending/finalizing/consumed/failed), failure_reason,
+  expires_at, consumed_at, created_at
+- presigned PUT 발급 시 생성한다. 사용자·모임 소유권, 허용 MIME, 크기, 만료,
+  pending/시간당 발급 제한을 서버에서 검증한다.
+- finalize 시 실제 객체의 크기·MIME·이미지 시그니처를 확인한 뒤 신뢰 경로로 이동한다.
+  ticket은 한 번만 소비되며 실패·만료 staging 객체는 GC가 정리한다.
+
 verifications                 -- 사진 인증 (UNIQUE meetup_id+user_id, 1인 1회)
 - id, meetup_id, user_id, photo_url, points_awarded,
   status(approved/rejected/pending), created_at
+- 클라이언트가 제출한 photo_url을 신뢰하지 않는다. 검증 완료된 upload ticket의
+  object만 신뢰 경로로 옮긴 뒤 인증 행과 포인트를 기록한다.
 
 point_logs                    -- 포인트 원장. source: verify/host/dice
 - id, user_id, source, ref_id, amount, created_at
 
-badge_generations             -- AI 뱃지 생성 이력 (preview → applied)
+badge_generations             -- AI 뱃지 생성 이력
 - id, user_id, prompt, provider, model, image_object_key, point_cost,
-  status(preview/applied), error_message, created_at
+  status(processing/preview/applied/failed), error_message, created_at
+- 외부 모델 호출 전에 generation 행으로 quota를 예약한다. 기본 사용자당 24시간 3회,
+  동시 processing 1건이며 timeout·응답 크기 제한을 적용한다.
+- 실패 generation과 미사용 preview 이미지는 badges.gc.js가 정리한다.
 
 badges                        -- 생성 결과에서 확정된 뱃지
 - id, title, description, image_object_key, provider, model, prompt,
@@ -86,8 +101,8 @@ user_badges                   -- 유저가 보유한 뱃지 (PK user_id+badge_id
 - 인당 최대 5개 (badges.service.js MAX_BADGES_PER_USER가 검증 —
   DB 제약이 아니라 apply 트랜잭션의 user row 잠금 + 카운트로 보장)
 - 삭제는 user_badges 행만 지운다. badges 행과 이미지 오브젝트는 즉시 지우지 않는다.
-  미참조 badges와 이미지는 badges.gc.js가 배포 직후 한 번, 이후 매일 03:30 KST에
-  최대 100개씩 반복 정리한다. BADGE_GC_SCHEDULE 환경변수로 스케줄을 재정의할 수 있다.
+  미참조 badges와 이미지는 badges.gc.js가 배포 직후 한 번, 이후 설정된 스케줄에 따라
+  최대 100개씩 반복 정리한다.
 
 -- 소모임(somoim.co.kr) 크롤링 데이터 — 읽기전용, 앱 데이터와 별도 -----------
 -- 동기화: (1) node-cron 정기 크롤링 — 하루 2회(새벽 2시·오후 6시 KST). 기본
@@ -151,7 +166,7 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
 - `cafe_comments.cafe_location`은 문자열 키라 같은 카페도 표기 차이로 분리될 수 있다.
   지도 좌표는 보정되지만 집계·코멘트는 문자열 기준이다.
 - 개발 환경에서는 토큰 없이 `x-user-id` 인증 폴백이 동작한다.
-  프로덕션 권한은 실제 세션 토큰으로 검증한다.
+  프로덕션 권한은 HttpOnly 세션 쿠키로 검증한다.
 - 로컬 전용 DB가 없어 `DATABASE_URL`이 공유 Railway DB를 가리킬 수 있다.
   로컬에서 `npm run db:migrate`를 실행하지 않는다.
 - owner 초기 지정에는 부트스트랩 제약이 있다.
@@ -164,13 +179,15 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
 
 ## 트랜잭션 요구사항
 
-사진 인증은 원자적으로 처리해야 한다 — 아래 세 쓰기가 하나의 트랜잭션이어야 함:
+사진 인증은 검증된 upload ticket을 원자적으로 소비해야 한다. 아래 쓰기는 하나의
+트랜잭션이어야 한다.
 
-1. `verifications` insert
-2. `point_logs` insert
-3. `users.total_points` increment
+1. `verification_uploads`를 consumed로 전환
+2. `verifications` insert
+3. `point_logs` insert
+4. `users.total_points` increment
 
-세 개를 독립된 쿼리로 나눠 쓰지 않는다(`db.transaction()` 사용).
+네 개를 독립된 쿼리로 나눠 쓰지 않는다(`db.transaction()` 사용).
 
 모임 참여는 meetup 행을 `FOR UPDATE`로 잠근 같은 트랜잭션에서 기존 참여와 정원을 확인한 뒤 insert한다.
 
