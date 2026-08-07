@@ -3,8 +3,11 @@ import cron from 'node-cron';
 const DEFAULT_SCHEDULE = '30 3 * * *';
 const BATCH_SIZE = 100;
 
-export function registerBadgeGarbageCollection({ db, storage }) {
-  if (process.env.NODE_ENV === 'test') return;
+export function registerBadgeGarbageCollection({ db, storage, config }) {
+  // 앱은 테스트 환경을 ctx.config로 주입한다. 전역 NODE_ENV만 보면
+  // node --test 실행 시 훅이 잘못 켜져 테스트용 storage stub을 호출할 수 있다.
+  if (config?.env === 'test' || process.env.NODE_ENV === 'test') return;
+
   // storage 자체가 없을 수 있다(테스트 ctx, 스토리지 미구성 부팅). 그 경우에도
   // 앱 부팅이 죽으면 안 되므로 GC만 건너뛴다.
   if (!storage || storage.status?.().configured === false) {
