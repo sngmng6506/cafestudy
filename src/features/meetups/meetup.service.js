@@ -3,7 +3,6 @@ import { throwError } from '../../shared/errors.js';
 import { attachBadgeImageUrls } from '../../shared/badge-image.js';
 import { MEETUP_LIMITS } from '../../../shared/domain-constraints.js';
 
-// A meetup must be scheduled at least this far ahead of "now".
 export const MIN_LEAD_MS = MEETUP_LIMITS.minLeadMs;
 export const MAX_CAPACITY = MEETUP_LIMITS.maxCapacity;
 
@@ -15,7 +14,7 @@ export function createMeetupService({ db, storage }) {
       const meetups = await queries.listMeetups(userId);
       return Promise.all(
         meetups.map(async (meetup) => ({
-          ...withState(meetup),
+          ...withLifecycleState(meetup),
           attendees: await attachBadgeImageUrls(storage, meetup.attendees, {
             keyField: 'badgeKey',
             urlField: 'badgeUrl',
@@ -27,7 +26,12 @@ export function createMeetupService({ db, storage }) {
     async createMeetup(input) {
       validateMeetupInput(input);
       const meetup = await queries.createMeetup(input);
-      return { ...withState(meetup), participantCount: 1, joined: true, isHost: true };
+      return {
+        ...withLifecycleState(meetup),
+        participantCount: 1,
+        joined: true,
+        isHost: true,
+      };
     },
 
     async joinMeetup({ meetupId, userId }) {
@@ -59,7 +63,7 @@ export function createMeetupService({ db, storage }) {
 
     async leaveMeetup({ meetupId, userId }) {
       const meetup = await queries.getMeetupById(meetupId);
-      if (meetup && deriveState(meetup.scheduledAt) === 'done') {
+      if (meetup && deriveLifecycleState(meetup.scheduledAt) === 'done') {
         throwError(400, 'MEETUP_CLOSED', '이미 종료된 모임입니다.');
       }
       if (meetup && meetup.hostId === userId) {
@@ -73,17 +77,25 @@ export function createMeetupService({ db, storage }) {
   };
 }
 
-export function deriveState(scheduledAt, now = Date.now()) {
+export function deriveLifecycleState(scheduledAt, now = Date.now()) {
   return new Date(scheduledAt).getTime() <= now ? 'done' : 'upcoming';
 }
 
-function withState(meetup) {
-  return { ...meetup, state: deriveState(meetup.scheduledAt) };
+// Temporary compatibility export for callers migrating from the ambiguous name.
+export const deriveState = deriveLifecycleState;
+
+function withLifecycleState(meetup) {
+  const lifecycleState = deriveLifecycleState(meetup.scheduledAt);
+  return {
+    ...meetup,
+    lifecycleState,
+    // Deprecated compatibility field. Remove after all clients consume lifecycleState.
+    state: lifecycleState,
+  };
 }
 
 function validateMeetupInput(input) {
   const requiredFields = ['hostId', 'title', 'location', 'scheduledAt'];
-
   for (const field of requiredFields) {
     if (!input[field]) {
       throwError(400, 'VALIDATION_ERROR', `${field} is required`);
