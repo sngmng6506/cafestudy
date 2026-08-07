@@ -61,6 +61,7 @@ notice_reads                  -- 사용자별 공지 읽음 상태
 meetups                       -- 앱 안에서 직접 만든 모임
 - id, host_id, title, description, location, cafe_name(legacy, nullable),
   scheduled_at, capacity, status(open/closed), created_at
+- `status`는 DB 운영 상태, API의 `lifecycleState`는 scheduled_at으로 계산한 upcoming/done 상태다.
 
 participants                  -- meetup 참가 (UNIQUE meetup_id+user_id)
 - id, meetup_id, user_id, joined_at
@@ -199,6 +200,8 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
 3. `users.total_points` increment
 
 세 개를 독립된 쿼리로 나눠 쓰지 않는다(`db.transaction()` 사용).
+
+모임 참여는 meetup 행을 `FOR UPDATE`로 잠근 같은 트랜잭션에서 기존 참여와 정원을 확인한 뒤 insert한다.
 
 관리자/인증 기능도 다음 묶음을 원자적으로 처리한다.
 
