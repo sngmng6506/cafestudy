@@ -21,6 +21,12 @@ after(async () => {
   await pool?.end();
 });
 
+async function cleanupMeetup(meetupId, userIds) {
+  await pool.query('DELETE FROM participants WHERE meetup_id = $1', [meetupId]);
+  await pool.query('DELETE FROM meetups WHERE id = $1', [meetupId]);
+  await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [userIds]);
+}
+
 run('동시 참가 요청은 마지막 한 자리를 초과하지 않는다', async () => {
   const suffix = `${Date.now()}-${Math.random()}`;
   const users = await pool.query(
@@ -42,36 +48,37 @@ run('동시 참가 요청은 마지막 한 자리를 초과하지 않는다', as
     [host.id, `concurrency-${suffix}`, 'test cafe'],
   );
   const meetupId = meetupResult.rows[0].id;
-  await pool.query(
-    'INSERT INTO participants (meetup_id, user_id) VALUES ($1, $2)',
-    [meetupId, host.id],
-  );
 
-  const service = createMeetupService({ db });
-  const results = await Promise.allSettled([
-    service.joinMeetup({ meetupId, userId: joinerA.id }),
-    service.joinMeetup({ meetupId, userId: joinerB.id }),
-  ]);
+  try {
+    await pool.query(
+      'INSERT INTO participants (meetup_id, user_id) VALUES ($1, $2)',
+      [meetupId, host.id],
+    );
 
-  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
-  const rejected = results.find((result) => result.status === 'rejected');
-  assert.equal(rejected?.reason?.code, 'MEETUP_FULL');
+    const service = createMeetupService({ db });
+    const results = await Promise.allSettled([
+      service.joinMeetup({ meetupId, userId: joinerA.id }),
+      service.joinMeetup({ meetupId, userId: joinerB.id }),
+    ]);
 
-  const countResult = await pool.query(
-    'SELECT COUNT(*)::int AS count FROM participants WHERE meetup_id = $1',
-    [meetupId],
-  );
-  assert.equal(countResult.rows[0].count, 2);
+    assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+    const rejected = results.find((result) => result.status === 'rejected');
+    assert.equal(rejected?.reason?.code, 'MEETUP_FULL');
 
-  await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [
-    [host.id, joinerA.id, joinerB.id],
-  ]);
+    const countResult = await pool.query(
+      'SELECT COUNT(*)::int AS count FROM participants WHERE meetup_id = $1',
+      [meetupId],
+    );
+    assert.equal(countResult.rows[0].count, 2);
+  } finally {
+    await cleanupMeetup(meetupId, [host.id, joinerA.id, joinerB.id]);
+  }
 });
 
 run('닫힌 모임은 예정 시간이 남아도 참가할 수 없다', async () => {
   const suffix = `${Date.now()}-${Math.random()}`;
   const users = await pool.query(
-    `INSERT INTO users (nickname) VALUES ($1), ($2) RETURNING id`,
+    'INSERT INTO users (nickname) VALUES ($1), ($2) RETURNING id',
     [`closed-host-${suffix}`, `closed-joiner-${suffix}`],
   );
   const [host, joiner] = users.rows;
@@ -85,11 +92,13 @@ run('닫힌 모임은 예정 시간이 남아도 참가할 수 없다', async ()
   );
   const meetupId = meetupResult.rows[0].id;
 
-  const service = createMeetupService({ db });
-  await assert.rejects(
-    () => service.joinMeetup({ meetupId, userId: joiner.id }),
-    (error) => error.code === 'MEETUP_CLOSED',
-  );
-
-  await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[host.id, joiner.id]]);
+  try {
+    const service = createMeetupService({ db });
+    await assert.rejects(
+      () => service.joinMeetup({ meetupId, userId: joiner.id }),
+      (error) => error.code === 'MEETUP_CLOSED',
+    );
+  } finally {
+    await cleanupMeetup(meetupId, [host.id, joiner.id]);
+  }
 });
