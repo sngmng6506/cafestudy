@@ -27,27 +27,21 @@ export function createMeetupService({ db, storage }) {
     async createMeetup(input) {
       validateMeetupInput(input);
       const meetup = await queries.createMeetup(input);
-      // The host is auto-enrolled, so the meetup starts with one participant.
       return { ...withState(meetup), participantCount: 1, joined: true, isHost: true };
     },
 
     async joinMeetup({ meetupId, userId }) {
-      const meetup = await queries.getMeetupById(meetupId);
-      if (!meetup) {
+      const result = await queries.joinMeetup({ meetupId, userId });
+      if (result.outcome === 'not_found') {
         throwError(404, 'MEETUP_NOT_FOUND', '모임을 찾을 수 없습니다.');
       }
-      if (deriveState(meetup.scheduledAt) === 'done') {
-        throwError(400, 'MEETUP_CLOSED', '이미 종료된 모임입니다.');
+      if (result.outcome === 'closed') {
+        throwError(400, 'MEETUP_CLOSED', '참여할 수 없는 모임입니다.');
       }
-
-      const current = await queries.countParticipants(meetupId);
-      if (current >= meetup.capacity) {
+      if (result.outcome === 'full') {
         throwError(400, 'MEETUP_FULL', '참가 정원이 가득 찼습니다.');
       }
-
-      await queries.addParticipant(meetupId, userId);
-      const participantCount = await queries.countParticipants(meetupId);
-      return { meetupId, joined: true, participantCount };
+      return { meetupId, joined: true, participantCount: result.participantCount };
     },
 
     async cancelMeetup({ meetupId, userId }) {
@@ -79,7 +73,6 @@ export function createMeetupService({ db, storage }) {
   };
 }
 
-// Time-derived completion: 'upcoming' until the scheduled time passes, then 'done'.
 export function deriveState(scheduledAt, now = Date.now()) {
   return new Date(scheduledAt).getTime() <= now ? 'done' : 'upcoming';
 }
