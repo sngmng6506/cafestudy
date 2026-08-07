@@ -61,6 +61,7 @@ notice_reads                  -- 사용자별 공지 읽음 상태
 meetups                       -- 앱 안에서 직접 만든 모임
 - id, host_id, title, description, location, cafe_name(legacy, nullable),
   scheduled_at, capacity, status(open/closed), created_at
+- `status`는 DB 운영 상태, API의 `lifecycleState`는 scheduled_at으로 계산한 upcoming/done 상태다.
 
 participants                  -- meetup 참가 (UNIQUE meetup_id+user_id)
 - id, meetup_id, user_id, joined_at
@@ -147,48 +148,19 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
 
 ## 알려진 설계 한계
 
-- **cafe_comments의 `cafe_location`이 문자열 그대로 키**: 앱 모임의 `location`
-  ("아비아채")과 정모의 `location`("아비아채 지하1층")이 다른 문자열이라 같은
-  카페인데도 다르게 집계됨.
-  (현재 완화: cafe_places 지오코딩으로 지도에서는 같은 좌표로 수렴해 보이지만,
-  집계·코멘트는 여전히 문자열 단위로 분리된다.)
-  해결 방향(미구현): 룰베이스 정규화는 한국 카페명 변형이 무한해 오류가 많으므로,
-  집계는 원본대로 하되 주기적으로(cron) AI(OpenRouter+Claude Haiku)가 카페명 목록을
-  같은 곳끼리 묶어 대표 이름을 정한다. 원본은 보존하고 `cafe_aliases` 매핑 테이블만
-  관리해 안전하게 되돌릴 수 있게 한다. AI 호출 실패 시 원본 집계로 폴백.
-  (사용자용 안내는 더보기 > 알려진 이슈 페이지에도 있음)
-- **dev 환경에는 인증 폴백이 있음**: 인증은 비밀번호+세션 토큰으로 구현되어
-  있지만(`AGENTS.md`의 "인증 경계" 참고), `NODE_ENV !== 'production'`에서는
-  토큰 없이 `x-user-id` 헤더/데모 유저 폴백이 동작한다. 로컬에서 되던 권한
-  동작이 프로덕션에서 401이 날 수 있으니, 권한 로직은 폴백이 아니라 실제
-  로그인 기준으로 검증할 것.
-- **로컬 전용 DB가 없음**: 로컬 `DATABASE_URL`이 보통 팀이 공유하는 Railway DB.
-  마이그레이션을 로컬에서 직접 실행하지 않는다(`AGENTS.md` 참고).
-- **owner를 닉네임으로 정한다**: `20260715_admin_roles_notices.sql`이
-  `WHERE nickname = '이상명'`으로 최초 owner를 지정한다. `users.nickname`은 UNIQUE가
-  아니고 값이 크롤러에서 오므로(동기화마다 덮어씀) 신뢰할 수 있는 키가 아니다.
-  이어지는 `20260715_secure_admin_auth.sql`은 "owner 정확히 1명 + 비밀번호 보유"를
-  `RAISE EXCEPTION`으로 강제하는데, 빈 DB에는 그 닉네임의 유저가 없어 0명이 되고
-  마이그레이션이 실패해 컨테이너가 뜨지 못했다. `20260715_b_owner_bootstrap.sql`이
-  owner가 없거나 여럿일 때 상태를 정리해 부트스트랩만 통과시킨다.
-  - 빈 DB에서는 가장 오래된 유저(시드된 Demo User)가 **잠긴 임시 owner**가 된다.
-    로그인 불가능한 자리표시자 해시라 아무도 그 계정으로 들어올 수 없다.
-  - 실제 소유자 지정은 크롤링 후 수동: `app_owner.user_id`와 `users.admin_role`을
-    실제 UUID로 바꾸고 그 유저의 `password_hash`/`password_updated_at`을 NULL로 만들어
-    최초 설정을 열어 준다(마이그레이션 파일 상단 주석에 절차 있음).
-  - 근본 해결(미구현): owner를 닉네임이 아니라 UUID 환경변수나 앱 부팅 시 멱등
-    처리로 정하고, 마이그레이션에서 운영 불변식을 `RAISE EXCEPTION`으로 강제하지 않는다.
+- `cafe_comments.cafe_location`은 문자열 키라 같은 카페도 표기 차이로 분리될 수 있다.
+  지도 좌표는 보정되지만 집계·코멘트는 문자열 기준이다.
+- 개발 환경에서는 토큰 없이 `x-user-id` 인증 폴백이 동작한다.
+  프로덕션 권한은 실제 세션 토큰으로 검증한다.
+- 로컬 전용 DB가 없어 `DATABASE_URL`이 공유 Railway DB를 가리킬 수 있다.
+  로컬에서 `npm run db:migrate`를 실행하지 않는다.
+- owner 초기 지정에는 부트스트랩 제약이 있다.
+  변경 전 `app_owner`, `users.admin_role`, 비밀번호 상태를 함께 확인한다.
 
 ## 포인트 규칙
 
-```text
-사진 인증(verify) = 10점   (verification.service.js: VERIFY_POINTS)
-주사위(dice)       = 1~6점 (굴린 값 그대로)
-모임 개설(host)     = 0점   (스팸 방지 목적으로 의도적으로 0 — 처음부터 고정)
-```
-
-`point_logs.source`는 `'verify' | 'host' | 'dice'`로 제약된다(DB CHECK 제약).
-새 포인트 출처를 추가하면 마이그레이션으로 이 CHECK도 같이 넓혀야 한다.
+사진 인증은 10점, 주사위는 나온 값(1~6점), 모임 개설은 0점이다.
+새 포인트 출처를 추가하면 `point_logs.source` DB CHECK도 함께 변경한다.
 
 ## 트랜잭션 요구사항
 
@@ -200,6 +172,8 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
 
 세 개를 독립된 쿼리로 나눠 쓰지 않는다(`db.transaction()` 사용).
 
+모임 참여는 meetup 행을 `FOR UPDATE`로 잠근 같은 트랜잭션에서 기존 참여와 정원을 확인한 뒤 insert한다.
+
 관리자/인증 기능도 다음 묶음을 원자적으로 처리한다.
 
 - 최초 비밀번호 설정은 `password_hash IS NULL AND password_updated_at IS NULL` 조건부
@@ -207,12 +181,3 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
 - 관리자 역할 변경 + `admin_role_logs` 기록
 - 비밀번호 설정 코드 발급 + 기존 코드 삭제 + 비밀번호 초기화 + 세션 삭제
 - 설정 코드 소비 + 새 비밀번호 저장
-
-## 월간 랭킹 규칙
-
-Asia/Seoul 타임존 기준으로 `point_logs.created_at`을 집계한다.
-
-```text
-created_at >= 이번 달 1일 00:00 (KST)
-created_at <  다음 달 1일 00:00 (KST)
-```

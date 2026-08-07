@@ -105,6 +105,8 @@ git blame <파일>                 # 줄 단위 출처
   };
   ```
 
+- `basePath`는 feature마다 고유해야 하며, 비동기 `onLoad(ctx)`는 초기화가 끝날 때까지 반환하지 않는다.
+- 환경에 따라 동작하는 초기화는 `process.env`보다 주입된 `ctx.config.env`를 우선한다.
 - `ctx`(= `{ db, auth, storage, config }`)로만 의존성을 받는다. 전역 import 금지 —
   테스트에서 주입 가능해야 한다.
 - 다른 feature를 직접 import하지 않는다. 필요한 공유 의존성은 `ctx`에서 받는다.
@@ -118,6 +120,7 @@ git blame <파일>                 # 줄 단위 출처
   `throwConflict`(또는 `throwError(statusCode, code, message)`)로 던진다. 라우트에서
   수동으로 status를 매핑하지 않는다 — `next(error)`만 하면 전역 에러 핸들러가
   `error.statusCode`/`error.code`를 읽어 자동으로 응답한다.
+- 예상하지 못한 5xx 오류의 message·stack·내부 주소는 로그에만 남기고 응답에 노출하지 않는다.
 
 ### 인증 경계 — 중요
 - 인증은 **비밀번호 + 세션 토큰** 방식이다: 로그인(`POST /api/auth/login`) 성공 시
