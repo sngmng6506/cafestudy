@@ -42,31 +42,14 @@
 - Storage: S3-compatible bucket on Railway
 - Deploy: Railway
 
-## Quick Start
+## Deployment
 
-```bash
-git clone https://github.com/sngmng6506/cafestudy.git
-cd cafestudy
-npm install
-cp .env.example .env    # Windows: copy .env.example .env
-```
+운영 환경은 Railway입니다. `main`에 변경이 머지되면 Railway가 자동으로 빌드·배포하고,
+배포 스크립트가 DB 마이그레이션을 실행합니다.
 
-`.env` 값을 채운 뒤 터미널 2개에서 각각 실행합니다.
-
-```bash
-npm run dev       # backend  → http://localhost:3000
-npm run dev:web   # frontend → http://localhost:5173
-```
-
-프론트에 접속하면 됩니다(http://localhost:5173). Vite가 `/api` 요청을 backend로 proxy합니다.
-
-배포는 자동입니다 — `main`에 push하면 Railway가 빌드·배포하고 DB 마이그레이션도
-배포 스크립트가 실행합니다.
-
-## Environment
-
-`.env`는 git에 올라가지 않습니다. 필요한 변수와 설명은 [`.env.example`](./.env.example)을
-기준으로 확인하고, 실제 값은 팀에 요청하세요.
+실제 환경변수 값은 Railway 프로젝트의 **Variables**에서 관리합니다. 저장소의
+[`.env.example`](./.env.example)은 Railway에 필요한 키와 기본값을 확인하는 문서이며,
+실제 비밀값을 저장하지 않습니다.
 
 주요 설정 범주는 다음과 같습니다.
 
@@ -77,6 +60,29 @@ npm run dev:web   # frontend → http://localhost:5173
 - 소모임 동기화·자동 크롤링: `INTERNAL_API_KEY`, `SYNC_ENDPOINT`, `SOMOIM_URL`, `CRAWL_SCHEDULE`
 - Puppeteer 실행 환경: `PUPPETEER_*`
 
+새 환경변수를 추가하거나 이름을 바꿀 때는 Railway Variables와 `.env.example`을 함께 갱신합니다.
+
+## Optional Local Development
+
+평소 운영에는 로컬 `.env`가 필요하지 않습니다. 로컬에서 서버를 직접 실행하거나 특정 기능을
+재현해야 할 때만 아래 절차를 사용합니다.
+
+```bash
+git clone https://github.com/sngmng6506/cafestudy.git
+cd cafestudy
+npm install
+cp .env.example .env    # Windows: copy .env.example .env
+```
+
+로컬 실행에 필요한 값만 `.env`에 설정한 뒤 터미널 2개에서 각각 실행합니다.
+
+```bash
+npm run dev       # backend  → http://localhost:3000
+npm run dev:web   # frontend → http://localhost:5173
+```
+
+프론트는 `http://localhost:5173`에서 열리고, Vite가 `/api` 요청을 backend로 proxy합니다.
+
 ## Scripts
 
 ```bash
@@ -84,7 +90,7 @@ npm run dev         # backend server
 npm run dev:web     # frontend dev server
 npm test            # tests
 npm run build       # frontend production build
-npm run db:migrate  # 배포 시 자동 실행됨 — 로컬에서 직접 돌리지 말 것 (공유 DB에 바로 적용됨)
+npm run db:migrate  # Railway 배포 시 자동 실행 — 로컬에서 직접 돌리지 말 것
 ```
 
 ## Project Structure
@@ -118,7 +124,7 @@ AI 작업 규칙은 **[AGENTS.md](./AGENTS.md)**를 따릅니다. 사람이 직�
 
 | 문서 | 무엇을 담는가 | 언제 보는가 |
 |------|--------------|-------------|
-| [README.md](./README.md) | 시작하기, 기능, 스크립트 | 프로젝트를 처음 볼 때 |
+| [README.md](./README.md) | 배포 방식, 기능, 스크립트 | 프로젝트를 처음 볼 때 |
 | [AGENTS.md](./AGENTS.md) | AI 작업 규칙과 아키텍처·보안 불변식 | AI로 코드를 짜거나 커밋하기 전 |
 | [ROADMAP.md](./ROADMAP.md) | 앞으로 구현하면 좋은 기능 후보와 검색 개선 계획 | 구현할 기능을 고를 때 |
 | [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md) | 소모임 앱 자동화 job API 계약, worker payload, dry-run/submit 규칙 | 미니PC worker나 소모임 자동화 API를 만들 때 |
