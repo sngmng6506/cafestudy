@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { registerFeatures, validateUniqueBasePaths } from '../src/core/loadFeatures.js';
+
+test('duplicate feature basePath fails before registration', () => {
+  assert.throws(
+    () => validateUniqueBasePaths([
+      { name: 'first', basePath: '/api/shared' },
+      { name: 'second', basePath: '/api/shared' },
+    ]),
+    /duplicate feature basePath.*first and second/,
+  );
+});
+
+test('registerFeatures awaits onLoad before loading the next feature', async () => {
+  const events = [];
+  const app = {
+    use(basePath) {
+      events.push(`route:${basePath}`);
+    },
+  };
+  const features = [
+    {
+      name: 'first',
+      basePath: '/first',
+      createRoutes: () => ({}),
+      async onLoad() {
+        events.push('first:start');
+        await Promise.resolve();
+        events.push('first:end');
+      },
+    },
+    {
+      name: 'second',
+      basePath: '/second',
+      createRoutes: () => ({}),
+      onLoad() {
+        events.push('second:loaded');
+      },
+    },
+  ];
+
+  await registerFeatures(app, {}, features);
+
+  assert.deepEqual(events, [
+    'route:/first',
+    'first:start',
+    'first:end',
+    'route:/second',
+    'second:loaded',
+  ]);
+});
