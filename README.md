@@ -62,27 +62,6 @@
 
 새 환경변수를 추가하거나 이름을 바꿀 때는 Railway Variables와 `.env.example`을 함께 갱신합니다.
 
-## Optional Local Development
-
-평소 운영에는 로컬 `.env`가 필요하지 않습니다. 로컬에서 서버를 직접 실행하거나 특정 기능을
-재현해야 할 때만 아래 절차를 사용합니다.
-
-```bash
-git clone https://github.com/sngmng6506/cafestudy.git
-cd cafestudy
-npm install
-cp .env.example .env    # Windows: copy .env.example .env
-```
-
-로컬 실행에 필요한 값만 `.env`에 설정한 뒤 터미널 2개에서 각각 실행합니다.
-
-```bash
-npm run dev       # backend  → http://localhost:3000
-npm run dev:web   # frontend → http://localhost:5173
-```
-
-프론트는 `http://localhost:5173`에서 열리고, Vite가 `/api` 요청을 backend로 proxy합니다.
-
 ## Scripts
 
 ```bash
