@@ -62,7 +62,6 @@ export function createMeetupQueries(db) {
       return result.rows;
     },
 
-    // Creates the meetup and enrolls the host as a participant in one transaction.
     createMeetup({ hostId, title, description, location, scheduledAt, capacity }) {
       return db.transaction(async (client) => {
         const result = await client.query(
@@ -84,7 +83,6 @@ export function createMeetupQueries(db) {
         );
 
         const meetup = result.rows[0];
-
         await client.query(
           `
             INSERT INTO participants (meetup_id, user_id)
@@ -93,8 +91,55 @@ export function createMeetupQueries(db) {
           `,
           [meetup.id, hostId],
         );
-
         return meetup;
+      });
+    },
+
+    joinMeetup({ meetupId, userId }) {
+      return db.transaction(async (client) => {
+        const meetupResult = await client.query(
+          `
+            SELECT id, scheduled_at AS "scheduledAt", status, capacity
+            FROM meetups
+            WHERE id = $1
+            FOR UPDATE
+          `,
+          [meetupId],
+        );
+        const meetup = meetupResult.rows[0];
+
+        if (!meetup) return { outcome: 'not_found' };
+        if (meetup.status !== 'open' || new Date(meetup.scheduledAt).getTime() <= Date.now()) {
+          return { outcome: 'closed' };
+        }
+
+        const participantResult = await client.query(
+          `
+            SELECT
+              COUNT(*)::int AS count,
+              BOOL_OR(user_id = $2) AS "alreadyJoined"
+            FROM participants
+            WHERE meetup_id = $1
+          `,
+          [meetupId, userId],
+        );
+        const participantCount = participantResult.rows[0].count;
+        const alreadyJoined = participantResult.rows[0].alreadyJoined === true;
+
+        if (alreadyJoined) return { outcome: 'joined', participantCount };
+        if (participantCount >= meetup.capacity) {
+          return { outcome: 'full', participantCount };
+        }
+
+        await client.query(
+          `
+            INSERT INTO participants (meetup_id, user_id)
+            VALUES ($1, $2)
+          `,
+          [meetupId, userId],
+        );
+
+        return { outcome: 'joined', participantCount: participantCount + 1 };
       });
     },
 
@@ -107,23 +152,11 @@ export function createMeetupQueries(db) {
         `,
         [meetupId],
       );
-
       return result.rows[0];
     },
 
     async cancelMeetup(meetupId) {
       await db.query(`UPDATE meetups SET status = 'closed' WHERE id = $1`, [meetupId]);
-    },
-
-    async addParticipant(meetupId, userId) {
-      await db.query(
-        `
-          INSERT INTO participants (meetup_id, user_id)
-          VALUES ($1, $2)
-          ON CONFLICT (meetup_id, user_id) DO NOTHING
-        `,
-        [meetupId, userId],
-      );
     },
 
     async removeParticipant(meetupId, userId) {
@@ -138,7 +171,6 @@ export function createMeetupQueries(db) {
         `SELECT COUNT(*)::int AS count FROM participants WHERE meetup_id = $1`,
         [meetupId],
       );
-
       return result.rows[0].count;
     },
   };
