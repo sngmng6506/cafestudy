@@ -1,10 +1,14 @@
 import pg from 'pg';
 
 const { Pool } = pg;
+const fallbackLogger = {
+  warn: () => {},
+  error: () => {},
+};
 
-export function createDb({ connectionString }) {
+export function createDb({ connectionString, logger = fallbackLogger }) {
   if (!connectionString) {
-    console.warn('DATABASE_URL is not set. Database-backed routes will fail until configured.');
+    logger.warn('database_not_configured');
   }
 
   const pool = new Pool({
@@ -21,7 +25,12 @@ export function createDb({ connectionString }) {
   // 풀에 대기 중인(유휴) 클라이언트의 소켓이 끊기면 'error'가 발생한다.
   // 핸들러가 없으면 프로세스 전체가 죽으므로 로그만 남기고 해당 클라이언트는 버린다.
   pool.on('error', (error) => {
-    console.error('Unexpected error on idle database client', error);
+    logger.error('database_idle_client_error', {
+      errorName: error.name,
+      errorMessage: error.message,
+      errorCode: error.code,
+      stack: error.stack,
+    });
   });
 
   return {
