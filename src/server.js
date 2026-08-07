@@ -11,7 +11,11 @@ dotenv.config();
 
 const config = createConfig(process.env);
 const logger = createLogger();
-const db = createDb({ connectionString: config.databaseUrl, logger });
+const db = createDb({
+  connectionString: config.databaseUrl,
+  ssl: config.databaseSsl,
+  logger,
+});
 const auth = createAuth({ env: config.env, db, config: config.auth });
 const storage = createStorage(config.storage);
 const app = await createApp({ db, auth, storage, config, logger });

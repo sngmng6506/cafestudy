@@ -14,6 +14,7 @@ export function createConfig(env = {}) {
     port: readInteger(env.PORT, 3001, { min: 1, max: 65_535 }),
     shutdownTimeoutMs: readInteger(env.SHUTDOWN_TIMEOUT_MS, 10_000, { min: 1_000 }),
     databaseUrl: env.DATABASE_URL || '',
+    databaseSsl: nodeEnv === 'production' ? { rejectUnauthorized: false } : false,
     internalApiKey,
 
     auth: {

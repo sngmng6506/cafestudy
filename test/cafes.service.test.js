@@ -132,13 +132,13 @@ test('listCafes: 한 글자 위치는 지오코딩하지 않는다', async () =>
   assert.equal(cafes[0].lat, null);
 });
 
-test('listCafePhotos: 오브젝트 키는 서명하고 외부 URL은 그대로 둔다', async () => {
+test('listCafePhotos: 오브젝트 키만 서명하고 외부 URL은 차단한다', async () => {
   const { service } = serviceWith();
 
   const photos = await service.listCafePhotos({ userId: USER_ID, location: '아비아채' });
 
   assert.equal(photos[0].photoViewUrl, 'signed:photos/a.jpg');
-  assert.equal(photos[1].photoViewUrl, 'https://cdn.example.com/b.jpg');
+  assert.equal(photos[1].photoViewUrl, null);
 });
 
 test('listCafePhotos: 위치가 비면 검증 에러', async () => {
