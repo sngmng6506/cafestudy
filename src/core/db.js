@@ -6,14 +6,14 @@ const fallbackLogger = {
   error: () => {},
 };
 
-export function createDb({ connectionString, logger = fallbackLogger }) {
+export function createDb({ connectionString, ssl = false, logger = fallbackLogger }) {
   if (!connectionString) {
     logger.warn('database_not_configured');
   }
 
   const pool = new Pool({
     connectionString,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl,
     // 원격 DB(Railway)는 유휴 TCP 연결을 끊는다. 서버 쪽이 끊기 전에 우리가 먼저
     // 유휴 클라이언트를 정리하고, keepalive로 중간 장비의 idle reset을 막는다.
     idleTimeoutMillis: 30_000,

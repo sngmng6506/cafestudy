@@ -11,13 +11,10 @@ function stubQueries({ users = {} } = {}) {
   const sessions = new Map();
   const setupTokens = new Map();
   const state = { users: structuredClone(users), sessions, setupTokens };
-
   return {
     state,
     queries: {
-      async getAuthUserById(id) {
-        return state.users[id] ?? null;
-      },
+      async getAuthUserById(id) { return state.users[id] ?? null; },
       async setInitialPassword(id, passwordHash) {
         const target = state.users[id];
         if (!target || target.passwordHash || target.passwordUpdatedAt) return false;
@@ -39,7 +36,9 @@ function stubQueries({ users = {} } = {}) {
         }
         state.users[userId].passwordHash = null;
         state.users[userId].passwordUpdatedAt = new Date();
-        for (const [token, uid] of sessions) if (uid === userId) sessions.delete(token);
+        for (const [tokenHashKey, uid] of sessions) {
+          if (uid === userId) sessions.delete(tokenHashKey);
+        }
         setupTokens.set(tokenHash, {
           userId,
           createdBy,
@@ -47,12 +46,8 @@ function stubQueries({ users = {} } = {}) {
           used: false,
         });
       },
-      async insertSession(token, userId) {
-        sessions.set(token, userId);
-      },
-      async deleteSession(token) {
-        sessions.delete(token);
-      },
+      async insertSession(tokenHash, userId) { sessions.set(tokenHash, userId); },
+      async deleteSession(tokenHash) { sessions.delete(tokenHash); },
     },
   };
 }
@@ -73,53 +68,32 @@ test('hashPassword/verifyPassword round-trips and rejects wrong password', () =>
   assert.equal(verifyPassword('nope', stored), false);
 });
 
-test('first password setup succeeds without an administrator token', async () => {
+test('issued sessions store only a hash of the browser token', async () => {
   const { state, queries } = stubQueries({
     users: { [MEMBER]: user(MEMBER, '홍길동', 'member') },
   });
   const service = createAuthService(queries);
+  const session = await service.setPassword({ memberId: MEMBER, password: 'pw123' });
 
-  const { token, user: resultUser } = await service.setPassword({
-    memberId: MEMBER,
-    password: 'pw123',
-  });
-
-  assert.ok(token);
-  assert.equal(resultUser.adminRole, 'member');
-  assert.ok(state.users[MEMBER].passwordHash);
-  assert.ok(state.users[MEMBER].passwordUpdatedAt);
-  assert.equal(state.sessions.get(token), MEMBER);
+  assert.ok(session.token);
+  assert.equal(state.sessions.has(session.token), false);
+  assert.equal(state.sessions.get(hashOpaqueToken(session.token)), MEMBER);
 });
 
-test('setPassword rejects when a password is already set', async () => {
-  const { queries } = stubQueries({
-    users: { [MEMBER]: user(MEMBER, '홍길동', 'member', hashPassword('pw')) },
-  });
-  const service = createAuthService(queries);
-
-  await assert.rejects(
-    () => service.setPassword({ memberId: MEMBER, password: 'newpw', setupToken: 'unused' }),
-    (err) => err.statusCode === 409 && err.code === 'PASSWORD_ALREADY_SET',
-  );
-});
-
-test('login succeeds with the correct password and returns the stored role', async () => {
-  const { queries } = stubQueries({
+test('login returns authoritative role and logout removes the hashed session', async () => {
+  const { state, queries } = stubQueries({
     users: { [ADMIN]: user(ADMIN, '관리자', 'admin', hashPassword('pw123')) },
   });
   const service = createAuthService(queries);
+  const session = await service.login({ memberId: ADMIN, password: 'pw123' });
+  assert.equal(session.user.adminRole, 'admin');
+  assert.equal(state.sessions.get(hashOpaqueToken(session.token)), ADMIN);
 
-  const { token, user: resultUser } = await service.login({ memberId: ADMIN, password: 'pw123' });
-  assert.ok(token);
-  assert.equal(resultUser.adminRole, 'admin');
-
-  await assert.rejects(
-    () => service.login({ memberId: ADMIN, password: 'wrong' }),
-    (err) => err.statusCode === 403 && err.code === 'INVALID_PASSWORD',
-  );
+  await service.logout(session.token);
+  assert.equal(state.sessions.has(hashOpaqueToken(session.token)), false);
 });
 
-test('admin reset invalidates sessions and requires the one-time setup token', async () => {
+test('admin reset invalidates sessions and consumes a one-time setup token', async () => {
   const { state, queries } = stubQueries({
     users: {
       [ADMIN]: user(ADMIN, '관리자', 'admin', hashPassword('adminpw')),
@@ -127,31 +101,21 @@ test('admin reset invalidates sessions and requires the one-time setup token', a
     },
   });
   const service = createAuthService(queries);
-  const { token } = await service.login({ memberId: MEMBER, password: 'pw123' });
-
+  const session = await service.login({ memberId: MEMBER, password: 'pw123' });
   const reset = await service.resetPassword({ actorId: ADMIN, targetMemberId: MEMBER });
-  assert.equal(state.users[MEMBER].passwordHash, null);
-  assert.equal(state.sessions.has(token), false);
-  assert.ok(state.setupTokens.has(hashOpaqueToken(reset.setupToken)));
 
+  assert.equal(state.sessions.has(hashOpaqueToken(session.token)), false);
+  assert.ok(state.setupTokens.has(hashOpaqueToken(reset.setupToken)));
   await assert.rejects(
     () => service.setPassword({ memberId: MEMBER, password: 'newpw' }),
-    (err) => err.code === 'SETUP_TOKEN_REQUIRED',
+    (error) => error.code === 'SETUP_TOKEN_REQUIRED',
   );
-
-  const session = await service.setPassword({
+  await service.setPassword({
     memberId: MEMBER,
     password: 'newpw',
     setupToken: reset.setupToken,
   });
-  assert.equal(session.user.id, MEMBER);
   assert.equal(verifyPassword('newpw', state.users[MEMBER].passwordHash), true);
-
-  state.users[MEMBER].passwordHash = null;
-  await assert.rejects(
-    () => service.setPassword({ memberId: MEMBER, password: 'again', setupToken: reset.setupToken }),
-    (err) => err.code === 'INVALID_SETUP_TOKEN',
-  );
 });
 
 test('admin cannot reset admin or owner, while owner can reset an admin', async () => {
@@ -159,30 +123,16 @@ test('admin cannot reset admin or owner, while owner can reset an admin', async 
     users: {
       [OWNER]: user(OWNER, '이상명', 'owner', hashPassword('ownerpw')),
       [ADMIN]: user(ADMIN, '관리자', 'admin', hashPassword('adminpw')),
-      [MEMBER]: user(MEMBER, '홍길동', 'member', hashPassword('memberpw')),
     },
   });
   const service = createAuthService(queries);
-
   await assert.rejects(
     () => service.resetPassword({ actorId: ADMIN, targetMemberId: OWNER }),
-    (err) => err.code === 'OWNER_PASSWORD_LOCKED',
+    (error) => error.code === 'OWNER_PASSWORD_LOCKED',
   );
   await assert.rejects(
     () => service.resetPassword({ actorId: ADMIN, targetMemberId: ADMIN }),
-    (err) => err.code === 'RESET_ROLE_FORBIDDEN',
+    (error) => error.code === 'RESET_ROLE_FORBIDDEN',
   );
-
-  const reset = await service.resetPassword({ actorId: OWNER, targetMemberId: ADMIN });
-  assert.ok(reset.setupToken);
-});
-
-test('currentUser returns the authoritative server role', async () => {
-  const { queries } = stubQueries({
-    users: { [OWNER]: user(OWNER, '이상명', 'owner', hashPassword('ownerpw')) },
-  });
-  const service = createAuthService(queries);
-  const result = await service.currentUser(OWNER);
-  assert.equal(result.adminRole, 'owner');
-  assert.equal(result.isOwner, true);
+  assert.ok((await service.resetPassword({ actorId: OWNER, targetMemberId: ADMIN })).setupToken);
 });

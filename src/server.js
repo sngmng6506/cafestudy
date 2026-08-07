@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { createApp } from './app.js';
 import { createAuth } from './core/auth.js';
+import { createConfig } from './core/config.js';
 import { createDb } from './core/db.js';
 import { createLogger } from './core/logger.js';
 import { createShutdownHandler } from './core/shutdown.js';
@@ -8,16 +9,15 @@ import { createStorage } from './core/storage.js';
 
 dotenv.config();
 
-const config = {
-  env: process.env.NODE_ENV ?? 'development',
-  port: Number(process.env.PORT ?? 3001),
-  shutdownTimeoutMs: Number(process.env.SHUTDOWN_TIMEOUT_MS ?? 10_000),
-};
-
+const config = createConfig(process.env);
 const logger = createLogger();
-const db = createDb({ connectionString: process.env.DATABASE_URL, logger });
-const auth = createAuth({ env: config.env, db });
-const storage = createStorage(process.env);
+const db = createDb({
+  connectionString: config.databaseUrl,
+  ssl: config.databaseSsl,
+  logger,
+});
+const auth = createAuth({ env: config.env, db, config: config.auth });
+const storage = createStorage(config.storage);
 const app = await createApp({ db, auth, storage, config, logger });
 
 const server = app.listen(config.port, () => {

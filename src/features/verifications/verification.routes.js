@@ -31,8 +31,8 @@ export function createVerificationRouter(ctx) {
         userId: req.user.id,
         meetupId: req.body.meetupId,
         contentType: req.body.contentType,
+        contentLength: Number(req.body.contentLength),
       });
-
       sendOk(res, result);
     } catch (error) {
       next(error);
@@ -44,9 +44,8 @@ export function createVerificationRouter(ctx) {
       const verification = await verificationService.createVerification({
         userId: req.user.id,
         meetupId: req.body.meetupId,
-        photoUrl: req.body.photoUrl,
+        uploadId: req.body.uploadId,
       });
-
       sendOk(res, verification, 201);
     } catch (error) {
       next(error);

@@ -149,6 +149,7 @@ async function submitVerification() {
       body: JSON.stringify({
         meetupId: selectedMeetupId.value,
         contentType: compressedFile.value.type,
+        contentLength: compressedFile.value.size,
       }),
     });
 
@@ -167,7 +168,7 @@ async function submitVerification() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         meetupId: selectedMeetupId.value,
-        photoUrl: upload.data.photoUrl,
+        uploadId: upload.data.uploadId,
       }),
     });
 
