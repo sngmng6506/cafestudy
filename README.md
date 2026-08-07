@@ -81,7 +81,7 @@ test/          # node:test 테스트
 
 ## Contributing
 
-AI 작업 규칙은 **[AGENTS.md](./AGENTS.md)**를 따릅니다. 사람이 직접 작업할 때도
+AI 작업 규칙은 [AGENTS.md](./AGENTS.md)를 따릅니다. 사람이 직접 작업할 때도
 아키텍처·보안·마이그레이션 불변식은 동일하게 유지합니다.
 
 간단히:
