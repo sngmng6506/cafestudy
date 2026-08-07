@@ -1,1 +1,183 @@
 # Development Notes
+
+`AGENTS.md`(커밋 컨벤션, feature 패턴, 에러/인증/마이그레이션 규칙)와 겹치지 않는,
+**살아있는 제품/데이터 설계 결정만** 남깁니다. 코딩 규칙을 찾는 중이면 `AGENTS.md`로.
+
+## 데이터 모델
+
+핵심 흐름: `users → meetups → participants → verifications → point_logs`.
+소모임 크롤링 데이터(`somoim_*`)는 앱 데이터와 분리된 읽기전용 테이블입니다.
+
+```text
+users
+- id, oauth_provider, nickname, avatar, total_points,
+  active_badge_id(nullable FK badges.id, ON DELETE SET NULL),
+  password_hash(nullable), password_updated_at,
+  is_admin(legacy compatibility), admin_role(member/admin/owner), created_at
+- total_points는 캐시. point_logs가 source of truth.
+  불일치 시 point_logs로부터 재계산한다.
+- active_badge_id는 헤더 아바타에 표시할 대표 뱃지. 뱃지 적용(apply) 시
+  자동으로 갱신되고, /api/badges/:id/activate로 직접 바꿀 수 있다.
+- 실제 owner 판정은 admin_role 문자열이나 nickname이 아니라 app_owner.user_id가 기준이다.
+- password_hash와 password_updated_at이 모두 null이면 아직 한 번도 설정하지 않은 계정이다.
+  모임 내부 사용자가 자신의 이름을 선택해 최초 비밀번호를 바로 만들 수 있다.
+- password_hash는 null이지만 password_updated_at이 남아 있으면 관리자가 초기화한 계정이다.
+  이 경우 관리자에게 받은 일회용 설정 코드가 있어야 새 비밀번호를 만들 수 있다.
+
+app_owner                     -- 최고 관리자 UUID 잠금(항상 한 행)
+- singleton(PK, true만 허용), user_id(UNIQUE FK users, RESTRICT), created_at
+- owner 닉네임이 바뀌어도 권한은 유지된다.
+- 애플리케이션에서 owner 임명·해제와 owner 비밀번호 초기화는 허용하지 않는다.
+
+sessions                      -- 로그인 세션 (비밀번호 인증)
+- token(PK), user_id(FK users, CASCADE), created_at, expires_at
+- 로그인 성공 시 발급, 클라이언트는 Authorization: Bearer <token>으로 전송.
+  전역 미들웨어(resolveUser)가 만료 전 세션만 인정한다.
+
+password_setup_tokens         -- 관리자 초기화 후 사용하는 일회용 코드
+- token_hash(PK), user_id(FK users, CASCADE), created_by(FK users, RESTRICT),
+  expires_at, used_at(nullable), created_at
+- 원문 코드는 응답으로 한 번만 관리자에게 전달하고 DB에는 SHA-256 해시만 저장한다.
+- 새 코드를 발급하면 기존 코드와 대상의 모든 세션을 삭제하고 password_hash를 null로 만든다.
+- 코드는 24시간 안에 한 번만 사용할 수 있으며 비밀번호 저장과 같은 트랜잭션에서 소비한다.
+- admin은 member만, owner는 admin/member만 코드를 발급할 수 있다.
+- 한 번도 비밀번호를 만들지 않은 계정에는 코드가 필요하지 않으며 최초 설정을 직접 허용한다.
+
+admin_role_logs               -- 관리자 역할 변경 감사 이력
+- id, target_user_id(FK users, CASCADE), changed_by(FK users, RESTRICT),
+  previous_role, new_role, created_at
+- 역할 변경과 로그 저장은 같은 트랜잭션으로 처리한다.
+
+notices                       -- 관리자 공지
+- id, title(1~100자), body(1~5000자), is_pinned, created_by(FK users, RESTRICT),
+  published_at, created_at, updated_at
+- admin과 owner가 작성·수정·삭제할 수 있다.
+
+notice_reads                  -- 사용자별 공지 읽음 상태
+- notice_id(FK notices, CASCADE), user_id(FK users, CASCADE), read_at
+- PK(notice_id, user_id). 공지 삭제 시 읽음 기록도 함께 삭제된다.
+- 종 알림은 최근 8개 요약과 별도 unread-count만 1분마다 조회한다.
+
+meetups                       -- 앱 안에서 직접 만든 모임
+- id, host_id, title, description, location, cafe_name(legacy, nullable),
+  scheduled_at, capacity, status(open/closed), created_at
+- `status`는 DB 운영 상태, API의 `lifecycleState`는 scheduled_at으로 계산한 upcoming/done 상태다.
+
+participants                  -- meetup 참가 (UNIQUE meetup_id+user_id)
+- id, meetup_id, user_id, joined_at
+
+verifications                 -- 사진 인증 (UNIQUE meetup_id+user_id, 1인 1회)
+- id, meetup_id, user_id, photo_url, points_awarded,
+  status(approved/rejected/pending), created_at
+
+point_logs                    -- 포인트 원장. source: verify/host/dice
+- id, user_id, source, ref_id, amount, created_at
+
+badge_generations             -- AI 뱃지 생성 이력 (preview → applied)
+- id, user_id, prompt, provider, model, image_object_key, point_cost,
+  status(preview/applied), error_message, created_at
+
+badges                        -- 생성 결과에서 확정된 뱃지
+- id, title, description, image_object_key, provider, model, prompt,
+  created_by, created_at
+
+user_badges                   -- 유저가 보유한 뱃지 (PK user_id+badge_id)
+- user_id, badge_id, awarded_at
+- 인당 최대 5개 (badges.service.js MAX_BADGES_PER_USER가 검증 —
+  DB 제약이 아니라 apply 트랜잭션의 user row 잠금 + 카운트로 보장)
+- 삭제는 user_badges 행만 지운다. badges 행과 이미지 오브젝트는 즉시 지우지 않는다.
+  미참조 badges와 이미지는 badges.gc.js가 배포 직후 한 번, 이후 매일 03:30 KST에
+  최대 100개씩 반복 정리한다. BADGE_GC_SCHEDULE 환경변수로 스케줄을 재정의할 수 있다.
+
+-- 소모임(somoim.co.kr) 크롤링 데이터 — 읽기전용, 앱 데이터와 별도 -----------
+-- 동기화: (1) node-cron 정기 크롤링 — 하루 2회(새벽 2시·오후 6시 KST). 기본
+--   스케줄은 members/index.js의 '0 2,18 * * *', CRAWL_SCHEDULE로 재정의.
+--   (2) 사용자 갱신 버튼 — POST /api/members/refresh(공개, 5분 쿨타임 서버 강제).
+--   쿨타임은 REFRESH_COOLDOWN_SEC 환경변수(초)로 재정의 가능: 0이면 쿨타임 없음
+--   (디버깅용 — 평상시엔 이 변수를 두지 말 것), 미설정이면 기본 300초(5분).
+--   둘 다 같은 서비스 인스턴스를 공유해 쿨타임 시계를 공유한다(정기 크롤 직후
+--   버튼 중복 방지). 정기 크롤은 force=true로 쿨타임 무시.
+--   SOMOIM_URL이 없으면 스케줄이 등록되지 않아 정기 동기화가 돌지 않는다.
+--   실행 이력은 somoim_sync_logs. POST /api/members/sync(내부 키)는 크롤링 없이
+--   외부에서 만든 데이터를 직접 주입하는 별도 경로.
+
+somoim_members                -- 크롤링된 멤버. id가 users.id와 동일(FK 역할)
+- id, name, bio, face_id(얼굴 이미지 UUID), avatar_url, source_url,
+  created_at, updated_at
+
+somoim_events                 -- 크롤링된 정모 일정
+- id, source_url, title, scheduled_at(nullable — 파싱 실패 가능),
+  location, cost, joined_count, capacity, thumbnail_url
+
+somoim_event_attendees        -- 정모 참석자 (face_id로 매핑, 이름 미매핑 시 null 허용)
+- id, event_id, face_id, member_name, attendee_order, is_host, created_at
+- attendee_order는 크롤링한 카드의 얼굴 표시 순서. is_host는 현재 소모임 UI에서
+  첫 얼굴이 주최자로 보이는 관찰에 기반한 추정값(첫 참석자=true).
+
+somoim_sync_logs              -- 크롤링 동기화 이력(성공/실패, 인원 수 비교용)
+- id, source_url, expected_count, crawled_count, upserted_count,
+  status, error_message, synced_at
+
+cafe_comments                 -- 카페별 한줄 코멘트 (방문 이력 있는 유저만 작성 가능)
+- id, cafe_location, user_id, body(1~120자), created_at, updated_at
+  (UNIQUE cafe_location+user_id — 유저당 카페 하나에 코멘트 하나, upsert)
+
+app_flags                     -- 앱 전역 토글 (현재 key: 'smashed' — 깨부수기 장난 모드)
+- key(PK), value(boolean), updated_by(nullable FK — 의도적으로 채우지 않음,
+  누가 깨부쉈는지 익명 보장), updated_at
+- 전역 상태라 모든 사용자에게 공유됨. 클라이언트는 45초 폴링으로 동기화.
+
+game2048_scores               -- 2048 미니게임 최고점수 (유저당 한 행)
+- user_id(PK, FK users CASCADE), best_score, updated_at,
+  saved_state(jsonb, nullable), saved_at
+- 누적이 아니라 upsert(GREATEST)로 최고점수만 유지. 게임오버 시 제출되고,
+  기존보다 높을 때만 갱신. 랭킹은 best_score DESC.
+- saved_state는 "이어서 하기"용 진행 중 게임(보드+점수). 매 이동이 아니라
+  페이지 이탈 시에만 저장(서버 부하 최소화), 게임오버 시 NULL로 비움.
+  서버가 구조를 검증해 저장(변조/오염 방어).
+
+cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩 캐시 (네이버 장소 검색)
+- location(PK, cafe_location과 같은 문자열 키), place_name, road_address,
+  lat, lng(둘 다 null이면 검색 실패 기록), resolved_at
+- 카페 목록 조회 시 미해석 위치를 요청당 최대 5개씩 lazy 지오코딩.
+  실패 기록은 7일 뒤 재시도. 검색 API 미설정 시에는 기록하지 않음.
+```
+
+전체 스키마와 변경 이력은 `migrations/`가 정답입니다. 위 요약이 실제 파일과
+어긋나면 마이그레이션 쪽이 맞습니다 — 이 문서를 고치세요.
+
+## 알려진 설계 한계
+
+- `cafe_comments.cafe_location`은 문자열 키라 같은 카페도 표기 차이로 분리될 수 있다.
+  지도 좌표는 보정되지만 집계·코멘트는 문자열 기준이다.
+- 개발 환경에서는 토큰 없이 `x-user-id` 인증 폴백이 동작한다.
+  프로덕션 권한은 실제 세션 토큰으로 검증한다.
+- 로컬 전용 DB가 없어 `DATABASE_URL`이 공유 Railway DB를 가리킬 수 있다.
+  로컬에서 `npm run db:migrate`를 실행하지 않는다.
+- owner 초기 지정에는 부트스트랩 제약이 있다.
+  변경 전 `app_owner`, `users.admin_role`, 비밀번호 상태를 함께 확인한다.
+
+## 포인트 규칙
+
+사진 인증은 10점, 주사위는 나온 값(1~6점), 모임 개설은 0점이다.
+새 포인트 출처를 추가하면 `point_logs.source` DB CHECK도 함께 변경한다.
+
+## 트랜잭션 요구사항
+
+사진 인증은 원자적으로 처리해야 한다 — 아래 세 쓰기가 하나의 트랜잭션이어야 함:
+
+1. `verifications` insert
+2. `point_logs` insert
+3. `users.total_points` increment
+
+세 개를 독립된 쿼리로 나눠 쓰지 않는다(`db.transaction()` 사용).
+
+모임 참여는 meetup 행을 `FOR UPDATE`로 잠근 같은 트랜잭션에서 기존 참여와 정원을 확인한 뒤 insert한다.
+
+관리자/인증 기능도 다음 묶음을 원자적으로 처리한다.
+
+- 최초 비밀번호 설정은 `password_hash IS NULL AND password_updated_at IS NULL` 조건부
+  UPDATE로 한 요청만 성공하게 한다.
+- 관리자 역할 변경 + `admin_role_logs` 기록
+- 비밀번호 설정 코드 발급 + 기존 코드 삭제 + 비밀번호 초기화 + 세션 삭제
+- 설정 코드 소비 + 새 비밀번호 저장
