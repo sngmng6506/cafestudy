@@ -3,18 +3,21 @@ import { createMembersRouter } from './members.routes.js';
 import { createMembersQueries } from './members.queries.js';
 import { createMembersService } from './members.service.js';
 
-let sharedService;
+const servicesByContext = new WeakMap();
+
 function getService(ctx) {
-  if (!sharedService) {
+  let service = servicesByContext.get(ctx);
+  if (!service) {
     const queries = createMembersQueries(ctx.db);
-    sharedService = createMembersService(ctx.db, queries, ctx.storage, {
+    service = createMembersService(ctx.db, queries, ctx.storage, {
       refreshCooldownMs: ctx.config?.members?.refreshCooldownMs,
       crawlerOptions: {
         executablePath: ctx.config?.members?.puppeteerExecutablePath,
       },
     });
+    servicesByContext.set(ctx, service);
   }
-  return sharedService;
+  return service;
 }
 
 export default {
