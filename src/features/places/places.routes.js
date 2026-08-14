@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { sendOk } from '../../shared/api-response.js';
 import { searchPlaces } from './places.service.js';
 
-export function createPlacesRouter() {
+export function createPlacesRouter(ctx) {
   const router = Router();
 
   router.get('/search', async (req, res, next) => {
@@ -12,7 +12,7 @@ export function createPlacesRouter() {
         return sendOk(res, []);
       }
 
-      const places = await searchPlaces(query);
+      const places = await searchPlaces(query, ctx.config?.naver ?? {});
       sendOk(res, places);
     } catch (error) {
       next(error);

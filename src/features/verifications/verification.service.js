@@ -128,6 +128,9 @@ export function createVerificationService({ db, storage, config = {}, verificati
   async function ensureCanVerify(meetupId, userId) {
     const meetup = await queries.getMeetupForVerify(meetupId);
     if (!meetup) throwError(404, 'MEETUP_NOT_FOUND', '모임을 찾을 수 없습니다.');
+    if (meetup.status === 'closed') {
+      throwError(400, 'MEETUP_CLOSED', '취소된 모임은 인증할 수 없습니다.');
+    }
 
     const isParticipant = meetup.hostId === userId || (await queries.isParticipant(meetupId, userId));
     if (!isParticipant) {

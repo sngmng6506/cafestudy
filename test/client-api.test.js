@@ -47,6 +47,16 @@ test('API uses same-origin cookies and never sends a local bearer token', async 
   assert.equal(useCurrentUser().currentToken.value, 'cookie');
 });
 
+test('API forwards keepalive for unload-safe state persistence', async () => {
+  let init;
+  globalThis.fetch = async (_path, options) => {
+    init = options;
+    return jsonResponse({ data: { saved: true }, error: null });
+  };
+  await apiFetch('/api/game2048/state', { method: 'PUT', keepalive: true });
+  assert.equal(init.keepalive, true);
+});
+
 test('401 clears stored and reactive session markers', async () => {
   setCurrentUserState('user-1', '테스터', '', 'admin');
   globalThis.fetch = async () => jsonResponse({

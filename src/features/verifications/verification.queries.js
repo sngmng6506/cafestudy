@@ -2,7 +2,7 @@ export function createVerificationQueries(db) {
   return {
     async getMeetupForVerify(meetupId) {
       const result = await db.query(
-        `SELECT host_id AS "hostId", scheduled_at AS "scheduledAt"
+        `SELECT host_id AS "hostId", scheduled_at AS "scheduledAt", status
            FROM meetups
           WHERE id = $1`,
         [meetupId],

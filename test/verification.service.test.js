@@ -14,12 +14,14 @@ function jpeg() {
   return Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
 }
 
-function serviceWith({ imageBody = jpeg(), ticket = null } = {}) {
+function serviceWith({ imageBody = jpeg(), ticket = null, meetup = {} } = {}) {
   const tickets = new Map();
   if (ticket) tickets.set(ticket.id, { ...ticket });
   const calls = { move: [], deleted: [], created: [] };
   const queries = {
-    async getMeetupForVerify() { return { hostId: HOST, scheduledAt: PAST }; },
+    async getMeetupForVerify() {
+      return { hostId: HOST, scheduledAt: PAST, status: 'open', ...meetup };
+    },
     async isParticipant() { return true; },
     async createUploadTicket(input) {
       tickets.set(input.uploadId, {
@@ -109,6 +111,23 @@ test('upload URL rejects missing or oversized content length', async () => {
       (error) => error.code === 'VALIDATION_ERROR',
     );
   }
+});
+
+test('closed meetup rejects both upload reservation and verification finalization', async () => {
+  const { service } = serviceWith({ meetup: { status: 'closed' } });
+  await assert.rejects(
+    () => service.createUploadUrl({
+      userId: HOST,
+      meetupId: MEETUP,
+      contentType: 'image/jpeg',
+      contentLength: 6,
+    }),
+    (error) => error.code === 'MEETUP_CLOSED',
+  );
+  await assert.rejects(
+    () => service.createVerification({ userId: HOST, meetupId: MEETUP, uploadId: UPLOAD }),
+    (error) => error.code === 'MEETUP_CLOSED',
+  );
 });
 
 test('verification cannot be created from a client supplied URL', async () => {
