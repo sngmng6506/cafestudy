@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { sendOk, sendFail } from '../../shared/api-response.js';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function createMembersRouter(ctx, service) {
   const router = Router();
   const internalKey = ctx.config?.internalApiKey ?? '';
@@ -51,7 +53,7 @@ export function createMembersRouter(ctx, service) {
   });
 
   router.get('/:id/stats', async (req, res) => {
-    if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) {
+    if (!UUID_PATTERN.test(req.params.id)) {
       return sendFail(res, 'NOT_FOUND', '멤버를 찾을 수 없습니다', 404);
     }
     try { return sendOk(res, await service.getMemberStats(req.params.id)); }
@@ -63,7 +65,7 @@ export function createMembersRouter(ctx, service) {
 
   router.get('/:id/avatar', async (req, res) => {
     try {
-      if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) {
+      if (!UUID_PATTERN.test(req.params.id)) {
         return sendFail(res, 'NOT_FOUND', '아바타가 없습니다', 404);
       }
       const avatarUrl = await service.getMemberAvatarUrl(req.params.id);

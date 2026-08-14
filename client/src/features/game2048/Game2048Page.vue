@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { RotateCcw } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
+import { createGameStateSaveRequest, discardSavedGame } from './game2048.persistence.js';
 
 const SIZE = 4;
 
@@ -213,32 +214,38 @@ async function restoreOrNew() {
 }
 
 // 진행 중인 게임 상태를 서버에 저장(페이지 이탈 시). 게임오버면 저장 안 함.
-async function saveState() {
+async function saveState(options = {}) {
   if (over.value || score.value <= 0) return;
   try {
-    await apiFetch('/api/game2048/state', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ state: { board: board.value, score: score.value } }),
-    });
+    await apiFetch(
+      '/api/game2048/state',
+      createGameStateSaveRequest({ board: board.value, score: score.value }, options),
+    );
   } catch {
     // 저장 실패는 무시(로그인 안 됨 등)
   }
 }
 
 // 저장 상태 삭제(게임오버 시 — 이어할 게 없으므로).
-async function clearSavedState() {
+async function clearSavedState({ keepalive = false } = {}) {
   try {
-    await apiFetch('/api/game2048/state', { method: 'DELETE' });
+    await apiFetch('/api/game2048/state', {
+      method: 'DELETE',
+      ...(keepalive ? { keepalive: true } : {}),
+    });
   } catch {
     // 무시
   }
 }
 
+async function startNewGame() {
+  await discardSavedGame({ reset, clearSavedState });
+}
+
 // beforeunload: 탭 닫기/새로고침 시에도 저장 시도(sendBeacon은 인증 헤더가
 // 안 실려 일반 fetch keepalive 사용).
 function onBeforeUnload() {
-  saveState();
+  void saveState({ keepalive: true });
 }
 
 onMounted(async () => {
@@ -280,7 +287,7 @@ const displayBest = computed(() => best.value.toLocaleString());
         <button
           type="button"
           class="focus-ring inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-[#dadce0] bg-white px-3 text-[13px] font-semibold text-[#5f6368] transition hover:bg-[#f5f6f7]"
-          @click="reset"
+          @click="startNewGame"
         >
           <RotateCcw :size="15" /> 새 게임
         </button>

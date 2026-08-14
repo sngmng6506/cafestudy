@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { ChevronLeft, ChevronRight, Crown, Dices, Gamepad2, Trophy } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
+import { createLatestRequestGuard } from '../../shared/latest-request.js';
 import UserAvatar from '../../shared/UserAvatar.vue';
 
 const now = new Date();
@@ -17,6 +18,7 @@ const diceLoading = ref(true);
 const game2048Ranking = ref([]);
 const game2048Loading = ref(true);
 const cursor = ref({ ...CURRENT });
+const rankingRequestGuard = createLatestRequestGuard();
 
 // 미니게임 랭킹 캐러셀: 좌우 스와이프(또는 점 탭)로 주사위 ↔ 2048 전환.
 const miniGames = ['dice', 'game2048'];
@@ -114,6 +116,7 @@ function shiftMonth(delta) {
 }
 
 async function loadRanking() {
+  const requestId = rankingRequestGuard.begin();
   loading.value = true;
   errorMessage.value = '';
 
@@ -123,11 +126,13 @@ async function loadRanking() {
         ? `/api/ranking/monthly?year=${cursor.value.year}&month=${cursor.value.month}`
         : '/api/ranking/all-time';
     const body = await apiFetch(endpoint);
+    if (!rankingRequestGuard.isCurrent(requestId)) return;
     rankings.value = body.data;
   } catch (error) {
+    if (!rankingRequestGuard.isCurrent(requestId)) return;
     errorMessage.value = error.message;
   } finally {
-    loading.value = false;
+    if (rankingRequestGuard.isCurrent(requestId)) loading.value = false;
   }
 }
 </script>
