@@ -29,6 +29,11 @@ async function copyAccount() {
   }
 }
 
+function participantStatusLabel(participant) {
+  if (participant.id === props.round.createdBy) return '수령자';
+  return participant.paidAt ? '완료' : '미완료';
+}
+
 function won(value) {
   return new Intl.NumberFormat('ko-KR').format(value);
 }
@@ -113,10 +118,8 @@ function won(value) {
           :class="participant.id === round.createdBy || participant.paidAt ? 'bg-[var(--ui-color-brand)] text-white' : 'ui-border bg-[var(--ui-color-surface)] ui-text-muted border'"
         >
           <CheckCircle2 v-if="participant.id === round.createdBy || participant.paidAt" :size="13" />
-          {{ participant.name }}
-          <template v-if="participant.amountDue !== undefined"> {{ won(participant.amountDue) }}원</template>
-          <template v-if="participant.id === round.createdBy">수령자</template>
-          <template v-else>{{ participant.paidAt ? '완료' : '미완료' }}</template>
+          {{ participant.name }}({{ participantStatusLabel(participant) }})
+          <template v-if="participant.amountDue !== undefined">: {{ won(participant.amountDue) }}원</template>
         </span>
       </div>
 
