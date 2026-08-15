@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { createMeetupQueries } from '../src/features/meetups/meetup.queries.js';
 import { createMeetupService, deriveState } from '../src/features/meetups/meetup.service.js';
 
 function fakeDb(rows) {
@@ -61,6 +62,21 @@ test('listMeetups attaches derived state to each meetup', async () => {
   const list = await service.listMeetups('user-1');
   assert.equal(list.find((m) => m.id === 'past').state, 'done');
   assert.equal(list.find((m) => m.id === 'future').state, 'upcoming');
+});
+
+test('listMeetups excludes Somoim-materialized meetups from the general meetup API', async () => {
+  let capturedSql = '';
+  const queries = createMeetupQueries({
+    query: async (sql) => {
+      capturedSql = sql;
+      return { rows: [] };
+    },
+  });
+
+  await queries.listMeetups('user-1');
+
+  assert.match(capturedSql, /m\.status = 'open'/);
+  assert.match(capturedSql, /m\.source_type = 'app'/);
 });
 
 function participationDb({ meetup, count = 0, alreadyJoined = false }) {
