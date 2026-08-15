@@ -53,7 +53,7 @@ export function createSettlementQueries(db) {
                cost,
                scheduled_at,
                GREATEST(MAX(capacity), COUNT(*)::int, 1) AS capacity,
-               MAX(user_id) FILTER (WHERE attendee_rank = 1) AS host_id
+               (ARRAY_AGG(user_id ORDER BY attendee_rank))[1] AS host_id
              FROM mapped_attendees
              GROUP BY event_id, title, location, cost, scheduled_at
            )
