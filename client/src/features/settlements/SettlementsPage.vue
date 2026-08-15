@@ -130,6 +130,10 @@ function date(value) {
   return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
 
+function normalizeAccountNumberInput() {
+  paymentDraft.value.bankAccountNumber = paymentDraft.value.bankAccountNumber.replace(/[^\d-]/g, '');
+}
+
 function emptyPaymentMethod() {
   return {
     bankName: '',
@@ -223,7 +227,15 @@ function emptyPaymentMethod() {
           </label>
           <label class="grid gap-1.5 text-[13px] font-medium">
             계좌번호
-            <input v-model="paymentDraft.bankAccountNumber" class="focus-ring ui-radius-control ui-border h-10 border px-3 text-[16px]" type="text" inputmode="text" autocomplete="off" />
+            <input
+              v-model="paymentDraft.bankAccountNumber"
+              class="focus-ring ui-radius-control ui-border h-10 border px-3 text-[16px]"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              placeholder="숫자와 -만 입력"
+              @input="normalizeAccountNumberInput"
+            />
           </label>
           <label class="grid gap-1.5 text-[13px] font-medium">
             예금주
