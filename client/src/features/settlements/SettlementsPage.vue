@@ -1,11 +1,10 @@
 <script setup>
 import { onMounted, ref } from 'vue';
-import { ChevronDown, CreditCard } from '@lucide/vue';
+import { ChevronDown } from '@lucide/vue';
 import { SETTLEMENT_LIMITS } from '../../../../shared/domain-constraints.js';
 import { apiFetch } from '../../shared/api.js';
 import { useCurrentUser } from '../../shared/useCurrentUser.js';
 import { useToast } from '../../shared/useToast.js';
-import PaymentMethodEditor from './PaymentMethodEditor.vue';
 import SettlementRoundCard from './SettlementRoundCard.vue';
 
 const { currentUserId, isAdmin } = useCurrentUser();
@@ -18,8 +17,8 @@ const openMeetupId = ref('');
 const amount = ref('');
 const selectedIds = ref([]);
 const saving = ref(false);
-const paymentMethodOpen = ref(false);
 const paidSavingId = ref('');
+const paymentDraft = ref(emptyPaymentMethod());
 
 onMounted(load);
 
@@ -44,11 +43,13 @@ function openForm(meetup) {
   openMeetupId.value = openMeetupId.value === meetup.id ? '' : meetup.id;
   amount.value = '';
   selectedIds.value = meetup.participants.map((participant) => participant.id);
+  paymentDraft.value = paymentMethod.value ? { ...paymentMethod.value } : emptyPaymentMethod();
 }
 
 async function createRound(meetup) {
   saving.value = true;
   try {
+    const savedPaymentMethod = await savePaymentMethod(paymentDraft.value, { silent: true });
     await apiFetch('/api/settlements', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -58,6 +59,7 @@ async function createRound(meetup) {
         totalAmount: Number(amount.value),
       }),
     });
+    paymentMethod.value = savedPaymentMethod;
     toast.success(`${meetup.settlements.length + 1}차 정산을 추가했어요.`);
     openMeetupId.value = '';
     await load();
@@ -68,15 +70,15 @@ async function createRound(meetup) {
   }
 }
 
-async function savePaymentMethod(nextPaymentMethod) {
+async function savePaymentMethod(nextPaymentMethod, { silent = false } = {}) {
   const response = await apiFetch('/api/settlements/payment-method', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(nextPaymentMethod),
   });
   paymentMethod.value = response.data;
-  paymentMethodOpen.value = false;
-  toast.success('내 정산 수단을 저장했어요.');
+  if (!silent) toast.success('내 정산 수단을 저장했어요.');
+  return response.data;
 }
 
 async function removeRound(round) {
@@ -127,23 +129,24 @@ function won(value) {
 function date(value) {
   return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
+
+function emptyPaymentMethod() {
+  return {
+    bankName: '',
+    bankAccountNumber: '',
+    accountHolderName: '',
+    kakaopayLink: '',
+  };
+}
 </script>
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 grid gap-3 pr-32">
+    <div class="mb-1 pr-32">
       <div class="min-w-0">
         <h1 class="ui-page-title">정산</h1>
         <p class="ui-text-muted mt-1 text-[13px]">참여한 모임에서 차수별 비용과 송금 상태를 확인해요.</p>
       </div>
-      <button
-        class="focus-ring ui-radius-control ui-border flex h-10 w-fit items-center gap-2 border bg-[var(--ui-color-surface)] px-3 text-[13px] font-medium"
-        type="button"
-        @click="paymentMethodOpen = true"
-      >
-        <CreditCard :size="17" />
-        정산 수단 설정
-      </button>
     </div>
 
     <div v-if="loading" class="surface-card py-12 text-center ui-text-muted">정산을 불러오는 중이에요.</div>
@@ -211,17 +214,31 @@ function date(value) {
           </label>
         </fieldset>
 
+        <fieldset class="grid gap-3">
+          <legend class="mb-1 text-[13px] font-medium">계좌</legend>
+          <p class="ui-text-muted -mt-1 text-[12px]">이번 차수에 표시할 정산 수단이에요. 추가하면 내 정산 수단에도 저장돼요.</p>
+          <label class="grid gap-1.5 text-[13px] font-medium">
+            은행명
+            <input v-model="paymentDraft.bankName" class="focus-ring ui-radius-control ui-border h-10 border px-3 text-[16px]" type="text" autocomplete="organization" />
+          </label>
+          <label class="grid gap-1.5 text-[13px] font-medium">
+            계좌번호
+            <input v-model="paymentDraft.bankAccountNumber" class="focus-ring ui-radius-control ui-border h-10 border px-3 text-[16px]" type="text" inputmode="text" autocomplete="off" />
+          </label>
+          <label class="grid gap-1.5 text-[13px] font-medium">
+            예금주
+            <input v-model="paymentDraft.accountHolderName" class="focus-ring ui-radius-control ui-border h-10 border px-3 text-[16px]" type="text" autocomplete="name" />
+          </label>
+          <label class="grid gap-1.5 text-[13px] font-medium">
+            카카오페이 링크
+            <input v-model="paymentDraft.kakaopayLink" class="focus-ring ui-radius-control ui-border h-10 border px-3 text-[16px]" type="text" inputmode="url" autocomplete="url" />
+          </label>
+        </fieldset>
+
         <button class="focus-ring ui-radius-control h-11 bg-[var(--ui-color-brand)] font-medium text-white disabled:opacity-50" type="submit" :disabled="saving || selectedIds.length === 0">
           {{ meetup.settlements.length + 1 }}차 정산 추가하기
         </button>
       </form>
     </article>
-
-    <PaymentMethodEditor
-      v-if="paymentMethodOpen"
-      :payment-method="paymentMethod"
-      :save-payment-method="savePaymentMethod"
-      @close="paymentMethodOpen = false"
-    />
   </section>
 </template>
