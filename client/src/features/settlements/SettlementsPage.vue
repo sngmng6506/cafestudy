@@ -131,13 +131,13 @@ function date(value) {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 flex items-start justify-between gap-4">
-      <div>
+    <div class="mb-1 grid gap-3 pr-32">
+      <div class="min-w-0">
         <h1 class="ui-page-title">정산</h1>
         <p class="ui-text-muted mt-1 text-[13px]">참여한 모임에서 차수별 비용과 송금 상태를 확인해요.</p>
       </div>
       <button
-        class="focus-ring ui-radius-control ui-border flex h-10 shrink-0 items-center gap-2 border bg-[var(--ui-color-surface)] px-3 text-[13px] font-medium"
+        class="focus-ring ui-radius-control ui-border flex h-10 w-fit items-center gap-2 border bg-[var(--ui-color-surface)] px-3 text-[13px] font-medium"
         type="button"
         @click="paymentMethodOpen = true"
       >
