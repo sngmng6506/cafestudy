@@ -47,6 +47,38 @@ const BANK_CODE_NAMES = Object.freeze({
   '092': '토스뱅크',
 });
 
+const BANK_ACCOUNT_PREFIX_NAMES = Object.freeze([
+  ['3333', '카카오뱅크'],
+  ['7979', '카카오뱅크'],
+  ['1000', '토스뱅크'],
+]);
+
+const BANK_NAME_OPTIONS = Object.freeze([
+  '카카오뱅크',
+  '토스뱅크',
+  '케이뱅크',
+  '국민은행',
+  '신한은행',
+  '우리은행',
+  '하나은행',
+  '농협은행',
+  '기업은행',
+  'SC제일은행',
+  '씨티은행',
+  '수협은행',
+  '산업은행',
+  '새마을금고',
+  '신협',
+  '우체국',
+  '저축은행',
+  '대구은행',
+  '부산은행',
+  '광주은행',
+  '제주은행',
+  '전북은행',
+  '경남은행',
+]);
+
 onMounted(load);
 
 async function load() {
@@ -173,8 +205,12 @@ function normalizeAccountNumberInput(event) {
 }
 
 function inferBankName(accountNumber) {
-  const bankCode = accountNumber.replace(/\D/g, '').slice(0, 3);
-  return BANK_CODE_NAMES[bankCode] ?? '';
+  const digits = accountNumber.replace(/\D/g, '');
+  const bankCode = digits.slice(0, 3);
+  if (BANK_CODE_NAMES[bankCode]) return BANK_CODE_NAMES[bankCode];
+
+  const prefixMatch = BANK_ACCOUNT_PREFIX_NAMES.find(([prefix]) => digits.startsWith(prefix));
+  return prefixMatch?.[1] ?? '';
 }
 
 function emptyPaymentMethod() {
@@ -278,7 +314,17 @@ function emptyPaymentMethod() {
           </label>
           <label class="grid gap-1.5 text-[13px] font-medium">
             은행명
-            <input v-model="paymentDraft.bankName" class="focus-ring ui-radius-control ui-border h-10 border px-3 text-[16px]" type="text" autocomplete="organization" placeholder="계좌번호 앞 3자리로 자동 입력" />
+            <input
+              v-model="paymentDraft.bankName"
+              class="focus-ring ui-radius-control ui-border h-10 border px-3 text-[16px]"
+              type="text"
+              autocomplete="organization"
+              list="settlement-bank-options"
+              placeholder="자동 입력되지 않으면 선택해 주세요"
+            />
+            <datalist id="settlement-bank-options">
+              <option v-for="bankName in BANK_NAME_OPTIONS" :key="bankName" :value="bankName"></option>
+            </datalist>
           </label>
           <label class="grid gap-1.5 text-[13px] font-medium">
             예금주
