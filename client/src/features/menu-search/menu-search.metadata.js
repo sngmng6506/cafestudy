@@ -30,10 +30,34 @@ export const menuSearchMetadata = [
     examples: ['모임에 누가 있어?', '회원 프로필 보고 싶어'],
   },
   {
+    featureName: 'notices',
+    description: '공지사항과 읽지 않은 새 알림을 확인합니다.',
+    searchTerms: ['공지사항', '새 공지', '알림', '읽지 않은 공지', '운영 안내'],
+    examples: ['새 공지 확인하고 싶어', '읽지 않은 알림 보여줘'],
+  },
+  {
+    featureName: 'admin',
+    description: '멤버의 관리자 권한과 비밀번호 재설정을 관리합니다.',
+    searchTerms: ['관리자 권한', '관리자 임명', '권한 해제', '비밀번호 초기화', '멤버 관리'],
+    examples: ['관리자를 새로 지정하고 싶어', '멤버 비밀번호를 초기화하고 싶어'],
+  },
+  {
+    featureName: 'settlements',
+    description: '모임 비용을 참여자별로 정산하고 송금 상태를 확인합니다.',
+    searchTerms: ['정산', '더치페이', '회비', '송금', '계좌번호'],
+    examples: ['모임 비용을 정산하고 싶어', '아직 돈을 안 보낸 사람을 확인하고 싶어'],
+  },
+  {
     featureName: 'dice',
     description: '주사위를 굴려 무작위 포인트를 받습니다.',
     searchTerms: ['랜덤 포인트', '운', '주사위 굴리기'],
     examples: ['포인트 랜덤으로 받아볼래', '주사위 굴리고 싶어'],
+  },
+  {
+    featureName: 'game2048',
+    description: '2048 게임을 이어서 플레이하고 최고 점수와 순위를 확인합니다.',
+    searchTerms: ['2048', '숫자 게임', '게임 이어하기', '최고 점수', '게임 순위'],
+    examples: ['2048 게임하고 싶어', '게임 최고 점수를 확인하고 싶어'],
   },
   {
     featureName: 'badges',

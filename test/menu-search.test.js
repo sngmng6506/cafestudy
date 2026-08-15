@@ -37,6 +37,10 @@ test('searchMenusByKeyword: 직접적인 사용자 표현을 관련 메뉴로 �
     ['지난번 스터디 사진 보고 싶어', 'meetup-history'],
     ['친구에게 사이트 공유하고 싶어', 'qr'],
     ['검색이 어떻게 동작해?', 'search-guide'],
+    ['읽지 않은 알림 보여줘', 'notices'],
+    ['관리자를 새로 지정하고 싶어', 'admin'],
+    ['모임 비용을 정산하고 싶어', 'settlements'],
+    ['2048 게임하고 싶어', 'game2048'],
   ];
 
   for (const [query, expectedFeature] of cases) {
