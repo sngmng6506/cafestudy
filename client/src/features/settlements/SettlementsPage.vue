@@ -226,10 +226,23 @@ function applyEqualAmounts(meetup) {
 }
 
 function setParticipantAmount(userId, value) {
-  participantAmounts.value = {
-    ...participantAmounts.value,
-    [userId]: normalizeAmountInput(value),
-  };
+  const fixedAmount = normalizeAmountInput(value);
+  const next = { ...participantAmounts.value, [userId]: fixedAmount };
+  const otherIds = selectedIds.value.filter((id) => id !== userId);
+  const amountNumber = Number(amount.value);
+
+  if (Number.isInteger(amountNumber) && otherIds.length > 0) {
+    const remaining = Math.max(amountNumber - fixedAmount, 0);
+    const share = Math.floor(remaining / otherIds.length);
+    let remainder = remaining % otherIds.length;
+
+    for (const otherId of otherIds) {
+      next[otherId] = share + (remainder > 0 ? 1 : 0);
+      remainder -= 1;
+    }
+  }
+
+  participantAmounts.value = next;
 }
 
 function normalizeAmountInput(value) {
