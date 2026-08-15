@@ -71,6 +71,10 @@ Decision: <판단이 개입된 경우만>
 ## Frontend
 
 - 새 화면은 `client/src/features/<name>/`에 두고 `features/index.js`에 등록한다.
+- 자연어 기능 검색에 노출할 화면은 `features/index.js`의 `name`과 같은 `featureName`으로
+  `client/src/features/menu-search/menu-search.metadata.js`에 `description`, `searchTerms`,
+  `examples`를 함께 등록한다. Ternlight WASM은 이 문장들을 임베딩하며, 등록하지 않은
+  기능은 검색되지 않는다.
 - 데이터·셸 로직은 컴포넌트에 쌓지 말고 `client/src/shared/` composable로 분리한다.
 - 외부 데이터를 `v-html`로 렌더할 때는 이스케이프한다.
 - 새 UI에서 hex 색상을 직접 추가하지 말고 semantic token을 사용한다.
