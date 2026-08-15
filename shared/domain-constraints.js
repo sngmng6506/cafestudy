@@ -19,3 +19,12 @@ export const SOMOIM_AUTOMATION_LIMITS = Object.freeze({
   defaultCapacity: 8,
   maxCapacity: MEETUP_LIMITS.maxCapacity,
 });
+
+export const SETTLEMENT_LIMITS = Object.freeze({
+  minTotalAmount: 1,
+  maxTotalAmount: 100_000_000,
+  bankNameMaxLength: 40,
+  bankAccountNumberMaxLength: 40,
+  accountHolderNameMaxLength: 40,
+  kakaopayLinkMaxLength: 300,
+});

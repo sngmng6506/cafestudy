@@ -67,6 +67,29 @@ meetups                       -- 앱 안에서 직접 만든 모임
 participants                  -- meetup 참가 (UNIQUE meetup_id+user_id)
 - id, meetup_id, user_id, joined_at
 
+settlement_payment_methods    -- 사용자별 재사용 정산 수단
+- user_id(PK/FK users CASCADE), bank_name, bank_account_number,
+  account_holder_name, kakaopay_link, updated_at
+- 은행 계좌는 은행명·계좌번호·예금주를 모두 입력하거나 모두 비워야 한다.
+  카카오페이 링크는 단독으로 둘 수 있다.
+- 실제 송금 API 연동은 없다. 앱은 라운드 생성자의 정산 수단을 표시만 하고,
+  송금은 앱 밖에서 수동으로 이루어진다.
+
+meetup_settlements            -- 모임별 정산 라운드
+- id, meetup_id(FK meetups CASCADE), round_no, total_amount, created_by(FK users),
+  payer_bank_name, payer_bank_account_number, payer_account_holder_name,
+  payer_kakaopay_link, created_at
+- round_no는 모임 안에서 1부터 증가하며 UNIQUE(meetup_id, round_no)다.
+- payer_* 컬럼은 라운드 생성 시점의 생성자 정산 수단 스냅샷이다.
+  이후 사용자가 `settlement_payment_methods`를 수정해도 이미 만든 라운드는 바뀌지 않는다.
+
+meetup_settlement_participants -- 정산 라운드 참여자와 송금 자가 신고
+- settlement_id(FK meetup_settlements CASCADE), user_id(FK users), paid_at(nullable)
+- PK(settlement_id, user_id). paid_at이 null이면 미완료, 값이 있으면 사용자가
+  직접 "송금 완료"로 표시한 상태다. 받는 사람 확인 단계는 없다.
+- 송금 완료 표시/취소는 본인 행만 바꾼다. 관리자 override는 없다.
+  "내가 실제로 송금했다"는 본인만 주장할 수 있는 사실로 취급한다.
+
 verification_uploads          -- 사진 인증 업로드 ticket
 - id, meetup_id(FK), user_id(FK), object_key(UNIQUE), content_type,
   content_length, status(pending/finalizing/consumed/failed), failure_reason,
@@ -190,6 +213,11 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
 네 개를 독립된 쿼리로 나눠 쓰지 않는다(`db.transaction()` 사용).
 
 모임 참여는 meetup 행을 `FOR UPDATE`로 잠근 같은 트랜잭션에서 기존 참여와 정원을 확인한 뒤 insert한다.
+
+정산 라운드 생성은 meetup 행을 잠근 같은 트랜잭션에서 참여자 검증, 다음 round_no 계산,
+생성자의 정산 수단 조회, `meetup_settlements` 스냅샷 insert,
+`meetup_settlement_participants` insert를 처리한다. 스냅샷 조회와 라운드 insert를
+분리하지 않는다.
 
 관리자/인증 기능도 다음 묶음을 원자적으로 처리한다.
 

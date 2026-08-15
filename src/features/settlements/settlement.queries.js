@@ -32,9 +32,14 @@ export function createSettlementQueries(db) {
            s.total_amount AS "totalAmount",
            s.created_by AS "createdBy",
            creator.nickname AS "createdByName",
+           s.payer_bank_name AS "payerBankName",
+           s.payer_bank_account_number AS "payerBankAccountNumber",
+           s.payer_account_holder_name AS "payerAccountHolderName",
+           s.payer_kakaopay_link AS "payerKakaopayLink",
            s.created_at AS "createdAt",
+           bool_and(sp.user_id = s.created_by OR sp.paid_at IS NOT NULL) AS "fullySettled",
            json_agg(
-             json_build_object('id', u.id, 'name', u.nickname)
+             json_build_object('id', u.id, 'name', u.nickname, 'paidAt', sp.paid_at)
              ORDER BY u.nickname
            ) AS participants
          FROM meetup_settlements s
@@ -47,6 +52,50 @@ export function createSettlementQueries(db) {
         [userId],
       );
       return result.rows;
+    },
+
+    async getPaymentMethod(userId) {
+      const result = await db.query(
+        `SELECT
+           user_id AS "userId",
+           bank_name AS "bankName",
+           bank_account_number AS "bankAccountNumber",
+           account_holder_name AS "accountHolderName",
+           kakaopay_link AS "kakaopayLink",
+           updated_at AS "updatedAt"
+         FROM settlement_payment_methods
+         WHERE user_id = $1`,
+        [userId],
+      );
+      return result.rows[0] ?? null;
+    },
+
+    async upsertPaymentMethod({ userId, bankName, bankAccountNumber, accountHolderName, kakaopayLink }) {
+      const result = await db.query(
+        `INSERT INTO settlement_payment_methods (
+           user_id,
+           bank_name,
+           bank_account_number,
+           account_holder_name,
+           kakaopay_link
+         )
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (user_id) DO UPDATE SET
+           bank_name = EXCLUDED.bank_name,
+           bank_account_number = EXCLUDED.bank_account_number,
+           account_holder_name = EXCLUDED.account_holder_name,
+           kakaopay_link = EXCLUDED.kakaopay_link,
+           updated_at = now()
+         RETURNING
+           user_id AS "userId",
+           bank_name AS "bankName",
+           bank_account_number AS "bankAccountNumber",
+           account_holder_name AS "accountHolderName",
+           kakaopay_link AS "kakaopayLink",
+           updated_at AS "updatedAt"`,
+        [userId, bankName, bankAccountNumber, accountHolderName, kakaopayLink],
+      );
+      return result.rows[0];
     },
 
     async createSettlement({ meetupId, creatorId, participantIds, totalAmount }) {
@@ -69,13 +118,47 @@ export function createSettlementQueries(db) {
         );
         const roundNo = Number(next.rows[0].next_round);
 
+        const paymentMethod = await client.query(
+          `SELECT
+             bank_name,
+             bank_account_number,
+             account_holder_name,
+             kakaopay_link
+           FROM settlement_payment_methods
+           WHERE user_id = $1`,
+          [creatorId],
+        );
+        const payer = paymentMethod.rows[0] ?? {};
+
         const inserted = await client.query(
-          `INSERT INTO meetup_settlements (meetup_id, round_no, total_amount, created_by)
-           VALUES ($1, $2, $3, $4)
+          `INSERT INTO meetup_settlements (
+             meetup_id,
+             round_no,
+             total_amount,
+             created_by,
+             payer_bank_name,
+             payer_bank_account_number,
+             payer_account_holder_name,
+             payer_kakaopay_link
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            RETURNING id, meetup_id AS "meetupId", round_no AS "roundNo",
                      total_amount AS "totalAmount", created_by AS "createdBy",
+                     payer_bank_name AS "payerBankName",
+                     payer_bank_account_number AS "payerBankAccountNumber",
+                     payer_account_holder_name AS "payerAccountHolderName",
+                     payer_kakaopay_link AS "payerKakaopayLink",
                      created_at AS "createdAt"`,
-          [meetupId, roundNo, totalAmount, creatorId],
+          [
+            meetupId,
+            roundNo,
+            totalAmount,
+            creatorId,
+            payer.bank_name ?? null,
+            payer.bank_account_number ?? null,
+            payer.account_holder_name ?? null,
+            payer.kakaopay_link ?? null,
+          ],
         );
         const settlement = inserted.rows[0];
 
@@ -87,6 +170,28 @@ export function createSettlementQueries(db) {
 
         return settlement;
       });
+    },
+
+    async markParticipantPaid({ settlementId, userId }) {
+      const result = await db.query(
+        `UPDATE meetup_settlement_participants
+            SET paid_at = now()
+          WHERE settlement_id = $1 AND user_id = $2
+          RETURNING settlement_id AS "settlementId", user_id AS "userId", paid_at AS "paidAt"`,
+        [settlementId, userId],
+      );
+      return result.rows[0] ?? null;
+    },
+
+    async unmarkParticipantPaid({ settlementId, userId }) {
+      const result = await db.query(
+        `UPDATE meetup_settlement_participants
+            SET paid_at = NULL
+          WHERE settlement_id = $1 AND user_id = $2
+          RETURNING settlement_id AS "settlementId", user_id AS "userId", paid_at AS "paidAt"`,
+        [settlementId, userId],
+      );
+      return result.rows[0] ?? null;
     },
 
     async deleteSettlement({ settlementId, userId, isAdmin }) {

@@ -1,19 +1,25 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
-import { Calculator, ChevronDown, Trash2 } from '@lucide/vue';
+import { onMounted, ref } from 'vue';
+import { ChevronDown, CreditCard } from '@lucide/vue';
+import { SETTLEMENT_LIMITS } from '../../../../shared/domain-constraints.js';
 import { apiFetch } from '../../shared/api.js';
 import { useCurrentUser } from '../../shared/useCurrentUser.js';
 import { useToast } from '../../shared/useToast.js';
+import PaymentMethodEditor from './PaymentMethodEditor.vue';
+import SettlementRoundCard from './SettlementRoundCard.vue';
 
 const { currentUserId, isAdmin } = useCurrentUser();
 const toast = useToast();
 const meetups = ref([]);
+const paymentMethod = ref(null);
 const loading = ref(true);
 const errorMessage = ref('');
 const openMeetupId = ref('');
 const amount = ref('');
 const selectedIds = ref([]);
 const saving = ref(false);
+const paymentMethodOpen = ref(false);
+const paidSavingId = ref('');
 
 onMounted(load);
 
@@ -21,8 +27,12 @@ async function load() {
   loading.value = true;
   errorMessage.value = '';
   try {
-    const response = await apiFetch('/api/settlements');
-    meetups.value = response.data ?? [];
+    const [settlementsResponse, paymentMethodResponse] = await Promise.all([
+      apiFetch('/api/settlements'),
+      apiFetch('/api/settlements/payment-method'),
+    ]);
+    meetups.value = settlementsResponse.data ?? [];
+    paymentMethod.value = paymentMethodResponse.data ?? null;
   } catch (error) {
     errorMessage.value = error.message;
   } finally {
@@ -58,6 +68,17 @@ async function createRound(meetup) {
   }
 }
 
+async function savePaymentMethod(nextPaymentMethod) {
+  const response = await apiFetch('/api/settlements/payment-method', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(nextPaymentMethod),
+  });
+  paymentMethod.value = response.data;
+  paymentMethodOpen.value = false;
+  toast.success('내 정산 수단을 저장했어요.');
+}
+
 async function removeRound(round) {
   if (!window.confirm(`${round.roundNo}차 정산을 삭제할까요?`)) return;
   try {
@@ -69,8 +90,34 @@ async function removeRound(round) {
   }
 }
 
+async function togglePaid(round) {
+  const me = round.participants.find((participant) => participant.id === currentUserId.value);
+  if (!me) return;
+
+  paidSavingId.value = round.id;
+  try {
+    await apiFetch(`/api/settlements/${round.id}/paid`, {
+      method: me.paidAt ? 'DELETE' : 'POST',
+    });
+    toast.success(me.paidAt ? '송금 완료 표시를 취소했어요.' : '송금 완료로 표시했어요.');
+    await load();
+  } catch (error) {
+    toast.error(error.message);
+  } finally {
+    paidSavingId.value = '';
+  }
+}
+
 function canDelete(round) {
   return round.createdBy === currentUserId.value || isAdmin.value;
+}
+
+function copiedAccount() {
+  toast.success('계좌번호를 복사했어요.');
+}
+
+function copyAccountFailed() {
+  toast.error('계좌번호를 복사하지 못했어요. 직접 선택해서 복사해 주세요.');
 }
 
 function won(value) {
@@ -84,23 +131,38 @@ function date(value) {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="ui-page-title">정산</h1>
-      <p class="ui-text-muted mt-1 text-[13px]">참여한 모임에서 차수별 비용을 기록해요.</p>
+    <div class="mb-1 flex items-start justify-between gap-4">
+      <div>
+        <h1 class="ui-page-title">정산</h1>
+        <p class="ui-text-muted mt-1 text-[13px]">참여한 모임에서 차수별 비용과 송금 상태를 확인해요.</p>
+      </div>
+      <button
+        class="focus-ring ui-radius-control ui-border flex h-10 shrink-0 items-center gap-2 border bg-[var(--ui-color-surface)] px-3 text-[13px] font-medium"
+        type="button"
+        @click="paymentMethodOpen = true"
+      >
+        <CreditCard :size="17" />
+        정산 수단 설정
+      </button>
     </div>
 
     <div v-if="loading" class="surface-card py-12 text-center ui-text-muted">정산을 불러오는 중이에요.</div>
     <div v-else-if="errorMessage" class="surface-card py-8 text-center ui-text-danger">{{ errorMessage }}</div>
     <div v-else-if="meetups.length === 0" class="surface-card py-12 text-center">
       <p class="font-semibold">참여한 모임이 없어요.</p>
-      <p class="ui-text-muted mt-1 text-[13px]">모임에 참여하면 여기에서 정산할 수 있어요.</p>
+      <p class="ui-text-muted mt-1 text-[13px]">모임에 참여하면 여기에서 정산을 만들 수 있어요.</p>
     </div>
 
     <article v-for="meetup in meetups" :key="meetup.id" class="surface-card grid gap-4">
       <div>
         <div class="flex items-start justify-between gap-3">
           <h2 class="ui-section-title">{{ meetup.title }}</h2>
-          <button class="focus-ring ui-text-brand flex items-center gap-1 text-[13px] font-medium" type="button" @click="openForm(meetup)">
+          <button
+            class="focus-ring ui-text-brand flex items-center gap-1 text-[13px] font-medium"
+            type="button"
+            :aria-expanded="openMeetupId === meetup.id"
+            @click="openForm(meetup)"
+          >
             정산 차수 추가 <ChevronDown :size="16" />
           </button>
         </div>
@@ -112,26 +174,33 @@ function date(value) {
       </div>
 
       <ul v-else class="grid gap-2">
-        <li v-for="round in meetup.settlements" :key="round.id" class="ui-bg-subtle ui-radius-item flex items-start gap-3 px-3 py-3">
-          <Calculator :size="18" class="ui-text-brand mt-0.5 shrink-0" />
-          <div class="min-w-0 flex-1">
-            <p class="font-semibold">{{ round.roundNo }}차 · 총 {{ won(round.totalAmount) }}원</p>
-            <p class="ui-text-muted mt-1 text-[12px]">
-              {{ round.participantCount }}명 · 1인 약 {{ won(round.amountPerPerson) }}원
-              <template v-if="round.remainder"> · 나머지 {{ won(round.remainder) }}원</template>
-            </p>
-            <p class="ui-text-caption mt-1 text-[12px]">{{ round.participants.map((p) => p.name).join(', ') }} · {{ round.createdByName }} 작성</p>
-          </div>
-          <button v-if="canDelete(round)" class="focus-ring ui-text-danger shrink-0 p-1" type="button" aria-label="정산 삭제하기" @click="removeRound(round)">
-            <Trash2 :size="17" />
-          </button>
-        </li>
+        <SettlementRoundCard
+          v-for="round in meetup.settlements"
+          :key="round.id"
+          :round="round"
+          :current-user-id="currentUserId"
+          :can-delete="canDelete(round)"
+          :paid-saving="paidSavingId === round.id"
+          @delete="removeRound"
+          @toggle-paid="togglePaid"
+          @copied-account="copiedAccount"
+          @copy-account-failed="copyAccountFailed"
+        />
       </ul>
 
       <form v-if="openMeetupId === meetup.id" class="ui-border-subtle grid gap-4 border-t pt-4" @submit.prevent="createRound(meetup)">
         <label class="grid gap-1.5 text-[13px] font-medium">
           총액
-          <input v-model="amount" class="focus-ring ui-radius-control ui-border h-10 border px-3 text-[16px]" type="number" min="1" max="100000000" inputmode="numeric" placeholder="예: 48000" required />
+          <input
+            v-model="amount"
+            class="focus-ring ui-radius-control ui-border h-10 border px-3 text-[16px]"
+            type="number"
+            :min="SETTLEMENT_LIMITS.minTotalAmount"
+            :max="SETTLEMENT_LIMITS.maxTotalAmount"
+            inputmode="numeric"
+            placeholder="예: 48000"
+            required
+          />
         </label>
 
         <fieldset class="grid gap-2">
@@ -147,5 +216,12 @@ function date(value) {
         </button>
       </form>
     </article>
+
+    <PaymentMethodEditor
+      v-if="paymentMethodOpen"
+      :payment-method="paymentMethod"
+      :save-payment-method="savePaymentMethod"
+      @close="paymentMethodOpen = false"
+    />
   </section>
 </template>
