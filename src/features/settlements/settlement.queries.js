@@ -8,6 +8,7 @@ export function createSettlementQueries(db) {
            m.location,
            m.scheduled_at AS "scheduledAt",
            m.status,
+           m.source_type AS "sourceType",
            json_agg(
              json_build_object('id', u.id, 'name', u.nickname)
              ORDER BY u.nickname
@@ -21,6 +22,94 @@ export function createSettlementQueries(db) {
         [userId],
       );
       return result.rows;
+    },
+
+    async syncSomoimEventsToMeetups() {
+      return db.transaction(async (client) => {
+        const upserted = await client.query(
+          `WITH mapped_attendees AS (
+             SELECT
+               e.id AS event_id,
+               e.title,
+               e.location,
+               e.cost,
+               e.scheduled_at,
+               COALESCE(e.capacity, e.joined_count, 1) AS capacity,
+               sm.id AS user_id,
+               ROW_NUMBER() OVER (
+                 PARTITION BY e.id
+                 ORDER BY a.is_host DESC, a.attendee_order NULLS LAST, sm.name
+               ) AS attendee_rank
+             FROM somoim_events e
+             JOIN somoim_event_attendees a ON a.event_id = e.id
+             JOIN somoim_members sm ON sm.face_id = a.face_id
+             WHERE e.scheduled_at IS NOT NULL
+           ),
+           event_hosts AS (
+             SELECT
+               event_id,
+               title,
+               location,
+               cost,
+               scheduled_at,
+               GREATEST(MAX(capacity), COUNT(*)::int, 1) AS capacity,
+               MAX(user_id) FILTER (WHERE attendee_rank = 1) AS host_id
+             FROM mapped_attendees
+             GROUP BY event_id, title, location, cost, scheduled_at
+           )
+           INSERT INTO meetups (
+             host_id,
+             title,
+             description,
+             location,
+             scheduled_at,
+             capacity,
+             status,
+             source_type,
+             source_ref
+           )
+           SELECT
+             host_id,
+             title,
+             CASE WHEN cost IS NULL OR cost = '' THEN NULL ELSE '참가비 ' || cost END,
+             COALESCE(location, '장소 미정'),
+             scheduled_at,
+             capacity,
+             'open',
+             'somoim',
+             event_id::text
+           FROM event_hosts
+           WHERE host_id IS NOT NULL
+           ON CONFLICT (source_type, source_ref) WHERE source_ref IS NOT NULL
+           DO UPDATE SET
+             host_id = EXCLUDED.host_id,
+             title = EXCLUDED.title,
+             description = EXCLUDED.description,
+             location = EXCLUDED.location,
+             scheduled_at = EXCLUDED.scheduled_at,
+             capacity = EXCLUDED.capacity
+           RETURNING id, source_ref AS "sourceRef"`,
+        );
+
+        if (upserted.rows.length === 0) return { meetupCount: 0, participantCount: 0 };
+
+        const participants = await client.query(
+          `WITH mapped_attendees AS (
+             SELECT DISTINCT e.id::text AS source_ref, sm.id AS user_id
+             FROM somoim_events e
+             JOIN somoim_event_attendees a ON a.event_id = e.id
+             JOIN somoim_members sm ON sm.face_id = a.face_id
+             WHERE e.scheduled_at IS NOT NULL
+           )
+           INSERT INTO participants (meetup_id, user_id)
+           SELECT m.id, ma.user_id
+           FROM mapped_attendees ma
+           JOIN meetups m ON m.source_type = 'somoim' AND m.source_ref = ma.source_ref
+           ON CONFLICT (meetup_id, user_id) DO NOTHING`,
+        );
+
+        return { meetupCount: upserted.rowCount, participantCount: participants.rowCount };
+      });
     },
 
     async listSettlementsForUser(userId) {

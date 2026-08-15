@@ -9,6 +9,9 @@ function serviceWith(overrides = {}) {
   const calls = [];
   const queries = {
     async getPaymentMethod() { return null; },
+    async syncSomoimEventsToMeetups() {},
+    async listUserMeetups() { return []; },
+    async listSettlementsForUser() { return []; },
     async upsertPaymentMethod(method) {
       calls.push(['upsertPaymentMethod', method]);
       return { ...method, updatedAt: new Date('2026-08-15T00:00:00.000Z') };
@@ -46,6 +49,25 @@ test('payment method allows empty bank fields and trims blank strings to null', 
     accountHolderName: null,
     kakaopayLink: null,
   });
+});
+
+test('listForUser syncs mapped Somoim events before listing settlements', async () => {
+  const { service, calls } = serviceWith({
+    async syncSomoimEventsToMeetups() { calls.push(['syncSomoimEventsToMeetups']); },
+    async listUserMeetups() {
+      calls.push(['listUserMeetups']);
+      return [];
+    },
+    async listSettlementsForUser() {
+      calls.push(['listSettlementsForUser']);
+      return [];
+    },
+  });
+
+  await service.listForUser(USER);
+  assert.equal(calls[0][0], 'syncSomoimEventsToMeetups');
+  assert.equal(calls.some(([name]) => name === 'listUserMeetups'), true);
+  assert.equal(calls.some(([name]) => name === 'listSettlementsForUser'), true);
 });
 
 test('payment method allows kakaopay link without bank fields', async () => {

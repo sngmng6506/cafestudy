@@ -7,6 +7,7 @@ export function createSettlementService({ db, settlementQueries }) {
 
   return {
     async listForUser(userId) {
+      await queries.syncSomoimEventsToMeetups();
       const [meetups, settlements] = await Promise.all([
         queries.listUserMeetups(userId),
         queries.listSettlementsForUser(userId),

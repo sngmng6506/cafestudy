@@ -343,7 +343,14 @@ function emptyPaymentMethod() {
     <article v-for="meetup in meetups" :key="meetup.id" class="surface-card grid gap-4">
       <div>
         <div class="flex items-start justify-between gap-3">
-          <h2 class="ui-section-title">{{ meetup.title }}</h2>
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="ui-section-title">{{ meetup.title }}</h2>
+              <span v-if="meetup.sourceType === 'somoim'" class="ui-radius-badge ui-bg-subtle ui-text-muted px-2 py-0.5 text-[12px] font-medium">
+                소모임
+              </span>
+            </div>
+          </div>
           <button
             class="focus-ring ui-text-brand flex items-center gap-1 text-[13px] font-medium"
             type="button"
