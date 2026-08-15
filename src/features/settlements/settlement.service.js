@@ -33,7 +33,7 @@ export function createSettlementService({ db, settlementQueries }) {
       return queries.upsertPaymentMethod(paymentMethod);
     },
 
-    async create({ meetupId, creatorId, participantIds, totalAmount }) {
+    async create({ meetupId, creatorId, participantIds, participantAmounts, totalAmount }) {
       const amount = Number(totalAmount);
       if (!meetupId) throwValidation('모임을 선택해 주세요.');
       if (
@@ -43,13 +43,13 @@ export function createSettlementService({ db, settlementQueries }) {
       ) {
         throwValidation('총액은 1원부터 1억원 사이의 정수로 입력해 주세요.');
       }
-      const uniqueIds = [...new Set(Array.isArray(participantIds) ? participantIds.filter(Boolean) : [])];
-      if (uniqueIds.length === 0) throwValidation('정산 참여자를 한 명 이상 선택해 주세요.');
+      const shares = normalizeParticipantAmounts({ participantIds, participantAmounts, totalAmount: amount });
+      if (shares.length === 0) throwValidation('정산 참여자를 한 명 이상 선택해 주세요.');
 
       const result = await queries.createSettlement({
         meetupId,
         creatorId,
-        participantIds: uniqueIds,
+        participantAmounts: shares,
         totalAmount: amount,
       });
       if (result?.error === 'NOT_PARTICIPANT') {
@@ -58,7 +58,7 @@ export function createSettlementService({ db, settlementQueries }) {
       if (result?.error === 'INVALID_PARTICIPANT') {
         throwValidation('모임에 참여하지 않은 사람이 포함되어 있어요.');
       }
-      return { ...result, participantCount: uniqueIds.length, amountPerPerson: Math.floor(amount / uniqueIds.length) };
+      return { ...result, participantCount: shares.length, amountPerPerson: Math.floor(amount / shares.length) };
     },
 
     async markPaid({ settlementId, userId }) {
@@ -131,12 +131,43 @@ function emptyPaymentMethod(userId) {
   };
 }
 
+function normalizeParticipantAmounts({ participantIds, participantAmounts, totalAmount }) {
+  if (Array.isArray(participantAmounts)) {
+    const seen = new Set();
+    const shares = participantAmounts
+      .map((entry) => ({
+        userId: entry?.userId,
+        amountDue: Number(entry?.amountDue),
+      }))
+      .filter((entry) => entry.userId);
+
+    for (const share of shares) {
+      if (seen.has(share.userId)) throwValidation('정산 참여자가 중복되어 있어요.');
+      seen.add(share.userId);
+      if (!Number.isInteger(share.amountDue) || share.amountDue < 0) {
+        throwValidation('참여자별 정산 금액은 0원 이상의 정수로 입력해 주세요.');
+      }
+    }
+
+    const sum = shares.reduce((total, share) => total + share.amountDue, 0);
+    if (sum !== totalAmount) throwValidation('참여자별 정산 금액 합계가 총액과 같아야 해요.');
+    return shares;
+  }
+
+  const uniqueIds = [...new Set(Array.isArray(participantIds) ? participantIds.filter(Boolean) : [])];
+  const amountPerPerson = uniqueIds.length ? Math.floor(totalAmount / uniqueIds.length) : 0;
+  return uniqueIds.map((userId) => ({ userId, amountDue: amountPerPerson }));
+}
+
 function withShare(settlement) {
   const count = settlement.participants.length;
+  const firstAmount = settlement.participants[0]?.amountDue ?? 0;
+  const sameAmount = settlement.participants.every((participant) => participant.amountDue === firstAmount);
   return {
     ...settlement,
     participantCount: count,
     amountPerPerson: count ? Math.floor(settlement.totalAmount / count) : 0,
     remainder: count ? settlement.totalAmount % count : 0,
+    customSplit: count > 0 && !sameAmount,
   };
 }

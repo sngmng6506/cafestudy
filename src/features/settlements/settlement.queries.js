@@ -39,7 +39,7 @@ export function createSettlementQueries(db) {
            s.created_at AS "createdAt",
            bool_and(sp.user_id = s.created_by OR sp.paid_at IS NOT NULL) AS "fullySettled",
            json_agg(
-             json_build_object('id', u.id, 'name', u.nickname, 'paidAt', sp.paid_at)
+             json_build_object('id', u.id, 'name', u.nickname, 'amountDue', sp.amount_due, 'paidAt', sp.paid_at)
              ORDER BY u.nickname
            ) AS participants
          FROM meetup_settlements s
@@ -98,7 +98,7 @@ export function createSettlementQueries(db) {
       return result.rows[0];
     },
 
-    async createSettlement({ meetupId, creatorId, participantIds, totalAmount }) {
+    async createSettlement({ meetupId, creatorId, participantAmounts, totalAmount }) {
       return db.transaction(async (client) => {
         await client.query(`SELECT id FROM meetups WHERE id = $1 FOR UPDATE`, [meetupId]);
 
@@ -108,7 +108,7 @@ export function createSettlementQueries(db) {
         );
         const memberIds = new Set(membership.rows.map((row) => row.id));
         if (!memberIds.has(creatorId)) return { error: 'NOT_PARTICIPANT' };
-        if (participantIds.some((id) => !memberIds.has(id))) return { error: 'INVALID_PARTICIPANT' };
+        if (participantAmounts.some((participant) => !memberIds.has(participant.userId))) return { error: 'INVALID_PARTICIPANT' };
 
         const next = await client.query(
           `SELECT COALESCE(MAX(round_no), 0) + 1 AS next_round
@@ -162,10 +162,15 @@ export function createSettlementQueries(db) {
         );
         const settlement = inserted.rows[0];
 
-        const values = participantIds.map((_, index) => `($1, $${index + 2})`).join(', ');
+        const values = participantAmounts
+          .map((_, index) => `($1, $${index * 2 + 2}, $${index * 2 + 3})`)
+          .join(', ');
         await client.query(
-          `INSERT INTO meetup_settlement_participants (settlement_id, user_id) VALUES ${values}`,
-          [settlement.id, ...participantIds],
+          `INSERT INTO meetup_settlement_participants (settlement_id, user_id, amount_due) VALUES ${values}`,
+          [
+            settlement.id,
+            ...participantAmounts.flatMap((participant) => [participant.userId, participant.amountDue]),
+          ],
         );
 
         return settlement;

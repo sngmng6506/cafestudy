@@ -16,6 +16,7 @@ const errorMessage = ref('');
 const openMeetupId = ref('');
 const amount = ref('');
 const selectedIds = ref([]);
+const participantAmounts = ref({});
 const saving = ref(false);
 const paidSavingId = ref('');
 const paymentDraft = ref(emptyPaymentMethod());
@@ -102,6 +103,7 @@ function openForm(meetup) {
   openMeetupId.value = openMeetupId.value === meetup.id ? '' : meetup.id;
   amount.value = '';
   selectedIds.value = meetup.participants.map((participant) => participant.id);
+  participantAmounts.value = {};
   paymentDraft.value = paymentMethod.value ? { ...paymentMethod.value } : emptyPaymentMethod();
   lastInferredBankName.value = inferBankName(paymentDraft.value.bankAccountNumber) === paymentDraft.value.bankName
     ? paymentDraft.value.bankName
@@ -110,7 +112,15 @@ function openForm(meetup) {
 
 async function createRound(meetup) {
   const amountNumber = Number(amount.value);
-  if (!confirmEqualShare({ amount: amountNumber, participantCount: selectedIds.value.length })) return;
+  const shares = selectedIds.value.map((userId) => ({
+    userId,
+    amountDue: Number(participantAmounts.value[userId] ?? 0),
+  }));
+  const shareSum = shares.reduce((total, share) => total + share.amountDue, 0);
+  if (shareSum !== amountNumber) {
+    toast.error(`참여자별 금액 합계가 총액과 같아야 해요. 현재 합계는 ${won(shareSum)}원이에요.`);
+    return;
+  }
 
   saving.value = true;
   try {
@@ -120,7 +130,7 @@ async function createRound(meetup) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         meetupId: meetup.id,
-        participantIds: selectedIds.value,
+        participantAmounts: shares,
         totalAmount: amountNumber,
       }),
     });
@@ -187,24 +197,56 @@ function copyAccountFailed() {
   toast.error('계좌번호를 복사하지 못했어요. 직접 선택해서 복사해 주세요.');
 }
 
+function syncParticipantAmounts(meetup) {
+  const next = {};
+  for (const userId of selectedIds.value) {
+    next[userId] = normalizeAmountInput(participantAmounts.value[userId]);
+  }
+  participantAmounts.value = next;
+
+  if (Object.keys(next).length === 0) return;
+  const existingSum = Object.values(next).reduce((total, value) => total + value, 0);
+  if (existingSum > 0) return;
+
+  applyEqualAmounts(meetup);
+}
+
+function applyEqualAmounts(meetup) {
+  const amountNumber = Number(amount.value);
+  if (!Number.isInteger(amountNumber) || selectedIds.value.length === 0) return;
+  const share = Math.floor(amountNumber / selectedIds.value.length);
+  let remainder = amountNumber % selectedIds.value.length;
+  const next = {};
+  for (const participant of meetup.participants) {
+    if (!selectedIds.value.includes(participant.id)) continue;
+    next[participant.id] = share + (remainder > 0 ? 1 : 0);
+    remainder -= 1;
+  }
+  participantAmounts.value = next;
+}
+
+function setParticipantAmount(userId, value) {
+  participantAmounts.value = {
+    ...participantAmounts.value,
+    [userId]: normalizeAmountInput(value),
+  };
+}
+
+function normalizeAmountInput(value) {
+  const amountValue = Number(String(value ?? '').replace(/\D/g, ''));
+  return Number.isInteger(amountValue) ? amountValue : 0;
+}
+
+function selectedAmountSum() {
+  return selectedIds.value.reduce((total, userId) => total + Number(participantAmounts.value[userId] ?? 0), 0);
+}
+
 function won(value) {
   return new Intl.NumberFormat('ko-KR').format(value);
 }
 
 function date(value) {
   return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
-}
-
-function confirmEqualShare({ amount, participantCount }) {
-  if (!Number.isFinite(amount) || participantCount === 0) return true;
-  const share = Math.floor(amount / participantCount);
-  const remainder = amount % participantCount;
-  const remainderText = remainder ? `\n나머지 ${won(remainder)}원은 화면에 따로 표시돼요.` : '';
-  return window.confirm(
-    `이 정산은 ${participantCount}명이 같은 금액으로 나눠요.\n`
-    + `1인 ${won(share)}원으로 계산할까요?${remainderText}\n\n`
-    + '사람마다 내야 할 금액이 다르면 정산을 추가하지 말고 금액을 다시 확인해 주세요.',
-  );
 }
 
 function normalizeAccountNumberInput(event) {
@@ -301,15 +343,38 @@ function emptyPaymentMethod() {
             inputmode="numeric"
             placeholder="예: 48000"
             required
+            @change="applyEqualAmounts(meetup)"
           />
         </label>
 
         <fieldset class="grid gap-2">
           <legend class="mb-1 text-[13px] font-medium">정산 참여자</legend>
-          <label v-for="participant in meetup.participants" :key="participant.id" class="ui-bg-subtle ui-radius-item flex min-h-10 items-center gap-3 px-3 text-[14px]">
-            <input v-model="selectedIds" type="checkbox" :value="participant.id" />
-            {{ participant.name }}
-          </label>
+          <div v-for="participant in meetup.participants" :key="participant.id" class="ui-bg-subtle ui-radius-item grid gap-2 px-3 py-3 text-[14px]">
+            <label class="flex min-h-8 items-center gap-3">
+              <input v-model="selectedIds" type="checkbox" :value="participant.id" @change="syncParticipantAmounts(meetup)" />
+              <span class="font-medium">{{ participant.name }}</span>
+            </label>
+            <label v-if="selectedIds.includes(participant.id)" class="grid gap-1.5 text-[13px] font-medium">
+              낼 금액
+              <input
+                :value="participantAmounts[participant.id] ?? 0"
+                class="focus-ring ui-radius-control ui-border h-10 border bg-[var(--ui-color-surface)] px-3 text-[16px]"
+                type="number"
+                min="0"
+                inputmode="numeric"
+                @input="setParticipantAmount(participant.id, $event.target.value)"
+              />
+            </label>
+          </div>
+          <div class="ui-border-subtle flex items-center justify-between border-t pt-2 text-[13px]">
+            <span class="ui-text-muted">참여자별 금액 합계</span>
+            <span :class="selectedAmountSum() === Number(amount || 0) ? 'ui-text-brand' : 'ui-text-danger'">
+              {{ won(selectedAmountSum()) }}원 / {{ won(Number(amount || 0)) }}원
+            </span>
+          </div>
+          <button class="focus-ring ui-radius-control ui-border h-9 border bg-[var(--ui-color-surface)] text-[13px] font-medium" type="button" @click="applyEqualAmounts(meetup)">
+            같은 금액으로 다시 나누기
+          </button>
         </fieldset>
 
         <fieldset class="grid gap-3">

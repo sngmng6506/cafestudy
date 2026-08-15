@@ -70,7 +70,11 @@ run('settlement payment method is snapshotted and paid status is listed', async 
     const first = await queries.createSettlement({
       meetupId,
       creatorId: creator.id,
-      participantIds: [creator.id, participantA.id, participantB.id],
+      participantAmounts: [
+        { userId: creator.id, amountDue: 10000 },
+        { userId: participantA.id, amountDue: 12000 },
+        { userId: participantB.id, amountDue: 8000 },
+      ],
       totalAmount: 30000,
     });
     assert.equal(first.payerBankName, '첫은행');
@@ -89,7 +93,10 @@ run('settlement payment method is snapshotted and paid status is listed', async 
     const second = await queries.createSettlement({
       meetupId,
       creatorId: creator.id,
-      participantIds: [creator.id, participantA.id],
+      participantAmounts: [
+        { userId: creator.id, amountDue: 10000 },
+        { userId: participantA.id, amountDue: 10000 },
+      ],
       totalAmount: 20000,
     });
     assert.equal(second.payerBankName, '다음은행');
@@ -100,6 +107,7 @@ run('settlement payment method is snapshotted and paid status is listed', async 
     assert.equal(listedFirst.payerBankName, '첫은행');
     assert.equal(listedFirst.payerBankAccountNumber, '111-222');
     assert.equal(listedFirst.fullySettled, false);
+    assert.equal(listedFirst.participants.find((participant) => participant.id === participantA.id).amountDue, 12000);
     assert.equal(listedSecond.payerBankName, '다음은행');
 
     const paidA = await queries.markParticipantPaid({ settlementId: first.id, userId: participantA.id });

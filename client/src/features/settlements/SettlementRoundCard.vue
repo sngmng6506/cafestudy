@@ -46,8 +46,12 @@ function won(value) {
           </span>
         </div>
         <p class="ui-text-muted mt-1 text-[12px]">
-          {{ round.participantCount }}명 · 1인 {{ won(round.amountPerPerson) }}원
-          <template v-if="round.remainder"> · 나머지 {{ won(round.remainder) }}원</template>
+          {{ round.participantCount }}명
+          <template v-if="round.customSplit"> · 각자 입력</template>
+          <template v-else>
+            · 1인 {{ won(round.amountPerPerson) }}원
+            <template v-if="round.remainder"> · 나머지 {{ won(round.remainder) }}원</template>
+          </template>
         </p>
         <p class="ui-text-caption mt-1 text-[12px]">{{ round.createdByName }} 작성</p>
       </div>
@@ -101,6 +105,7 @@ function won(value) {
         >
           <CheckCircle2 v-if="participant.id === round.createdBy || participant.paidAt" :size="13" />
           {{ participant.name }}
+          <template v-if="participant.amountDue !== undefined"> {{ won(participant.amountDue) }}원</template>
           <template v-if="participant.id === round.createdBy">수령자</template>
           <template v-else>{{ participant.paidAt ? '완료' : '미완료' }}</template>
         </span>

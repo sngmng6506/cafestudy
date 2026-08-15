@@ -15,6 +15,7 @@ function serviceWith(overrides = {}) {
     },
     async markParticipantPaid() { return { settlementId: SETTLEMENT, userId: USER, paidAt: new Date() }; },
     async unmarkParticipantPaid() { return { settlementId: SETTLEMENT, userId: USER, paidAt: null }; },
+    async createSettlement(payload) { return { id: SETTLEMENT, ...payload, participants: [] }; },
     ...overrides,
   };
   return {
@@ -112,4 +113,45 @@ test('unmarkPaid throws not found when current user is not a participant', async
     () => service.unmarkPaid({ settlementId: SETTLEMENT, userId: USER }),
     (error) => error.statusCode === 404 && error.code === 'SETTLEMENT_PARTICIPANT_NOT_FOUND',
   );
+});
+
+test('create rejects participant amounts that do not add up to total', async () => {
+  const { service } = serviceWith();
+
+  await assert.rejects(
+    () => service.create({
+      meetupId: 'meetup-1',
+      creatorId: USER,
+      totalAmount: 10000,
+      participantAmounts: [
+        { userId: USER, amountDue: 7000 },
+        { userId: '00000000-0000-0000-0000-000000000003', amountDue: 2000 },
+      ],
+    }),
+    (error) => error.code === 'VALIDATION_ERROR',
+  );
+});
+
+test('create forwards custom participant amounts to queries', async () => {
+  const { service, calls } = serviceWith({
+    async createSettlement(payload) {
+      calls.push(['createSettlement', payload]);
+      return { id: SETTLEMENT, ...payload };
+    },
+  });
+
+  await service.create({
+    meetupId: 'meetup-1',
+    creatorId: USER,
+    totalAmount: 10000,
+    participantAmounts: [
+      { userId: USER, amountDue: 7000 },
+      { userId: '00000000-0000-0000-0000-000000000003', amountDue: 3000 },
+    ],
+  });
+
+  assert.deepEqual(calls[0][1].participantAmounts, [
+    { userId: USER, amountDue: 7000 },
+    { userId: '00000000-0000-0000-0000-000000000003', amountDue: 3000 },
+  ]);
 });

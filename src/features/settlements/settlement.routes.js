@@ -44,6 +44,7 @@ export function createSettlementRouter(ctx) {
         meetupId: req.body?.meetupId,
         creatorId: req.user.id,
         participantIds: req.body?.participantIds,
+        participantAmounts: req.body?.participantAmounts,
         totalAmount: req.body?.totalAmount,
       });
       sendOk(res, settlement, 201);

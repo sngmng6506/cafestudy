@@ -83,9 +83,13 @@ meetup_settlements            -- 모임별 정산 라운드
 - payer_* 컬럼은 라운드 생성 시점의 생성자 정산 수단 스냅샷이다.
   이후 사용자가 `settlement_payment_methods`를 수정해도 이미 만든 라운드는 바뀌지 않는다.
 
-meetup_settlement_participants -- 정산 라운드 참여자와 송금 자가 신고
-- settlement_id(FK meetup_settlements CASCADE), user_id(FK users), paid_at(nullable)
-- PK(settlement_id, user_id). paid_at이 null이면 미완료, 값이 있으면 사용자가
+meetup_settlement_participants -- 정산 라운드 참여자별 금액과 송금 자가 신고
+- settlement_id(FK meetup_settlements CASCADE), user_id(FK users),
+  amount_due, paid_at(nullable)
+- PK(settlement_id, user_id). amount_due는 해당 참여자가 내야 할 금액이다.
+  균등 분담뿐 아니라 사람마다 다른 금액을 저장할 수 있으며, 새 정산 생성 시
+  참여자별 amount_due 합계는 meetup_settlements.total_amount와 같아야 한다.
+- paid_at이 null이면 미완료, 값이 있으면 사용자가
   직접 "송금 완료"로 표시한 상태다. 받는 사람 확인 단계는 없다.
 - 송금 완료 표시/취소는 본인 행만 바꾼다. 관리자 override는 없다.
   "내가 실제로 송금했다"는 본인만 주장할 수 있는 사실로 취급한다.
