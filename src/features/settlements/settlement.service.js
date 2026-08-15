@@ -35,14 +35,8 @@ export function createSettlementService({ db, settlementQueries }) {
 
     async create({ meetupId, creatorId, participantIds, participantAmounts, totalAmount }) {
       const amount = Number(totalAmount);
+      validateTotalAmount(amount);
       if (!meetupId) throwValidation('모임을 선택해 주세요.');
-      if (
-        !Number.isInteger(amount)
-        || amount < SETTLEMENT_LIMITS.minTotalAmount
-        || amount > SETTLEMENT_LIMITS.maxTotalAmount
-      ) {
-        throwValidation('총액은 1원부터 1억원 사이의 정수로 입력해 주세요.');
-      }
       const shares = normalizeParticipantAmounts({ participantIds, participantAmounts, totalAmount: amount });
       if (shares.length === 0) throwValidation('정산 참여자를 한 명 이상 선택해 주세요.');
 
@@ -58,6 +52,26 @@ export function createSettlementService({ db, settlementQueries }) {
       if (result?.error === 'INVALID_PARTICIPANT') {
         throwValidation('모임에 참여하지 않은 사람이 포함되어 있어요.');
       }
+      return { ...result, participantCount: shares.length, amountPerPerson: Math.floor(amount / shares.length) };
+    },
+
+    async update({ settlementId, userId, isAdmin, participantAmounts, totalAmount }) {
+      const amount = Number(totalAmount);
+      validateTotalAmount(amount);
+      const shares = normalizeParticipantAmounts({ participantAmounts, totalAmount: amount });
+      if (shares.length === 0) throwValidation('정산 참여자를 한 명 이상 선택해 주세요.');
+
+      const result = await queries.updateSettlement({
+        settlementId,
+        userId,
+        isAdmin,
+        participantAmounts: shares,
+        totalAmount: amount,
+      });
+      if (result?.error === 'INVALID_PARTICIPANT') {
+        throwValidation('모임에 참여하지 않은 사람이 포함되어 있어요.');
+      }
+      if (!result) throwNotFound('SETTLEMENT_NOT_FOUND', '수정할 수 있는 정산을 찾지 못했어요.');
       return { ...result, participantCount: shares.length, amountPerPerson: Math.floor(amount / shares.length) };
     },
 
@@ -129,6 +143,16 @@ function emptyPaymentMethod(userId) {
     kakaopayLink: null,
     updatedAt: null,
   };
+}
+
+function validateTotalAmount(amount) {
+  if (
+    !Number.isInteger(amount)
+    || amount < SETTLEMENT_LIMITS.minTotalAmount
+    || amount > SETTLEMENT_LIMITS.maxTotalAmount
+  ) {
+    throwValidation('총액은 1원부터 1억원 사이의 정수로 입력해 주세요.');
+  }
 }
 
 function normalizeParticipantAmounts({ participantIds, participantAmounts, totalAmount }) {

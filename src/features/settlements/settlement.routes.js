@@ -75,6 +75,20 @@ export function createSettlementRouter(ctx) {
     }
   });
 
+  router.put('/:id', async (req, res, next) => {
+    try {
+      sendOk(res, await service.update({
+        settlementId: req.params.id,
+        userId: req.user.id,
+        isAdmin: req.user.isAdmin,
+        participantAmounts: req.body?.participantAmounts,
+        totalAmount: req.body?.totalAmount,
+      }));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.delete('/:id', async (req, res, next) => {
     try {
       sendOk(res, await service.remove({

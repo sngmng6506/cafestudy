@@ -16,6 +16,7 @@ function serviceWith(overrides = {}) {
     async markParticipantPaid() { return { settlementId: SETTLEMENT, userId: USER, paidAt: new Date() }; },
     async unmarkParticipantPaid() { return { settlementId: SETTLEMENT, userId: USER, paidAt: null }; },
     async createSettlement(payload) { return { id: SETTLEMENT, ...payload, participants: [] }; },
+    async updateSettlement(payload) { return { id: SETTLEMENT, ...payload, participants: [] }; },
     ...overrides,
   };
   return {
@@ -154,4 +155,38 @@ test('create forwards custom participant amounts to queries', async () => {
     { userId: USER, amountDue: 7000 },
     { userId: '00000000-0000-0000-0000-000000000003', amountDue: 3000 },
   ]);
+});
+
+test('update rejects participant amounts that do not add up to total', async () => {
+  const { service } = serviceWith();
+
+  await assert.rejects(
+    () => service.update({
+      settlementId: SETTLEMENT,
+      userId: USER,
+      totalAmount: 10000,
+      participantAmounts: [
+        { userId: USER, amountDue: 9000 },
+      ],
+    }),
+    (error) => error.code === 'VALIDATION_ERROR',
+  );
+});
+
+test('update throws not found when settlement cannot be edited', async () => {
+  const { service } = serviceWith({
+    async updateSettlement() { return null; },
+  });
+
+  await assert.rejects(
+    () => service.update({
+      settlementId: SETTLEMENT,
+      userId: USER,
+      totalAmount: 10000,
+      participantAmounts: [
+        { userId: USER, amountDue: 10000 },
+      ],
+    }),
+    (error) => error.statusCode === 404 && error.code === 'SETTLEMENT_NOT_FOUND',
+  );
 });

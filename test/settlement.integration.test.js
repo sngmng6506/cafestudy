@@ -127,6 +127,23 @@ run('settlement payment method is snapshotted and paid status is listed', async 
     assert.equal(fullySettledRound.fullySettled, true);
     assert.ok(fullySettledRound.participants.find((participant) => participant.id === participantA.id).paidAt);
 
+    const updated = await queries.updateSettlement({
+      settlementId: first.id,
+      userId: creator.id,
+      isAdmin: false,
+      totalAmount: 36000,
+      participantAmounts: [
+        { userId: creator.id, amountDue: 12000 },
+        { userId: participantA.id, amountDue: 14000 },
+        { userId: participantB.id, amountDue: 10000 },
+      ],
+    });
+    assert.equal(updated.totalAmount, 36000);
+    listed = await queries.listSettlementsForUser(participantA.id);
+    const editedRound = listed.find((round) => round.id === first.id);
+    assert.equal(editedRound.participants.find((participant) => participant.id === participantA.id).amountDue, 14000);
+    assert.ok(editedRound.participants.find((participant) => participant.id === participantA.id).paidAt);
+
     const unpaidA = await queries.unmarkParticipantPaid({ settlementId: first.id, userId: participantA.id });
     assert.equal(unpaidA.paidAt, null);
     listed = await queries.listSettlementsForUser(participantA.id);

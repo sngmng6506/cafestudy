@@ -89,6 +89,8 @@ meetup_settlement_participants -- 정산 라운드 참여자별 금액과 송금
 - PK(settlement_id, user_id). amount_due는 해당 참여자가 내야 할 금액이다.
   균등 분담뿐 아니라 사람마다 다른 금액을 저장할 수 있으며, 새 정산 생성 시
   참여자별 amount_due 합계는 meetup_settlements.total_amount와 같아야 한다.
+- 정산 라운드 수정은 생성자 또는 관리자가 할 수 있다. 기존 참여자가 계속 포함되면
+  paid_at은 유지하고 amount_due만 갱신한다. 참여자에서 빠진 사람의 paid_at 기록은 함께 삭제된다.
 - paid_at이 null이면 미완료, 값이 있으면 사용자가
   직접 "송금 완료"로 표시한 상태다. 받는 사람 확인 단계는 없다.
 - 송금 완료 표시/취소는 본인 행만 바꾼다. 관리자 override는 없다.

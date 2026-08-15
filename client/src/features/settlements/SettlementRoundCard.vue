@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { Calculator, CheckCircle2, Copy, ExternalLink, Trash2 } from '@lucide/vue';
+import { Calculator, CheckCircle2, Copy, ExternalLink, Pencil, Trash2 } from '@lucide/vue';
 
 const props = defineProps({
   round: { type: Object, required: true },
@@ -9,7 +9,7 @@ const props = defineProps({
   paidSaving: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['delete', 'toggle-paid', 'copied-account', 'copy-account-failed']);
+const emit = defineEmits(['delete', 'edit', 'toggle-paid', 'copied-account', 'copy-account-failed']);
 
 const me = computed(() => props.round.participants.find((participant) => participant.id === props.currentUserId));
 const hasBank = computed(() => Boolean(
@@ -55,15 +55,24 @@ function won(value) {
         </p>
         <p class="ui-text-caption mt-1 text-[12px]">{{ round.createdByName }} 작성</p>
       </div>
-      <button
-        v-if="canDelete"
-        class="focus-ring ui-text-danger shrink-0 p-1"
-        type="button"
-        aria-label="정산 삭제하기"
-        @click="emit('delete', round)"
-      >
-        <Trash2 :size="17" />
-      </button>
+      <div v-if="canDelete" class="flex shrink-0 items-center gap-1">
+        <button
+          class="focus-ring ui-text-brand p-1"
+          type="button"
+          aria-label="정산 수정하기"
+          @click="emit('edit', round)"
+        >
+          <Pencil :size="17" />
+        </button>
+        <button
+          class="focus-ring ui-text-danger p-1"
+          type="button"
+          aria-label="정산 삭제하기"
+          @click="emit('delete', round)"
+        >
+          <Trash2 :size="17" />
+        </button>
+      </div>
     </div>
 
     <div class="ui-border-subtle border-t pt-3">

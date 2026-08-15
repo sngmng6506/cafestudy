@@ -177,6 +177,89 @@ export function createSettlementQueries(db) {
       });
     },
 
+    async updateSettlement({ settlementId, userId, isAdmin, participantAmounts, totalAmount }) {
+      return db.transaction(async (client) => {
+        const existing = await client.query(
+          `SELECT id, meetup_id AS "meetupId"
+             FROM meetup_settlements
+            WHERE id = $1 AND (created_by = $2 OR $3::boolean)
+            FOR UPDATE`,
+          [settlementId, userId, isAdmin === true],
+        );
+        const settlement = existing.rows[0];
+        if (!settlement) return null;
+
+        const membership = await client.query(
+          `SELECT user_id AS id FROM participants WHERE meetup_id = $1`,
+          [settlement.meetupId],
+        );
+        const memberIds = new Set(membership.rows.map((row) => row.id));
+        if (participantAmounts.some((participant) => !memberIds.has(participant.userId))) {
+          return { error: 'INVALID_PARTICIPANT' };
+        }
+
+        const paymentMethod = await client.query(
+          `SELECT
+             bank_name,
+             bank_account_number,
+             account_holder_name,
+             kakaopay_link
+           FROM settlement_payment_methods
+           WHERE user_id = $1`,
+          [userId],
+        );
+        const payer = paymentMethod.rows[0] ?? {};
+
+        const updated = await client.query(
+          `UPDATE meetup_settlements
+              SET total_amount = $2,
+                  payer_bank_name = $3,
+                  payer_bank_account_number = $4,
+                  payer_account_holder_name = $5,
+                  payer_kakaopay_link = $6
+            WHERE id = $1
+            RETURNING id, meetup_id AS "meetupId", round_no AS "roundNo",
+                      total_amount AS "totalAmount", created_by AS "createdBy",
+                      payer_bank_name AS "payerBankName",
+                      payer_bank_account_number AS "payerBankAccountNumber",
+                      payer_account_holder_name AS "payerAccountHolderName",
+                      payer_kakaopay_link AS "payerKakaopayLink",
+                      created_at AS "createdAt"`,
+          [
+            settlementId,
+            totalAmount,
+            payer.bank_name ?? null,
+            payer.bank_account_number ?? null,
+            payer.account_holder_name ?? null,
+            payer.kakaopay_link ?? null,
+          ],
+        );
+
+        const userIds = participantAmounts.map((participant) => participant.userId);
+        await client.query(
+          `DELETE FROM meetup_settlement_participants
+            WHERE settlement_id = $1 AND NOT (user_id = ANY($2::uuid[]))`,
+          [settlementId, userIds],
+        );
+
+        const values = participantAmounts
+          .map((_, index) => `($1, $${index * 2 + 2}, $${index * 2 + 3})`)
+          .join(', ');
+        await client.query(
+          `INSERT INTO meetup_settlement_participants (settlement_id, user_id, amount_due)
+           VALUES ${values}
+           ON CONFLICT (settlement_id, user_id) DO UPDATE SET
+             amount_due = EXCLUDED.amount_due`,
+          [
+            settlementId,
+            ...participantAmounts.flatMap((participant) => [participant.userId, participant.amountDue]),
+          ],
+        );
+
+        return updated.rows[0];
+      });
+    },
+
     async markParticipantPaid({ settlementId, userId }) {
       const result = await db.query(
         `UPDATE meetup_settlement_participants

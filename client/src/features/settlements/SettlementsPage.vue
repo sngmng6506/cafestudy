@@ -14,6 +14,7 @@ const paymentMethod = ref(null);
 const loading = ref(true);
 const errorMessage = ref('');
 const openMeetupId = ref('');
+const editingRoundId = ref('');
 const amount = ref('');
 const selectedIds = ref([]);
 const participantAmounts = ref({});
@@ -101,6 +102,7 @@ async function load() {
 
 function openForm(meetup) {
   openMeetupId.value = openMeetupId.value === meetup.id ? '' : meetup.id;
+  editingRoundId.value = '';
   amount.value = '';
   selectedIds.value = meetup.participants.map((participant) => participant.id);
   participantAmounts.value = {};
@@ -125,24 +127,53 @@ async function createRound(meetup) {
   saving.value = true;
   try {
     const savedPaymentMethod = await savePaymentMethod(paymentDraft.value, { silent: true });
-    await apiFetch('/api/settlements', {
-      method: 'POST',
+    await apiFetch(editingRoundId.value ? `/api/settlements/${editingRoundId.value}` : '/api/settlements', {
+      method: editingRoundId.value ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        meetupId: meetup.id,
+        meetupId: editingRoundId.value ? undefined : meetup.id,
         participantAmounts: shares,
         totalAmount: amountNumber,
       }),
     });
     paymentMethod.value = savedPaymentMethod;
-    toast.success(`${meetup.settlements.length + 1}차 정산을 추가했어요.`);
+    toast.success(editingRoundId.value ? '정산을 수정했어요.' : `${meetup.settlements.length + 1}차 정산을 추가했어요.`);
     openMeetupId.value = '';
+    editingRoundId.value = '';
     await load();
   } catch (error) {
     toast.error(error.message);
   } finally {
     saving.value = false;
   }
+}
+
+function editRound(meetup, round) {
+  openMeetupId.value = meetup.id;
+  editingRoundId.value = round.id;
+  amount.value = String(round.totalAmount);
+  selectedIds.value = round.participants.map((participant) => participant.id);
+  participantAmounts.value = Object.fromEntries(
+    round.participants.map((participant) => [participant.id, participant.amountDue ?? 0]),
+  );
+  paymentDraft.value = {
+    bankName: round.payerBankName ?? '',
+    bankAccountNumber: round.payerBankAccountNumber ?? '',
+    accountHolderName: round.payerAccountHolderName ?? '',
+    kakaopayLink: round.payerKakaopayLink ?? '',
+  };
+  lastInferredBankName.value = inferBankName(paymentDraft.value.bankAccountNumber) === paymentDraft.value.bankName
+    ? paymentDraft.value.bankName
+    : '';
+}
+
+function cancelEdit() {
+  openMeetupId.value = '';
+  editingRoundId.value = '';
+  amount.value = '';
+  selectedIds.value = [];
+  participantAmounts.value = {};
+  paymentDraft.value = emptyPaymentMethod();
 }
 
 async function savePaymentMethod(nextPaymentMethod, { silent = false } = {}) {
@@ -338,6 +369,7 @@ function emptyPaymentMethod() {
           :can-delete="canDelete(round)"
           :paid-saving="paidSavingId === round.id"
           @delete="removeRound"
+          @edit="editRound(meetup, $event)"
           @toggle-paid="togglePaid"
           @copied-account="copiedAccount"
           @copy-account-failed="copyAccountFailed"
@@ -429,9 +461,14 @@ function emptyPaymentMethod() {
           </label>
         </fieldset>
 
-        <button class="focus-ring ui-radius-control h-11 bg-[var(--ui-color-brand)] font-medium text-white disabled:opacity-50" type="submit" :disabled="saving || selectedIds.length === 0">
-          {{ meetup.settlements.length + 1 }}차 정산 추가하기
-        </button>
+        <div class="grid grid-cols-[1fr_auto] gap-2">
+          <button class="focus-ring ui-radius-control h-11 bg-[var(--ui-color-brand)] font-medium text-white disabled:opacity-50" type="submit" :disabled="saving || selectedIds.length === 0">
+            {{ editingRoundId ? '정산 수정하기' : `${meetup.settlements.length + 1}차 정산 추가하기` }}
+          </button>
+          <button v-if="editingRoundId" class="focus-ring ui-radius-control ui-border h-11 border bg-[var(--ui-color-surface)] px-4 font-medium" type="button" @click="cancelEdit">
+            취소
+          </button>
+        </div>
       </form>
     </article>
   </section>
