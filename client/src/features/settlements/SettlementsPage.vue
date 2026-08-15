@@ -19,6 +19,33 @@ const selectedIds = ref([]);
 const saving = ref(false);
 const paidSavingId = ref('');
 const paymentDraft = ref(emptyPaymentMethod());
+const lastInferredBankName = ref('');
+
+const BANK_CODE_NAMES = Object.freeze({
+  '002': '산업은행',
+  '003': '기업은행',
+  '004': '국민은행',
+  '007': '수협은행',
+  '011': '농협은행',
+  '020': '우리은행',
+  '023': 'SC제일은행',
+  '027': '씨티은행',
+  '031': '대구은행',
+  '032': '부산은행',
+  '034': '광주은행',
+  '035': '제주은행',
+  '037': '전북은행',
+  '039': '경남은행',
+  '045': '새마을금고',
+  '048': '신협',
+  '050': '저축은행',
+  '071': '우체국',
+  '081': '하나은행',
+  '088': '신한은행',
+  '089': '케이뱅크',
+  '090': '카카오뱅크',
+  '092': '토스뱅크',
+});
 
 onMounted(load);
 
@@ -44,6 +71,9 @@ function openForm(meetup) {
   amount.value = '';
   selectedIds.value = meetup.participants.map((participant) => participant.id);
   paymentDraft.value = paymentMethod.value ? { ...paymentMethod.value } : emptyPaymentMethod();
+  lastInferredBankName.value = inferBankName(paymentDraft.value.bankAccountNumber) === paymentDraft.value.bankName
+    ? paymentDraft.value.bankName
+    : '';
 }
 
 async function createRound(meetup) {
@@ -130,8 +160,21 @@ function date(value) {
   return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
 
-function normalizeAccountNumberInput() {
-  paymentDraft.value.bankAccountNumber = paymentDraft.value.bankAccountNumber.replace(/[^\d-]/g, '');
+function normalizeAccountNumberInput(event) {
+  paymentDraft.value.bankAccountNumber = event.target.value.replace(/[^\d-]/g, '');
+  event.target.value = paymentDraft.value.bankAccountNumber;
+
+  const inferredBankName = inferBankName(paymentDraft.value.bankAccountNumber);
+  if (!inferredBankName) return;
+  if (!paymentDraft.value.bankName || paymentDraft.value.bankName === lastInferredBankName.value) {
+    paymentDraft.value.bankName = inferredBankName;
+    lastInferredBankName.value = inferredBankName;
+  }
+}
+
+function inferBankName(accountNumber) {
+  const bankCode = accountNumber.replace(/\D/g, '').slice(0, 3);
+  return BANK_CODE_NAMES[bankCode] ?? '';
 }
 
 function emptyPaymentMethod() {
@@ -222,10 +265,6 @@ function emptyPaymentMethod() {
           <legend class="mb-1 text-[13px] font-medium">계좌</legend>
           <p class="ui-text-muted -mt-1 text-[12px]">이번 차수에 표시할 정산 수단이에요. 추가하면 내 정산 수단에도 저장돼요.</p>
           <label class="grid gap-1.5 text-[13px] font-medium">
-            은행명
-            <input v-model="paymentDraft.bankName" class="focus-ring ui-radius-control ui-border h-10 border px-3 text-[16px]" type="text" autocomplete="organization" />
-          </label>
-          <label class="grid gap-1.5 text-[13px] font-medium">
             계좌번호
             <input
               v-model="paymentDraft.bankAccountNumber"
@@ -233,9 +272,13 @@ function emptyPaymentMethod() {
               type="text"
               inputmode="numeric"
               autocomplete="off"
-              placeholder="숫자와 -만 입력"
+              placeholder="예: 088-123456-12345"
               @input="normalizeAccountNumberInput"
             />
+          </label>
+          <label class="grid gap-1.5 text-[13px] font-medium">
+            은행명
+            <input v-model="paymentDraft.bankName" class="focus-ring ui-radius-control ui-border h-10 border px-3 text-[16px]" type="text" autocomplete="organization" placeholder="계좌번호 앞 3자리로 자동 입력" />
           </label>
           <label class="grid gap-1.5 text-[13px] font-medium">
             예금주
