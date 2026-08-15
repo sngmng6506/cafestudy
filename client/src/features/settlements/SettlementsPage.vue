@@ -109,6 +109,9 @@ function openForm(meetup) {
 }
 
 async function createRound(meetup) {
+  const amountNumber = Number(amount.value);
+  if (!confirmEqualShare({ amount: amountNumber, participantCount: selectedIds.value.length })) return;
+
   saving.value = true;
   try {
     const savedPaymentMethod = await savePaymentMethod(paymentDraft.value, { silent: true });
@@ -118,7 +121,7 @@ async function createRound(meetup) {
       body: JSON.stringify({
         meetupId: meetup.id,
         participantIds: selectedIds.value,
-        totalAmount: Number(amount.value),
+        totalAmount: amountNumber,
       }),
     });
     paymentMethod.value = savedPaymentMethod;
@@ -190,6 +193,18 @@ function won(value) {
 
 function date(value) {
   return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+}
+
+function confirmEqualShare({ amount, participantCount }) {
+  if (!Number.isFinite(amount) || participantCount === 0) return true;
+  const share = Math.floor(amount / participantCount);
+  const remainder = amount % participantCount;
+  const remainderText = remainder ? `\n나머지 ${won(remainder)}원은 화면에 따로 표시돼요.` : '';
+  return window.confirm(
+    `이 정산은 ${participantCount}명이 같은 금액으로 나눠요.\n`
+    + `1인 ${won(share)}원으로 계산할까요?${remainderText}\n\n`
+    + '사람마다 내야 할 금액이 다르면 정산을 추가하지 말고 금액을 다시 확인해 주세요.',
+  );
 }
 
 function normalizeAccountNumberInput(event) {
