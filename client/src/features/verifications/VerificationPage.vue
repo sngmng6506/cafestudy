@@ -245,9 +245,9 @@ function formatBytes(bytes) {
 
       <div
         v-if="showSuccessEffect"
-        class="mt-4 rounded-xl border border-[#03C75A] bg-[#e9f8ef] p-4 text-center"
+        class="ui-bg-success ui-border-brand mt-4 rounded-xl border p-4 text-center"
       >
-        <p class="text-sm font-semibold text-[#03883f]">인증이 완료됐어요.</p>
+        <p class="ui-text-success text-sm font-semibold">인증이 완료됐어요.</p>
         <p class="mt-1 text-2xl font-bold text-[#333333]">+10 포인트</p>
       </div>
     </section>
@@ -289,7 +289,7 @@ function formatBytes(bytes) {
             class="focus-ring flex w-full items-center gap-3 rounded-lg border p-3 text-left transition hover:bg-[#f5f6f7]"
             :class="
               meetup.id === selectedMeetupId
-                ? 'border-[#03C75A] bg-[#e9f8ef]'
+                ? 'ui-bg-success ui-border-brand'
                 : 'border-[#dadce0] bg-[#f5f6f7]'
             "
             type="button"
@@ -308,7 +308,7 @@ function formatBytes(bytes) {
               class="shrink-0 rounded-full px-2 py-1 text-[12px] font-semibold"
               :class="
                 meetup.state === 'done'
-                  ? 'bg-[#e9f8ef] text-[#03883f]'
+                  ? 'ui-badge-success'
                   : 'bg-white text-[#5f6368]'
               "
             >

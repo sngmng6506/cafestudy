@@ -1,23 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  /* Primitive palette. Components should consume semantic aliases from semantic-tokens.css. */
-  --color-bg: #ffffff;
-  --color-page-bg: #f7f8f9;
-  --color-sub-bg: #f5f6f7;
-  --color-surface-hover: #f1f3f4;
-  --color-text: #333333;
-  --color-muted: #5f6368;
-  --color-caption: #767676;
-  --color-disabled: #999999;
-  --color-border: #dadce0;
-  --color-border-subtle: #e9ebee;
-  --color-border-hover: #bfc4c9;
-  --color-accent: #03c75a;
-  --color-accent-hover: #02b350;
-  --color-accent-active: #02a046;
-  --color-danger: #e74c3c;
-  --color-safe: #0068c3;
+  /*
+   * Primitive palette — 값만 있는 층. 이름은 "무슨 색인지"만 말하고
+   * "어디 쓰는지"는 말하지 않는다. 용도는 semantic-tokens.css의 --ui-* 가 정한다.
+   * 컴포넌트는 이 변수를 직접 쓰지 않는다.
+   */
+  --color-white: #ffffff;
+  --color-gray-50: #f7f8f9;
+  --color-gray-100: #f5f6f7;
+  --color-gray-150: #f1f3f4;
+  --color-gray-200: #e9ebee;
+  --color-gray-300: #dadce0;
+  --color-gray-400: #bfc4c9;
+  --color-gray-500: #999999;
+  --color-gray-600: #767676;
+  --color-gray-700: #5f6368;
+  --color-gray-900: #333333;
+
+  /* 네이버 브랜드 그린 계열 */
+  --color-green-50: #e9f8ef;
+  --color-green-300: #86efac;
+  --color-green-500: #03c75a;
+  --color-green-600: #02b350;
+  --color-green-700: #02a046;
+  --color-green-800: #03883f;
+
+  /* 외부 출처(소모임) 표시용 에메랄드 계열 — 브랜드 그린과 의도적으로 구분한다 */
+  --color-emerald-50: #f0fdf4;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+
+  --color-blue-600: #0068c3;
+  --color-red-500: #e74c3c;
 
   --text-display: 32px;
   --text-page-title: 22px;
@@ -26,8 +42,8 @@
   --text-body: 14px;
   --text-caption: 12px;
 
-  color: var(--color-text);
-  background: var(--color-bg);
+  color: var(--color-gray-900);
+  background: var(--color-white);
   font-family: Pretendard, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -39,8 +55,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: var(--color-page-bg);
-  color: var(--color-text);
+  background: var(--color-gray-50);
+  color: var(--color-gray-900);
   font-size: 16px;
   line-height: 1.5;
   letter-spacing: -0.01em;
@@ -78,7 +94,7 @@ button {
 /* Shared keyboard-focus ring — Naver brand green, applied to interactive chrome */
 .focus-ring:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-white), 0 0 0 4px var(--ui-color-brand);
 }
 
 /*
@@ -87,8 +103,8 @@ button {
  * 테두리 없는 흰 카드로 구획한다(여백으로 분리). 답답함을 줄이고 위계를 살린다.
  */
 .surface-card {
-  background: var(--color-bg);
-  border-radius: 16px;
+  background: var(--ui-color-surface);
+  border-radius: var(--ui-radius-card);
   padding: 20px;
 }
 
@@ -119,13 +135,13 @@ button {
   width: 7px;
   height: 7px;
   border-radius: 9999px;
-  background: #03c75a;
+  background: var(--ui-color-brand);
   opacity: 0;
   animation: success-burst 900ms ease-out forwards;
 }
 
 .success-burst span:nth-child(2n) {
-  background: #86efac;
+  background: var(--color-green-300);
 }
 
 .success-burst span:nth-child(1) { --x: -72px; --y: -42px; animation-delay: 0ms; }

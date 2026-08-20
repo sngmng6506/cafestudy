@@ -48,7 +48,7 @@ onBeforeUnmount(() => {
           v-for="feature in props.features"
           :key="feature.name"
           class="focus-ring flex min-h-10 w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition"
-          :class="feature.name === activeName ? 'bg-[#e9f8ef] text-[#03C75A]' : 'text-[#333333] hover:bg-[#f5f6f7]'"
+          :class="feature.name === activeName ? 'ui-bg-success ui-text-brand' : 'ui-text hover:bg-[var(--ui-color-surface-subtle)]'"
           type="button"
           role="menuitem"
           @click="emit('select', feature.name)"

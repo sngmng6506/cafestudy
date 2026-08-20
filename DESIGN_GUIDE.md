@@ -6,9 +6,12 @@ CafeStudy UI의 시각·컴포넌트·접근성 기준. 사용자 문구는 [WRI
 
 ## 구조
 
-1. `client/src/styles.css`: 원시 팔레트와 기본 타이포
-2. `client/src/semantic-tokens.css`: 역할 기반 `--ui-*` 토큰과 `.ui-*` 클래스
+1. `client/src/styles.css`: 원시 팔레트(`--color-gray-300`처럼 색 이름만 담는다)와 기본 타이포
+2. `client/src/semantic-tokens.css`: 역할 기반 `--ui-*` 토큰과 `.ui-*` 클래스. 원시값은 여기서만 참조한다
 3. Vue 컴포넌트: semantic token과 공통 클래스로 화면 구성
+
+원시 팔레트 이름은 "무슨 색인지"만, semantic 토큰 이름은 "어디 쓰는지"만 말한다.
+컴포넌트가 `--color-*`를 직접 참조하면 이 분리가 깨진다.
 
 컴포넌트에 새 hex 색상이나 `text-[#...]`, `bg-[#...]`를 직접 추가하지 않는다. 반복되는 도메인 색상도 token으로 승격한다.
 
@@ -30,7 +33,11 @@ CafeStudy UI의 시각·컴포넌트·접근성 기준. 사용자 문구는 [WRI
 | stroke | `#DADCE0` | 기본 테두리 |
 | stroke-subtle | `#E9EBEE` | 약한 구분선 |
 | destructive | `#E74C3C` | 오류, 삭제 |
-| link | `#0068C3` | 링크, 정보성 액션 |
+| success-surface | `#E9F8EF` | 긍정·활성 상태 배경 (모집중, 인증 완료, 진행 중) |
+| success-content | `#03883F` | 긍정·활성 상태 전경 |
+| external | `#10B981` | 외부 출처(소모임) 강조선·점 |
+| external-strong | `#059669` | 외부 출처 액션 버튼 |
+| link | `#0068C3` | 저강도 텍스트 액션(모두 읽음, 수정)과 실제 링크 |
 
 아바타는 `client/src/shared/useAvatar.js`의 이름 해시 팔레트를 사용한다. 흰 텍스트 대비를 위해 임의로 밝게 바꾸지 않는다.
 
@@ -53,7 +60,8 @@ CafeStudy UI의 시각·컴포넌트·접근성 기준. 사용자 문구는 [WRI
 
 - 간격: 4 / 8 / 12 / 16 / 20 / 24 / 32px
 - badge: 4px (`--ui-radius-badge`)
-- button/input: 10px (`--ui-radius-control`)
+- input: 4px (`--ui-radius-input`)
+- button: 10px (`--ui-radius-control`)
 - list item: 12px (`--ui-radius-item`)
 - card: 16px (`--ui-radius-card`)
 - modal/sheet: 20px (`--ui-radius-overlay`)
@@ -76,10 +84,13 @@ Tailwind radius 단계를 감각적으로 고르지 말고 역할 token을 사�
 
 ### 입력
 
-- surface 배경, stroke 테두리, 높이 40px
-- focus 시 brand 테두리 또는 공통 focus ring
-- placeholder는 content-disabled
-- 모바일 자동 확대 방지를 위해 입력 글자 16px 이상 유지
+표준 입력은 `.ui-input`을 사용한다. 높이 40px, input radius(4px), surface-subtle 배경,
+stroke 테두리, placeholder는 content-disabled, focus 시 brand 테두리다.
+
+`.ui-input`은 레이어 밖 규칙이라 Tailwind 유틸리티보다 우선한다. 좌측 아이콘이 붙는
+검색 입력은 `pl-*` 대신 `.ui-input--with-icon`을 함께 쓴다.
+
+입력 글자는 모바일 자동 확대 방지를 위해 16px 이상으로 유지한다.
 
 ### 카드
 
@@ -95,9 +106,17 @@ Tailwind radius 단계를 감각적으로 고르지 말고 역할 token을 사�
 ### 배지·칩
 
 - 선택형 pill: surface-subtle, 선택 시 brand와 흰 텍스트
-- 모집 중: `#E9F8EF` / `#03883F`
-- 마감: surface-subtle / content-muted
+- 모집 중 등 긍정 상태: `.ui-badge-success`
+- 마감 등 중립 상태: `.ui-badge-neutral`
 - 색상만으로 상태를 구분하지 않고 텍스트를 함께 제공
+
+### 외부 출처 표시
+
+소모임에서 가져온 읽기 전용 모임은 브랜드 그린이 아니라 external 계열로 구분한다.
+
+- 카드: `.ui-external-surface`와 왼쪽 강조선
+- 표시 점: `.ui-external-accent`
+- 소모임 앱으로 나가는 버튼: `.ui-button-external`
 
 ### 아바타
 
