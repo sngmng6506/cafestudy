@@ -11,11 +11,15 @@ CafeStudy 서버는 자동화 job을 저장하고, 집 미니PC worker가 Androi
 
 ## 인증
 
-관리자 endpoint는 CafeStudy 세션 토큰을 사용한다.
+관리자 endpoint는 CafeStudy 세션 쿠키를 사용한다. 로그인 시 발급된 HttpOnly 쿠키를
+그대로 보낸다.
 
 ```http
-Authorization: Bearer <admin-session-token>
+Cookie: cafestudy_session=<session-token>
 ```
+
+`Authorization: Bearer <token>`은 `ALLOW_BEARER_AUTH=true`일 때만 동작하며, 이 값은
+프로덕션에서 기본 비활성화다. 운영 환경에서 Bearer 헤더로 호출하면 401이다.
 
 worker endpoint는 내부 키를 사용한다.
 
@@ -27,7 +31,7 @@ x-internal-key: <INTERNAL_API_KEY>
 
 ```http
 POST /api/somoim-automation/meetups
-Authorization: Bearer <admin-session-token>
+Cookie: cafestudy_session=<session-token>
 Content-Type: application/json
 ```
 
