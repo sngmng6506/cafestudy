@@ -5,13 +5,18 @@ import { createSomoimAutomationService } from '../src/features/somoim-automation
 const USER_ID = '00000000-0000-0000-0000-000000000001';
 const JOB_ID = '11111111-1111-1111-1111-111111111111';
 
-function serviceWith({ allowSubmit = false, job = null } = {}) {
+function serviceWith({ allowSubmit = false, job = null, jobs = [] } = {}) {
   const calls = {
     created: [],
     completed: [],
     failed: [],
+    listed: [],
   };
   const queries = {
+    async listJobs(input) {
+      calls.listed.push(input);
+      return jobs.slice(input.offset, input.offset + input.limit);
+    },
     async createJob(input) {
       calls.created.push(input);
       return {
@@ -139,6 +144,59 @@ test('createMeetupJob: validates required fields and capacity', async () => {
     }),
     /capacity must be an integer/,
   );
+});
+
+test('listJobs: reads one extra row to report hasMore without a count query', async () => {
+  const jobs = Array.from({ length: 5 }, (_, index) => ({ id: `job-${index}` }));
+  const { service, calls } = serviceWith({ jobs });
+
+  const page = await service.listJobs({ limit: 2 });
+
+  assert.deepEqual(calls.listed[0], { statuses: null, limit: 3, offset: 0 });
+  assert.deepEqual(page.items, [{ id: 'job-0' }, { id: 'job-1' }]);
+  assert.equal(page.hasMore, true);
+  assert.equal(page.nextOffset, 2);
+});
+
+test('listJobs: reports the last page without a next offset jump', async () => {
+  const { service } = serviceWith({ jobs: [{ id: 'job-0' }, { id: 'job-1' }] });
+
+  const page = await service.listJobs({ limit: 20, offset: 0 });
+
+  assert.equal(page.items.length, 2);
+  assert.equal(page.hasMore, false);
+  assert.equal(page.nextOffset, 2);
+});
+
+test('listJobs: accepts a comma separated status filter and drops duplicates', async () => {
+  const { service, calls } = serviceWith();
+
+  await service.listJobs({ status: 'pending, claimed ,pending' });
+
+  assert.deepEqual(calls.listed[0].statuses, ['pending', 'claimed']);
+});
+
+test('listJobs: treats an empty status filter as no filter', async () => {
+  const { service, calls } = serviceWith();
+
+  await service.listJobs({ status: '' });
+  await service.listJobs({});
+
+  assert.equal(calls.listed[0].statuses, null);
+  assert.equal(calls.listed[1].statuses, null);
+});
+
+test('listJobs: rejects unknown statuses and out of range paging', async () => {
+  const { service, calls } = serviceWith();
+
+  await assert.rejects(() => service.listJobs({ status: 'deleted' }), /status must be one of/);
+  await assert.rejects(() => service.listJobs({ limit: 0 }), /limit must be an integer/);
+  await assert.rejects(() => service.listJobs({ limit: 51 }), /limit must be an integer/);
+  await assert.rejects(() => service.listJobs({ limit: 1.5 }), /limit must be an integer/);
+  await assert.rejects(() => service.listJobs({ offset: -1 }), /offset must be an integer/);
+  await assert.rejects(() => service.listJobs({ offset: Number.NaN }), /offset must be an integer/);
+
+  assert.deepEqual(calls.listed, [], 'invalid input must never reach the database');
 });
 
 test('claimNextJob: returns a stable job envelope', async () => {

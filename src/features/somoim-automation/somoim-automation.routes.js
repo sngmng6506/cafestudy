@@ -20,6 +20,15 @@ export function createSomoimAutomationRouter(ctx, service = createSomoimAutomati
       return sendOk(res, await service.createMeetupJob({ requestedBy: req.user.id, input: req.body ?? {} }), 202);
     } catch (err) { return next(err); }
   });
+  router.get('/jobs', ctx.auth.requireAdmin, async (req, res, next) => {
+    try {
+      return sendOk(res, await service.listJobs({
+        status: req.query.status,
+        limit: req.query.limit === undefined ? 20 : Number(req.query.limit),
+        offset: req.query.offset === undefined ? 0 : Number(req.query.offset),
+      }));
+    } catch (err) { return next(err); }
+  });
   router.get('/jobs/:id', ctx.auth.requireAdmin, async (req, res, next) => {
     try { return sendOk(res, await service.getJob(req.params.id)); }
     catch (err) { return next(err); }

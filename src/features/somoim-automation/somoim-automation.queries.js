@@ -26,6 +26,21 @@ export function createSomoimAutomationQueries(db) {
       return result.rows[0] ?? null;
     },
 
+    async listJobs({ statuses = null, limit, offset }) {
+      const result = await db.query(
+        `SELECT id, requested_by AS "requestedBy", type, payload, status, attempts,
+                claimed_at AS "claimedAt", completed_at AS "completedAt",
+                error_message AS "errorMessage", result,
+                created_at AS "createdAt", updated_at AS "updatedAt"
+           FROM somoim_automation_jobs
+          WHERE ($1::text[] IS NULL OR status = ANY($1))
+          ORDER BY created_at DESC
+          LIMIT $2 OFFSET $3`,
+        [statuses, limit, offset],
+      );
+      return result.rows;
+    },
+
     async claimNextJob() {
       const result = await db.query(
         `UPDATE somoim_automation_jobs

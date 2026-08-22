@@ -77,6 +77,22 @@ Content-Type: application/json
 - 문자열은 앞뒤 공백을 제거하고 연속 공백을 정규화한다.
 - `submit: true`는 서버에 `SOMOIM_AUTOMATION_ALLOW_SUBMIT=true`가 없으면 거부한다.
 
+## Job 조회
+
+관리자 전용이며 세션 쿠키를 사용한다.
+
+```http
+GET /api/somoim-automation/jobs?status=pending,claimed&limit=20&offset=0
+GET /api/somoim-automation/jobs/:id
+```
+
+- `status`: 선택. 쉼표로 여러 개를 받는다(`pending`, `claimed`, `succeeded`, `failed`,
+  `needs_manual_review`). 없으면 전체를 반환한다.
+- `limit`: 1~50, 기본 20. `offset`: 0 이상, 기본 0.
+- 최신순(`created_at DESC`)으로 반환하며 응답은 `{ items, hasMore, nextOffset }`다.
+- 목록은 `payload`, `result`, `errorMessage`, `attempts`를 그대로 포함한다.
+  dry-run 결과와 실패 사유를 여기서 확인한다.
+
 ## Worker endpoint
 
 ### Claim

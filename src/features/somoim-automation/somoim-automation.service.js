@@ -3,6 +3,15 @@ import { createSomoimAutomationQueries } from './somoim-automation.queries.js';
 import { SOMOIM_AUTOMATION_LIMITS } from '../../../shared/domain-constraints.js';
 
 const JOB_TYPE_CREATE_MEETUP = 'create_meetup';
+const JOB_STATUSES = Object.freeze([
+  'pending',
+  'claimed',
+  'succeeded',
+  'failed',
+  'needs_manual_review',
+]);
+const PAGE_LIMIT_MAX = 50;
+const OFFSET_MAX = 100_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_TITLE_LENGTH = SOMOIM_AUTOMATION_LIMITS.meetupTitleMaxLength;
 const MAX_LOCATION_LENGTH = SOMOIM_AUTOMATION_LIMITS.locationMaxLength;
@@ -20,6 +29,24 @@ export function createSomoimAutomationService({
       assertUuid(requestedBy, 'requestedBy');
       const payload = normalizeMeetupPayload(input, { allowSubmit });
       return summarizeJob(await queries.createJob({ requestedBy, type: JOB_TYPE_CREATE_MEETUP, payload }));
+    },
+    async listJobs({ status, limit = 20, offset = 0 } = {}) {
+      const statuses = normalizeStatuses(status);
+      if (!Number.isInteger(limit) || limit < 1 || limit > PAGE_LIMIT_MAX) {
+        throwValidation(`limit must be an integer between 1 and ${PAGE_LIMIT_MAX}`);
+      }
+      if (!Number.isInteger(offset) || offset < 0 || offset > OFFSET_MAX) {
+        throwValidation(`offset must be an integer between 0 and ${OFFSET_MAX}`);
+      }
+
+      // 한 건 더 읽어 다음 페이지 존재 여부를 판단한다(notices와 같은 방식).
+      const rows = await queries.listJobs({ statuses, limit: limit + 1, offset });
+      const items = rows.slice(0, limit);
+      return {
+        items,
+        hasMore: rows.length > limit,
+        nextOffset: offset + items.length,
+      };
     },
     async getJob(id) {
       assertUuid(id, 'jobId');
@@ -84,6 +111,21 @@ function normalizeCapacity(value) {
   }
   return capacity;
 }
+// 쉼표로 여러 상태를 받는다: status=pending,claimed 로 미완료 job만 볼 수 있다.
+function normalizeStatuses(status) {
+  if (status == null || status === '') return null;
+  const statuses = [...new Set(
+    String(status).split(',').map((value) => value.trim()).filter(Boolean),
+  )];
+  if (statuses.length === 0) return null;
+  for (const value of statuses) {
+    if (!JOB_STATUSES.includes(value)) {
+      throwValidation(`status must be one of ${JOB_STATUSES.join(', ')}`);
+    }
+  }
+  return statuses;
+}
+
 function normalizeResult(result) {
   if (result == null) return {};
   if (typeof result !== 'object' || Array.isArray(result)) throwValidation('result must be an object');
