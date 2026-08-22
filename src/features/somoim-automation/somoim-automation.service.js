@@ -12,6 +12,9 @@ const JOB_STATUSES = Object.freeze([
 ]);
 const PAGE_LIMIT_MAX = 50;
 const OFFSET_MAX = 100_000;
+const DEFAULT_STALE_CLAIM_SECONDS = 900;
+const DEFAULT_MAX_ATTEMPTS = 3;
+const STALE_CLAIM_MESSAGE = 'Worker stopped responding before reporting a result';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_TITLE_LENGTH = SOMOIM_AUTOMATION_LIMITS.meetupTitleMaxLength;
 const MAX_LOCATION_LENGTH = SOMOIM_AUTOMATION_LIMITS.locationMaxLength;
@@ -23,6 +26,8 @@ export function createSomoimAutomationService({
   db,
   queries = createSomoimAutomationQueries(db),
   allowSubmit = false,
+  staleClaimSeconds = DEFAULT_STALE_CLAIM_SECONDS,
+  maxAttempts = DEFAULT_MAX_ATTEMPTS,
 } = {}) {
   return {
     async createMeetupJob({ requestedBy, input }) {
@@ -54,7 +59,15 @@ export function createSomoimAutomationService({
       if (!job) throwNotFound('JOB_NOT_FOUND', 'Automation job was not found');
       return job;
     },
-    async claimNextJob() { return { job: await queries.claimNextJob() }; },
+    async claimNextJob() {
+      // worker가 폴링할 때마다 회수한다. 별도 스케줄러 없이 필요한 시점에만 돈다.
+      const recovered = await queries.requeueStaleJobs({
+        staleAfterSeconds: staleClaimSeconds,
+        maxAttempts,
+        exhaustedMessage: STALE_CLAIM_MESSAGE,
+      });
+      return { job: await queries.claimNextJob(), recovered: recovered.length };
+    },
     async completeJob({ id, result }) {
       assertUuid(id, 'jobId');
       const job = await queries.completeJob({ id, result: normalizeResult(result) });

@@ -77,6 +77,10 @@ handlers/             # job type별 화면 자동화 (create_meetup은 미구현
 
 기기를 확정할 수 없거나 dryRun/submit 조합이 잘못된 경우 handler는 아예 실행하지 않는다.
 
+worker가 claim한 뒤 죽어서 결과를 보고하지 못하면 job은 `claimed`로 남는다. 서버가
+다음 claim 요청 때 회수하므로(기본 900초, 3회) worker를 다시 켜면 알아서 재시도된다.
+재시도를 다 쓴 job은 `needs_manual_review`로 넘어간다.
+
 ## 테스트
 
 ```bash

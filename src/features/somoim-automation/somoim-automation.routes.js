@@ -5,6 +5,8 @@ import { createSomoimAutomationService } from './somoim-automation.service.js';
 export function createSomoimAutomationRouter(ctx, service = createSomoimAutomationService({
   db: ctx.db,
   allowSubmit: ctx.config?.somoimAutomation?.allowSubmit,
+  staleClaimSeconds: ctx.config?.somoimAutomation?.staleClaimSeconds,
+  maxAttempts: ctx.config?.somoimAutomation?.maxAttempts,
 })) {
   const router = Router();
   const internalKey = ctx.config?.somoimAutomation?.internalApiKey ?? '';

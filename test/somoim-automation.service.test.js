@@ -5,14 +5,21 @@ import { createSomoimAutomationService } from '../src/features/somoim-automation
 const USER_ID = '00000000-0000-0000-0000-000000000001';
 const JOB_ID = '11111111-1111-1111-1111-111111111111';
 
-function serviceWith({ allowSubmit = false, job = null, jobs = [] } = {}) {
+function serviceWith({ allowSubmit = false, job = null, jobs = [], recovered = [], ...options } = {}) {
   const calls = {
     created: [],
     completed: [],
     failed: [],
     listed: [],
+    requeued: [],
+    order: [],
   };
   const queries = {
+    async requeueStaleJobs(input) {
+      calls.requeued.push(input);
+      calls.order.push('requeueStaleJobs');
+      return recovered;
+    },
     async listJobs(input) {
       calls.listed.push(input);
       return jobs.slice(input.offset, input.offset + input.limit);
@@ -32,6 +39,7 @@ function serviceWith({ allowSubmit = false, job = null, jobs = [] } = {}) {
       return id === JOB_ID ? job : null;
     },
     async claimNextJob() {
+      calls.order.push('claimNextJob');
       return job;
     },
     async completeJob(input) {
@@ -45,7 +53,7 @@ function serviceWith({ allowSubmit = false, job = null, jobs = [] } = {}) {
   };
 
   return {
-    service: createSomoimAutomationService({ queries, allowSubmit }),
+    service: createSomoimAutomationService({ queries, allowSubmit, ...options }),
     calls,
   };
 }
@@ -203,7 +211,37 @@ test('claimNextJob: returns a stable job envelope', async () => {
   const claimed = { id: JOB_ID, status: 'claimed' };
   const { service } = serviceWith({ job: claimed });
 
-  assert.deepEqual(await service.claimNextJob(), { job: claimed });
+  assert.deepEqual(await service.claimNextJob(), { job: claimed, recovered: 0 });
+});
+
+test('claimNextJob: recovers stale claims before handing out the next job', async () => {
+  const { service, calls } = serviceWith({ job: null });
+
+  await service.claimNextJob();
+
+  assert.deepEqual(calls.order, ['requeueStaleJobs', 'claimNextJob'],
+    'a stale job must be requeued before the claim query runs');
+  assert.deepEqual(calls.requeued[0], {
+    staleAfterSeconds: 900,
+    maxAttempts: 3,
+    exhaustedMessage: 'Worker stopped responding before reporting a result',
+  });
+});
+
+test('claimNextJob: reports how many stale claims were recovered', async () => {
+  const recovered = [{ id: 'job-1', status: 'pending' }, { id: 'job-2', status: 'needs_manual_review' }];
+  const { service } = serviceWith({ job: null, recovered });
+
+  assert.equal((await service.claimNextJob()).recovered, 2);
+});
+
+test('claimNextJob: honours configured stale window and attempt budget', async () => {
+  const { service, calls } = serviceWith({ job: null, staleClaimSeconds: 120, maxAttempts: 1 });
+
+  await service.claimNextJob();
+
+  assert.equal(calls.requeued[0].staleAfterSeconds, 120);
+  assert.equal(calls.requeued[0].maxAttempts, 1);
 });
 
 test('completeJob/failJob: require a claimed job update to succeed', async () => {

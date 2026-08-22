@@ -41,6 +41,24 @@ export function createSomoimAutomationQueries(db) {
       return result.rows;
     },
 
+    // worker가 claim한 뒤 결과를 보고하지 못하고 죽으면 job이 claimed로 남는다.
+    // 재시도 여유가 있으면 pending으로 되돌리고, 다 썼으면 사람에게 넘긴다.
+    async requeueStaleJobs({ staleAfterSeconds, maxAttempts, exhaustedMessage }) {
+      const result = await db.query(
+        `UPDATE somoim_automation_jobs
+            SET status = CASE WHEN attempts >= $2 THEN 'needs_manual_review' ELSE 'pending' END,
+                claimed_at = CASE WHEN attempts >= $2 THEN claimed_at ELSE NULL END,
+                error_message = CASE WHEN attempts >= $2 THEN $3 ELSE error_message END,
+                completed_at = CASE WHEN attempts >= $2 THEN now() ELSE completed_at END,
+                updated_at = now()
+          WHERE status = 'claimed'
+            AND claimed_at < now() - make_interval(secs => $1)
+          RETURNING id, status`,
+        [staleAfterSeconds, maxAttempts, exhaustedMessage],
+      );
+      return result.rows;
+    },
+
     async claimNextJob() {
       const result = await db.query(
         `UPDATE somoim_automation_jobs

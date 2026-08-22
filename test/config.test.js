@@ -20,6 +20,33 @@ test('createConfig centralizes aliases and security limits', () => {
   assert.equal(config.badges.dailyGenerationLimit, 2);
 });
 
+test('createConfig keeps somoim automation safe by default', () => {
+  const config = createConfig({});
+
+  assert.equal(config.somoimAutomation.allowSubmit, false, 'final submit must stay off unless enabled');
+  assert.equal(config.somoimAutomation.staleClaimSeconds, 900);
+  assert.equal(config.somoimAutomation.maxAttempts, 3);
+});
+
+test('createConfig ignores out of range somoim automation retry settings', () => {
+  const tooSmall = createConfig({
+    SOMOIM_AUTOMATION_STALE_CLAIM_SEC: '5',
+    SOMOIM_AUTOMATION_MAX_ATTEMPTS: '0',
+  });
+  assert.equal(tooSmall.somoimAutomation.staleClaimSeconds, 900, 'a tiny window would requeue running jobs');
+  assert.equal(tooSmall.somoimAutomation.maxAttempts, 3);
+
+  const tooLarge = createConfig({ SOMOIM_AUTOMATION_MAX_ATTEMPTS: '99' });
+  assert.equal(tooLarge.somoimAutomation.maxAttempts, 3, 'endless retries must not be configurable');
+
+  const custom = createConfig({
+    SOMOIM_AUTOMATION_STALE_CLAIM_SEC: '300',
+    SOMOIM_AUTOMATION_MAX_ATTEMPTS: '2',
+  });
+  assert.equal(custom.somoimAutomation.staleClaimSeconds, 300);
+  assert.equal(custom.somoimAutomation.maxAttempts, 2);
+});
+
 test('runtime modules do not read process.env outside the composition root', async () => {
   const allowed = new Set([
     path.normalize('src/server.js'),

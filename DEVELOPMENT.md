@@ -167,6 +167,20 @@ somoim_sync_logs              -- 크롤링 동기화 이력(성공/실패, 인�
 - id, source_url, expected_count, crawled_count, upserted_count,
   status, error_message, synced_at
 
+somoim_automation_jobs        -- 소모임 앱 자동화 요청 큐 (미니PC worker가 소비)
+- id, requested_by(FK users, SET NULL), type(현재 'create_meetup'만), payload(jsonb),
+  status(pending/claimed/succeeded/failed/needs_manual_review), attempts,
+  claimed_at, completed_at, error_message, result(jsonb), created_at, updated_at
+- claim은 FOR UPDATE SKIP LOCKED로 가장 오래된 pending 한 건만 가져간다.
+  complete/fail은 status='claimed' 조건부 UPDATE라 이미 끝난 job은 다시 바뀌지 않는다.
+- worker가 결과를 보고하지 못하고 죽으면 job이 claimed로 남는다. 다음 claim 요청
+  직전에 stale(기본 900초) claim을 회수하며, attempts를 다 쓴 job(기본 3회)은
+  needs_manual_review로 넘긴다. 별도 스케줄러 없이 worker 폴링 시점에만 돈다.
+- 완료·실패가 보고된 job은 재실행하지 않는다. worker가 판단을 내렸다면 뒤집지 않는다.
+- payload의 dryRun/submit 조합은 서버와 worker가 각각 검증한다. 실제 제출은
+  SOMOIM_AUTOMATION_ALLOW_SUBMIT(서버)과 ALLOW_SOMOIM_SUBMIT(worker)이 모두 true일 때만
+  가능하다. 계약은 SOMOIM_AUTOMATION.md가 source of truth다.
+
 cafe_comments                 -- 카페별 한줄 코멘트 (방문 이력 있는 유저만 작성 가능)
 - id, cafe_location, user_id, body(1~120자), created_at, updated_at
   (UNIQUE cafe_location+user_id — 유저당 카페 하나에 코멘트 하나, upsert)

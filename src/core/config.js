@@ -65,6 +65,8 @@ export function createConfig(env = {}) {
     somoimAutomation: {
       internalApiKey,
       allowSubmit: readBoolean(env.SOMOIM_AUTOMATION_ALLOW_SUBMIT, false),
+      staleClaimSeconds: readInteger(env.SOMOIM_AUTOMATION_STALE_CLAIM_SEC, 900, { min: 60 }),
+      maxAttempts: readInteger(env.SOMOIM_AUTOMATION_MAX_ATTEMPTS, 3, { min: 1, max: 10 }),
     },
   };
 }

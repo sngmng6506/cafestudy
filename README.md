@@ -98,7 +98,7 @@ AI 작업 규칙은 [AGENTS.md](./AGENTS.md)를 따릅니다. 사람이 직접 �
 |------|--------------|-------------|
 | [README.md](./README.md) | 배포 방식, 기능, 스크립트 | 프로젝트를 처음 볼 때 |
 | [AGENTS.md](./AGENTS.md) | AI 작업 규칙과 아키텍처·보안 불변식 | AI로 코드를 짜거나 커밋하기 전 |
-| [ROADMAP.md](./ROADMAP.md) | 앞으로 구현하면 좋은 기능 후보와 검색 개선 계획 | 구현할 기능을 고를 때 |
+| [ROADMAP.md](./ROADMAP.md) | 진행 중인 작업의 남은 일과 구현 후보 | 구현할 기능을 고를 때 |
 | [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md) | 소모임 앱 자동화 job API 계약, worker payload, dry-run/submit 규칙 | 미니PC worker나 소모임 자동화 API를 만들 때 |
 | [worker/README.md](./worker/README.md) | worker 실행 방법, 태블릿 ADB 준비, 실패 처리 원칙 | 미니PC에서 worker를 돌리거나 handler를 구현할 때 |
 | [CLAUDE.md](./CLAUDE.md) | AGENTS.md로의 포인터 | 안 봐도 됨 (도구 자동 인식용) |

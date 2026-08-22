@@ -104,6 +104,12 @@ x-internal-key: <INTERNAL_API_KEY>
 
 가장 오래된 `pending` job 하나를 원자적으로 `claimed`로 바꾸고 반환한다. job이 없으면 `job: null`을 반환한다. claim 시 `attempts`가 1 증가한다.
 
+claim 직전에 stale claim을 회수한다. `SOMOIM_AUTOMATION_STALE_CLAIM_SEC`(기본 900초)이
+지나도록 결과 보고가 없는 `claimed` job은 `pending`으로 되돌리고, `attempts`가
+`SOMOIM_AUTOMATION_MAX_ATTEMPTS`(기본 3)에 도달했으면 `needs_manual_review`로 넘긴다.
+회수한 개수는 응답의 `recovered`로 함께 반환한다. 별도 스케줄러 없이 worker가 폴링할
+때만 돈다.
+
 ### Complete
 
 ```http
@@ -156,7 +162,10 @@ pending → claimed → succeeded
 
 - `pending`만 claim할 수 있다.
 - claim한 job은 반드시 complete 또는 fail로 끝낸다.
-- 완료·실패가 보고된 job은 별도 requeue 기능이 생기기 전까지 다시 실행하지 않는다.
+- 보고 없이 stale 상태로 남은 `claimed` job은 다음 claim 때 회수한다
+  (재시도 여유가 있으면 `pending`, 다 썼으면 `needs_manual_review`).
+- 완료·실패가 **보고된** job은 다시 실행하지 않는다. worker가 결과를 보고했다면
+  그 판단을 뒤집지 않는다.
 
 ## dryRun과 submit
 
