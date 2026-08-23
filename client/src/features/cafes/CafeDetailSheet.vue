@@ -66,7 +66,7 @@ onMounted(async () => {
             <p class="text-[13px] leading-relaxed text-[#333333]">{{ comment.body }}</p>
           </div>
         </div>
-        <p v-else class="text-[13px] text-[#5f6368]">아직 남겨진 코멘트가 없습니다.</p>
+        <p v-else class="text-[13px] text-[#5f6368]">아직 남긴 코멘트가 없어요.</p>
       </div>
 
       <!-- 인증 사진 (내가 참여한 모임의 사진만) -->

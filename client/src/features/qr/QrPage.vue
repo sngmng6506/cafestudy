@@ -19,7 +19,7 @@ onMounted(async () => {
       color: { dark: '#333333', light: '#ffffff' },
     });
   } catch {
-    toast.error('QR 코드를 생성하지 못했습니다.');
+    toast.error('QR 코드를 만들지 못했어요.');
   }
 });
 
@@ -31,7 +31,7 @@ async function copyUrl() {
       copied.value = false;
     }, 2000);
   } catch {
-    toast.error('주소 복사에 실패했습니다.');
+    toast.error('주소를 복사하지 못했어요. 직접 선택해 복사해 주세요.');
   }
 }
 </script>

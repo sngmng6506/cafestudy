@@ -3,7 +3,7 @@ const DEFAULT_QUALITY = 0.8;
 
 export async function compressImage(file, options = {}) {
   if (!file?.type?.startsWith('image/')) {
-    throw new Error('이미지 파일만 사용할 수 있습니다.');
+    throw new Error('이미지 파일만 올릴 수 있어요.');
   }
 
   const maxEdge = options.maxEdge ?? DEFAULT_MAX_EDGE;
@@ -34,7 +34,7 @@ function canvasToBlob(canvas, type, quality) {
     canvas.toBlob(
       (blob) => {
         if (blob) resolve(blob);
-        else reject(new Error('이미지 압축에 실패했습니다.'));
+        else reject(new Error('사진을 준비하지 못했어요. 다른 사진으로 시도해 주세요.'));
       },
       type,
       quality,

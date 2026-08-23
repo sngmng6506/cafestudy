@@ -157,7 +157,7 @@ async function saveComment(cafe) {
         isAnonymous: Boolean(anonymousInputs[cafe.location]),
       }),
     });
-    toast.success('코멘트를 저장했습니다.');
+    toast.success('코멘트를 저장했어요.');
     editing[cafe.location] = false;
     await loadCafes();
   } catch (error) {
@@ -214,7 +214,7 @@ async function saveComment(cafe) {
       </p>
 
       <div v-else-if="cafes.length === 0" class="py-12 text-center">
-        <p class="text-[15px] font-semibold text-[#333333]">아직 카페 이력이 없습니다.</p>
+        <p class="text-[15px] font-semibold text-[#333333]">아직 다녀온 카페가 없어요.</p>
         <p class="mt-1 text-[13px] text-[#5f6368]">완료된 모임 장소가 생기면 이곳에 표시됩니다.</p>
       </div>
 
@@ -254,7 +254,7 @@ async function saveComment(cafe) {
               <p class="text-[13px] leading-relaxed text-[#333333]">{{ comment.body }}</p>
             </div>
           </div>
-          <p v-else class="text-[13px] text-[#5f6368]">아직 남겨진 코멘트가 없습니다.</p>
+          <p v-else class="text-[13px] text-[#5f6368]">아직 남긴 코멘트가 없어요.</p>
 
           <form
             v-if="cafe.canComment && (!myComment(cafe) || editing[cafe.location])"
@@ -299,7 +299,7 @@ async function saveComment(cafe) {
             </div>
           </form>
           <p v-else-if="!cafe.canComment" class="text-[12px] text-[#5f6368]">
-            참석 이력이 있는 카페에만 코멘트를 남길 수 있습니다.
+            다녀온 카페에만 코멘트를 남길 수 있어요.
           </p>
         </li>
       </ul>

@@ -104,7 +104,7 @@ async function handlePhotoChange(event) {
     const nextFile = await compressImage(file, { maxEdge: 1600, quality: 0.8 });
     compressedFile.value = nextFile;
     previewUrl.value = URL.createObjectURL(nextFile);
-    status.value = '압축본이 준비되었습니다.';
+    status.value = '압축본이 준비됐어요.';
   } catch (error) {
     toast.error(error.message);
     status.value = '';
@@ -160,7 +160,7 @@ async function submitVerification() {
     });
 
     if (!uploadResponse.ok) {
-      throw new Error('사진 업로드에 실패했습니다.');
+      throw new Error('사진을 올리지 못했어요. 잠시 뒤 다시 시도해 주세요.');
     }
 
     await apiFetch('/api/verifications', {
@@ -176,7 +176,7 @@ async function submitVerification() {
     compressedFile.value = null;
     originalSize.value = 0;
     status.value = '';
-    toast.success('인증이 완료되었습니다. +10점');
+    toast.success('출석을 인증했어요. +10포인트');
     triggerSuccessEffect();
     await loadMyVerifications();
   } catch (error) {
@@ -224,17 +224,16 @@ function formatBytes(bytes) {
       <div class="rounded-xl border border-[#dadce0] bg-[#f5f6f7] p-4">
         <div class="mb-2 flex items-center gap-2">
           <Camera :size="15" class="text-[#03C75A]" />
-          <p class="text-[13px] font-bold text-[#03C75A]">인증 시스템 안내</p>
+          <p class="text-[13px] font-bold text-[#03C75A]">인증하는 방법</p>
         </div>
         <p class="text-[13px] leading-relaxed text-[#333333]">
-          참여한 모임의 현장 사진을 업로드하여 출석을 인증합니다.
-          인증이 완료되면 <strong>10포인트</strong>가 지급됩니다.
-          모임 시작 시간 이후에 아래 <strong>인증 대기</strong>에서 모임을 눌러 인증하세요.
+          모임이 시작된 뒤 아래 <strong>인증 대기</strong>에서 모임을 누르고 현장 사진을 올려 주세요.
+          인증하면 <strong>10포인트</strong>를 받아요.
         </p>
       </div>
 
       <p v-if="verifiableMeetups.length === 0" class="mt-4 text-[13px] text-[#5f6368]">
-        아직 인증할 수 있는 참여 모임이 없습니다.
+        아직 인증할 수 있는 모임이 없어요.
       </p>
 
       <!-- 인증 성공 효과. 인증하면 그 모임이 pendingMeetups에서 빠져 아래 카드가

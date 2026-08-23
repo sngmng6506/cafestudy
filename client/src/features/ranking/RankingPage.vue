@@ -30,7 +30,7 @@ const currentMini = computed(() =>
         title: '주사위 TOP 5',
         loading: diceLoading.value,
         rows: diceRanking.value,
-        empty: ['아직 주사위를 굴린 사람이 없습니다.', '더보기 → 주사위에서 굴려보세요!'],
+        empty: ['아직 주사위를 굴린 사람이 없어요.', '더보기 → 주사위에서 굴려 보세요.'],
         valueOf: (u) => `${u.points}점`,
       }
     : {
@@ -38,7 +38,7 @@ const currentMini = computed(() =>
         title: '2048 TOP 5',
         loading: game2048Loading.value,
         rows: game2048Ranking.value,
-        empty: ['아직 2048 기록이 없습니다.', '더보기 → 2048에서 도전해보세요!'],
+        empty: ['아직 2048 기록이 없어요.', '더보기 → 2048에서 도전해 보세요.'],
         valueOf: (u) => u.bestScore.toLocaleString(),
       },
 );
@@ -62,8 +62,8 @@ const isCurrentMonth = computed(
 );
 const emptyMessage = computed(() =>
   mode.value === 'monthly'
-    ? '이 달에 쌓인 포인트가 아직 없습니다.'
-    : '아직 포인트를 얻은 사용자가 없습니다.',
+    ? '이 달에 쌓은 포인트가 아직 없어요.'
+    : '아직 포인트를 모은 멤버가 없어요.',
 );
 
 onMounted(() => {
@@ -146,7 +146,7 @@ async function loadRanking() {
     <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
         <Trophy :size="18" class="text-[#03C75A]" />
-        <p class="text-[14px] text-[#5f6368]">인증으로 쌓인 포인트를 기준으로 정렬합니다.</p>
+        <p class="text-[14px] text-[#5f6368]">인증으로 쌓은 포인트 순이에요.</p>
       </div>
 
       <div class="mb-5 grid grid-cols-2 rounded-xl border border-[#dadce0] bg-[#f5f6f7] p-1">

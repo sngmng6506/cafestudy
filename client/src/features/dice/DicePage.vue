@@ -82,7 +82,7 @@ async function roll() {
     nextPoints = body.data.totalPoints;
     nextEarned = body.data.earned;
   } catch (err) {
-    nextError = err.message ?? '포인트 적립에 실패했습니다.';
+    nextError = err.message ?? '포인트를 쌓지 못했어요. 잠시 뒤 다시 시도해 주세요.';
   } finally {
     apiPending.value = false;
   }

@@ -79,7 +79,7 @@ async function applyBadge() {
     preview.value = null;
     prompt.value = '';
     title.value = '';
-    toast.success('뱃지를 추가했습니다.');
+    toast.success('뱃지를 추가했어요.');
   } catch (error) {
     toast.error(error.message);
   } finally {
@@ -96,7 +96,7 @@ async function deleteBadge(badge) {
     const body = await apiFetch(`/api/badges/${badge.id}`, { method: 'DELETE' });
     badges.value = badges.value.filter((item) => item.id !== badge.id);
     if (body.data?.clearedActive) setActiveBadgeImageUrl('');
-    toast.success('뱃지를 삭제했습니다.');
+    toast.success('뱃지를 삭제했어요.');
   } catch (error) {
     toast.error(error.message);
   } finally {
@@ -115,7 +115,7 @@ async function activateBadge(badge) {
       isActive: item.id === body.data.id,
     }));
     setActiveBadgeImageUrl(body.data.imageViewUrl ?? '');
-    toast.success('대표 뱃지를 변경했습니다.');
+    toast.success('대표 뱃지를 바꿨어요.');
   } catch (error) {
     toast.error(error.message);
   } finally {
@@ -157,7 +157,7 @@ async function activateBadge(badge) {
         {{ generating ? '생성 중...' : '뱃지 만들기' }}
       </button>
       <p v-if="atLimit" class="mt-2 text-[13px] text-[#5f6368]">
-        뱃지는 최대 {{ MAX_BADGES }}개까지 보관할 수 있어요. 기존 뱃지를 삭제하면 새로 만들 수 있습니다.
+        뱃지는 최대 {{ MAX_BADGES }}개까지 보관할 수 있어요. 기존 뱃지를 삭제하면 새로 만들 수 있어요.
       </p>
     </section>
 
@@ -200,7 +200,7 @@ async function activateBadge(badge) {
       </div>
       <p v-if="loading" class="px-5 pb-5 text-[14px] text-[#5f6368]">불러오는 중...</p>
       <p v-else-if="errorMessage" class="px-5 pb-5 text-[14px] font-semibold text-[#e74c3c]">{{ errorMessage }}</p>
-      <p v-else-if="badges.length === 0" class="px-5 pb-5 text-[14px] text-[#5f6368]">아직 적용한 뱃지가 없습니다.</p>
+      <p v-else-if="badges.length === 0" class="px-5 pb-5 text-[14px] text-[#5f6368]">아직 적용한 뱃지가 없어요.</p>
       <ul v-else class="divide-y divide-[#dadce0]">
         <li v-for="badge in badges" :key="badge.id" class="flex items-center gap-3 px-5 py-3">
           <img

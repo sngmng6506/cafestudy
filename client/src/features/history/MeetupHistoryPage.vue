@@ -24,7 +24,7 @@ const completedMeetups = computed(() => {
       .filter((meetup) => meetup.state === 'done')
       .map((meetup) => ({
         ...meetup,
-        sourceLabel: '직접 개설',
+        sourceLabel: '직접 만든 모임',
         photos: photoMap[meetup.id] ?? [],
       })),
     ...somoimEvents.value
@@ -92,7 +92,7 @@ function toHistoryFromSomoimEvent(event) {
       </p>
 
       <div v-else-if="completedMeetups.length === 0" class="py-12 text-center">
-        <p class="text-[15px] font-semibold text-[#333333]">아직 완료된 모임이 없습니다.</p>
+        <p class="text-[15px] font-semibold text-[#333333]">아직 지난 모임이 없어요.</p>
         <p class="mt-1 text-[13px] text-[#5f6368]">모임 시간이 지나면 이곳에 표시됩니다.</p>
       </div>
 

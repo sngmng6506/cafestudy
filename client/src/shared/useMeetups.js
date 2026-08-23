@@ -42,7 +42,7 @@ export function useMeetups() {
   }
 
   async function cancelMeetup(meetup) {
-    if (!window.confirm('이 모임을 취소할까요? 목록과 캘린더에서 사라집니다.')) return;
+    if (!window.confirm('이 모임을 취소할까요?\n참여자에게서 일정이 사라지고 되돌릴 수 없어요.')) return;
     pendingId.value = meetup.id;
     actionError.value = '';
     try {

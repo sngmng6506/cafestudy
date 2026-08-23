@@ -53,7 +53,7 @@ export async function apiFetch(path, options = {}) {
     });
   } catch (error) {
     if (timeoutController.signal.aborted && !callerSignal?.aborted) {
-      const timeoutError = new Error('요청 시간이 초과되었습니다.');
+      const timeoutError = new Error('연결이 오래 걸려요. 잠시 뒤 다시 시도해 주세요.');
       timeoutError.code = 'REQUEST_TIMEOUT';
       timeoutError.status = 0;
       throw timeoutError;
@@ -73,7 +73,7 @@ export async function apiFetch(path, options = {}) {
   if (!response.ok || body.error) {
     if (response.status === 401) clearCurrentUserState();
 
-    const error = new Error(body.error?.message ?? '요청에 실패했습니다.');
+    const error = new Error(body.error?.message ?? '요청을 처리하지 못했어요. 잠시 뒤 다시 시도해 주세요.');
     error.code = body.error?.code;
     error.status = response.status;
     error.requestId = body.error?.requestId ?? response.headers.get('x-request-id');

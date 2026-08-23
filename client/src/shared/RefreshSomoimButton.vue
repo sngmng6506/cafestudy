@@ -73,7 +73,7 @@ async function refresh() {
       errorMessage.value = '이미 갱신 중입니다.';
     }
   } catch (err) {
-    errorMessage.value = err.message ?? '갱신에 실패했습니다.';
+    errorMessage.value = err.message ?? '새로 가져오지 못했어요. 잠시 뒤 다시 시도해 주세요.';
   } finally {
     loading.value = false;
   }

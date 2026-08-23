@@ -181,7 +181,7 @@ const somoimLink = somoimAppLink();
           <ExternalLink :size="16" />
         </a>
         <div v-else-if="meetup.isHost" class="flex items-center gap-2">
-          <span class="text-sm font-semibold text-[#5f6368]">개설자</span>
+          <span class="text-sm font-semibold text-[#5f6368]">만든 사람</span>
           <button
             class="focus-ring h-9 shrink-0 rounded-[10px] border border-[#e74c3c] px-3 text-sm font-semibold text-[#e74c3c] transition hover:bg-[#f5f6f7] disabled:opacity-50"
             type="button"

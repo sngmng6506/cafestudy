@@ -114,7 +114,7 @@ function highlight(text) {
     <!-- 빈 결과 -->
     <div v-else-if="filtered.length === 0" class="py-12 text-center">
       <p class="text-[15px] text-[#333333]">
-        {{ query ? '검색 결과가 없습니다.' : '등록된 멤버가 없습니다.' }}
+        {{ query ? '검색 결과가 없어요.' : '아직 멤버가 없어요.' }}
       </p>
       <p class="mt-1 text-[13px] text-[#5f6368]">
         {{ query ? '다른 이름으로 검색해 보세요.' : '모임에 참여하면 멤버로 등록돼요.' }}
