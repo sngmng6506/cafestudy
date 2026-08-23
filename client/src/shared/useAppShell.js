@@ -3,6 +3,7 @@ import { Hammer, Wrench } from '@lucide/vue';
 import { features } from '../features/index.js';
 import { apiFetch } from './api.js';
 import { useCurrentUser } from './useCurrentUser.js';
+import { useFeatureNav } from './useFeatureNav.js';
 import { useActiveBadge } from './useActiveBadge.js';
 import { useSmash } from './useSmash.js';
 import { smashStyleVars } from './smash-style.js';
@@ -19,10 +20,10 @@ export function useAppShell() {
   const { activeBadgeImageUrl } = useActiveBadge();
   const { smashed, smashSeed, toggleSmash } = useSmash();
 
+  const { activeFeatureName, goToFeature } = useFeatureNav();
   const memberSelectOpen = ref(false);
   const menuSearchOpen = ref(false);
   const moreOpen = ref(false);
-  const activeFeatureName = ref('home');
   let sessionTimer;
 
   const smashStyle = computed(() =>
@@ -44,7 +45,7 @@ export function useAppShell() {
   const overflowActive = computed(() =>
     overflowFeatures.value.some((feature) => feature.name === activeFeatureName.value),
   );
-  const wheelItems = computed(() => [
+  const moreItems = computed(() => [
     ...overflowFeatures.value,
     {
       name: 'smash',
@@ -71,20 +72,30 @@ export function useAppShell() {
     if (document.visibilityState === 'visible') void syncSession();
   }
 
-  function selectFeature(name) {
-    if (name === 'smash') {
-      toggleSmash();
-      moreOpen.value = false;
-      return;
-    }
-    activeFeatureName.value = name;
+  function closeOverlays() {
     moreOpen.value = false;
     menuSearchOpen.value = false;
   }
 
+  function selectFeature(name) {
+    if (name === 'smash') {
+      toggleSmash();
+      closeOverlays();
+      return;
+    }
+    goToFeature(name);
+    closeOverlays();
+  }
+
   function openMenuSearch() {
+    // 오버레이는 한 번에 하나만 뜬다.
     moreOpen.value = false;
     menuSearchOpen.value = true;
+  }
+
+  function toggleMore() {
+    menuSearchOpen.value = false;
+    moreOpen.value = !moreOpen.value;
   }
 
   onMounted(async () => {
@@ -116,8 +127,9 @@ export function useAppShell() {
     activeFeatureName,
     activeFeature,
     overflowActive,
-    wheelItems,
+    moreItems,
     selectFeature,
     openMenuSearch,
+    toggleMore,
   };
 }

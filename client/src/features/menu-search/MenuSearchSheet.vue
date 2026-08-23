@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { ArrowRight, LoaderCircle, Search, X } from '@lucide/vue';
 import { searchMenus } from './menu-search.service.js';
 
@@ -25,9 +25,18 @@ const displayResults = computed(() => results.value
   .map((result) => ({ ...result, feature: featureByName.value.get(result.featureName) }))
   .filter((result) => result.feature));
 
+function onKeydown(event) {
+  if (event.key === 'Escape') emit('close');
+}
+
 onMounted(async () => {
+  window.addEventListener('keydown', onKeydown);
   await nextTick();
   inputRef.value?.focus();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown);
 });
 
 async function submitSearch() {

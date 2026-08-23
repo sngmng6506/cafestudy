@@ -1,12 +1,32 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import { ChevronDown, Plus, Search, X } from '@lucide/vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { CalendarDays, ChevronDown, Plus, Search, X } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { formatDate } from '../../shared/useMeetups.js';
+import { useUpcomingMeetups } from '../../shared/useUpcomingMeetups.js';
 import { useToast } from '../../shared/useToast.js';
+import MeetupCard from '../../shared/MeetupCard.vue';
+import RefreshSomoimButton from '../../shared/RefreshSomoimButton.vue';
 import { MEETUP_LIMITS } from '../../../../shared/domain-constraints.js';
 
 const toast = useToast();
+const {
+  upcomingMeetups,
+  loadingAny,
+  pendingId,
+  errorMessage,
+  actionError,
+  loadAll,
+  loadSomoimEvents,
+  toggleJoin,
+  cancelMeetup,
+} = useUpcomingMeetups();
+
+const formOpen = ref(false);
+
+onMounted(() => {
+  void loadAll();
+});
 
 // 서버 한도는 100이지만, 셀렉트 박스에서 고르기 쉬운 현실적인 범위만 노출한다.
 const CAPACITY_CHOICES = MEETUP_LIMITS.capacityChoiceCount;
@@ -122,26 +142,26 @@ onBeforeUnmount(() => {
   }
 });
 
-// --- 개설 확인 팝업 ---
+// --- 만들기 확인 팝업 ---
 const showConfirm = ref(false);
 const creating = ref(false);
 
-// 개설 버튼: 입력 검증만 통과하면 바로 만들지 않고 장소·일시 확인 팝업을 띄운다.
+// 만들기 버튼: 입력 검증만 통과하면 바로 만들지 않고 장소·일시 확인 팝업을 띄운다.
 function requestCreateMeetup() {
   const scheduled = new Date(form.value.scheduledAt);
   if (Number.isNaN(scheduled.getTime()) || scheduled.getTime() < Date.now() + MEETUP_LIMITS.minLeadMs) {
-    toast.error('모임은 지금부터 30분 이후 시간으로만 개설할 수 있습니다.');
+    toast.error('모임은 지금부터 30분 이후 시간으로만 만들 수 있어요.');
     return;
   }
 
   const capacity = Number(form.value.capacity);
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > MEETUP_LIMITS.maxCapacity) {
-    toast.error(`최대 참가 인원은 1~${MEETUP_LIMITS.maxCapacity} 사이로 입력해주세요.`);
+    toast.error(`최대 참가 인원은 1~${MEETUP_LIMITS.maxCapacity}명 사이로 골라 주세요.`);
     return;
   }
 
   if (!form.value.location) {
-    toast.error('위치(주소)를 검색해서 선택해주세요.');
+    toast.error('카페·장소를 검색해서 선택해 주세요.');
     return;
   }
 
@@ -172,8 +192,10 @@ async function createMeetup() {
     form.value.lng = null;
     form.value.scheduledAt = getDefaultScheduledAt();
     form.value.capacity = MEETUP_LIMITS.defaultCapacity;
+    formOpen.value = false;
 
-    toast.success('모임이 생성되었습니다.');
+    toast.success('새 모임을 만들었어요.');
+    await loadAll();
   } catch (error) {
     toast.error(error.message);
   } finally {
@@ -199,10 +221,21 @@ function toLocalInputValue(date) {
 <template>
   <section class="grid gap-5">
     <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">모임 개설</h1>
+      <h1 class="ui-page-title">모임</h1>
     </div>
 
-    <form class="surface-card" @submit.prevent="requestCreateMeetup">
+    <button
+      class="focus-ring ui-radius-control flex h-12 w-full items-center justify-center gap-2 bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition"
+      type="button"
+      :aria-expanded="formOpen"
+      @click="formOpen = !formOpen"
+    >
+      <Plus v-if="!formOpen" :size="18" />
+      <X v-else :size="18" />
+      {{ formOpen ? '만들기 접기' : '모임 만들기' }}
+    </button>
+
+    <form v-if="formOpen" class="surface-card" @submit.prevent="requestCreateMeetup">
       <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#333333]">
         제목
         <input
@@ -268,7 +301,7 @@ function toLocalInputValue(date) {
             <option v-for="n in CAPACITY_CHOICES" :key="n" :value="n">{{ n }}명</option>
           </select>
         </div>
-        <span class="text-[12px] font-medium text-[#5f6368]">개설자(나) 포함 인원입니다.</span>
+        <span class="text-[12px] font-medium text-[#5f6368]">나를 포함한 인원이에요.</span>
       </label>
 
       <button
@@ -276,9 +309,58 @@ function toLocalInputValue(date) {
         type="submit"
       >
         <Plus :size="18" />
-        개설
+        모임 만들기
       </button>
     </form>
+
+    <section class="surface-card">
+      <div class="mb-5 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <CalendarDays :size="18" class="ui-text-brand" />
+          <h2 class="ui-section-title">예정 모임</h2>
+          <span
+            v-if="!loadingAny && !errorMessage"
+            class="ui-bg-subtle ui-text-muted ui-radius-item ml-1 px-2 py-0.5 text-sm font-semibold"
+          >
+            {{ upcomingMeetups.length }}
+          </span>
+        </div>
+        <RefreshSomoimButton @refreshed="loadSomoimEvents" />
+      </div>
+
+      <p v-if="actionError" class="ui-text-danger ui-radius-item mb-4 bg-[#FFF1F2] px-4 py-3 text-sm font-semibold">
+        {{ actionError }}
+      </p>
+
+      <ul v-if="loadingAny" class="ui-border-subtle divide-y">
+        <li v-for="n in 3" :key="n" class="flex animate-pulse flex-col gap-2.5 py-4 first:pt-0 last:pb-0">
+          <div class="ui-bg-subtle h-5 w-3/4 rounded-md"></div>
+          <div class="ui-bg-subtle h-3 w-1/2 rounded"></div>
+          <div class="ui-bg-subtle h-9 w-24 rounded-lg"></div>
+        </li>
+      </ul>
+
+      <p v-else-if="errorMessage" class="ui-text-danger py-6 text-[15px] font-semibold">
+        {{ errorMessage }}
+      </p>
+
+      <div v-else-if="upcomingMeetups.length === 0" class="py-8 text-center">
+        <p class="ui-text text-[14px]">예정된 모임이 없어요.</p>
+        <p class="ui-text-muted mt-1 text-[13px]">위에서 새 모임을 만들어 보세요.</p>
+      </div>
+
+      <ul v-else class="ui-border-subtle divide-y">
+        <MeetupCard
+          v-for="meetup in upcomingMeetups"
+          :key="meetup.id"
+          :meetup="meetup"
+          :pending-id="pendingId"
+          :show-readonly-dot="false"
+          @toggle-join="toggleJoin"
+          @cancel="cancelMeetup"
+        />
+      </ul>
+    </section>
 
     <!-- 장소 검색 모달 -->
     <div
@@ -344,7 +426,7 @@ function toLocalInputValue(date) {
     >
       <div class="absolute inset-0 bg-[#333333]/30" @click="showConfirm = false"></div>
       <div class="relative z-10 w-full max-w-md rounded-t-xl bg-white p-5 shadow-sm sm:rounded-xl">
-        <p class="text-[17px] font-bold text-[#333333]">이 내용으로 모임을 개설할까요?</p>
+        <p class="text-[17px] font-bold text-[#333333]">이 내용으로 모임을 만들까요?</p>
         <dl class="mt-4 grid gap-2.5 rounded-lg bg-[#f5f6f7] p-4 text-[14px]">
           <div class="flex gap-3">
             <dt class="w-8 shrink-0 font-semibold text-[#5f6368]">장소</dt>
@@ -361,7 +443,7 @@ function toLocalInputValue(date) {
             class="focus-ring h-12 flex-1 rounded border border-[#dadce0] text-[15px] font-semibold text-[#333333] transition hover:bg-[#f5f6f7]"
             @click="showConfirm = false"
           >
-            취소
+            돌아가기
           </button>
           <button
             type="button"
@@ -369,7 +451,7 @@ function toLocalInputValue(date) {
             :disabled="creating"
             @click="createMeetup"
           >
-            {{ creating ? '개설 중…' : '개설하기' }}
+            {{ creating ? '만드는 중…' : '모임 만들기' }}
           </button>
         </div>
       </div>

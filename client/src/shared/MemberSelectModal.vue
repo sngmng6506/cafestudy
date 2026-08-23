@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { ArrowLeft, Check, Search, X } from '@lucide/vue';
 import { apiFetch } from './api.js';
 import { useCurrentUser } from './useCurrentUser.js';
@@ -44,7 +44,19 @@ async function loadMembers() {
   }
 }
 
-onMounted(loadMembers);
+// 로그인 전(닫을 수 없는 상태)에는 Escape로도 닫지 않는다.
+function onKeydown(event) {
+  if (event.key === 'Escape' && props.dismissable) emit('close');
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown);
+  void loadMembers();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown);
+});
 
 function pick(member) {
   selectedMember.value = member;
@@ -63,11 +75,11 @@ function backToSelect() {
 async function submitAuth() {
   authError.value = '';
   if (password.value.length < 4) {
-    authError.value = '비밀번호는 최소 4자 이상이어야 합니다.';
+    authError.value = '비밀번호는 4자 이상으로 만들어 주세요.';
     return;
   }
   if (isSetup.value && password.value !== passwordConfirm.value) {
-    authError.value = '비밀번호가 일치하지 않습니다.';
+    authError.value = '비밀번호가 서로 달라요. 다시 입력해 주세요.';
     return;
   }
 
@@ -138,7 +150,7 @@ async function submitAuth() {
         </p>
 
         <p v-else-if="filtered.length === 0" class="py-6 text-center text-[14px] text-[#5f6368]">
-          검색 결과가 없습니다.
+          검색 결과가 없어요.
         </p>
 
         <ul v-else class="max-h-64 divide-y divide-[#dadce0] overflow-y-auto">

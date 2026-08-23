@@ -2,7 +2,7 @@
 import { MoreHorizontal, Search } from '@lucide/vue';
 import ToastContainer from './shared/ToastContainer.vue';
 import MemberSelectModal from './shared/MemberSelectModal.vue';
-import FeatureWheel from './shared/FeatureWheel.vue';
+import FeatureMenu from './shared/FeatureMenu.vue';
 import NotificationBell from './shared/NotificationBell.vue';
 import MenuSearchSheet from './features/menu-search/MenuSearchSheet.vue';
 import UserAvatar from './shared/UserAvatar.vue';
@@ -25,9 +25,10 @@ const {
   activeFeatureName,
   activeFeature,
   overflowActive,
-  wheelItems,
+  moreItems,
   selectFeature,
   openMenuSearch,
+  toggleMore,
 } = useAppShell();
 </script>
 
@@ -103,11 +104,11 @@ const {
         <button
           v-if="hasOverflow"
           class="focus-ring relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition"
-          :class="overflowActive || moreOpen ? 'ui-nav-item-active' : 'ui-nav-item'"
+          :class="overflowActive ? 'ui-nav-item-active' : 'ui-nav-item'"
           type="button"
           aria-haspopup="menu"
           :aria-expanded="moreOpen"
-          @click="moreOpen = !moreOpen"
+          @click="toggleMore"
         >
           <MoreHorizontal :size="20" />
           더보기
@@ -130,9 +131,9 @@ const {
       @close="menuSearchOpen = false"
     />
 
-    <FeatureWheel
+    <FeatureMenu
       v-if="moreOpen && hasOverflow"
-      :features="wheelItems"
+      :features="moreItems"
       :active-name="activeFeatureName"
       @select="selectFeature"
       @close="moreOpen = false"

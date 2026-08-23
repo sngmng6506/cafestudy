@@ -1,52 +1,38 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from '@lucide/vue';
-import { useMeetups, formatDate, formatTime } from '../../shared/useMeetups.js';
+import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from '@lucide/vue';
+import { formatTime } from '../../shared/useMeetups.js';
+import { dayKey, useUpcomingMeetups } from '../../shared/useUpcomingMeetups.js';
+import { useFeatureNav } from '../../shared/useFeatureNav.js';
 import MeetupCard from '../../shared/MeetupCard.vue';
 import UserAvatar from '../../shared/UserAvatar.vue';
-import { apiFetch } from '../../shared/api.js';
-import { attendeeStack, somoimEventToMeetup } from '../../shared/useSomoimEvents.js';
+import { attendeeStack } from '../../shared/useSomoimEvents.js';
 import RefreshSomoimButton from '../../shared/RefreshSomoimButton.vue';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+// 홈은 미리보기만 보여준다. 전체 목록은 모임 탭이 담당한다.
+const PREVIEW_COUNT = 3;
 
-const { meetups, loading, pendingId, errorMessage, actionError, loadMeetups, toggleJoin, cancelMeetup } = useMeetups();
+const {
+  upcomingMeetups,
+  meetupsByDay,
+  loadingAny,
+  pendingId,
+  errorMessage,
+  actionError,
+  loadAll,
+  loadSomoimEvents,
+  toggleJoin,
+  cancelMeetup,
+} = useUpcomingMeetups();
+const { goToFeature } = useFeatureNav();
 
 const viewMonth = ref(startOfMonth(new Date()));
 const selectedDate = ref(null);
 const infoOpen = ref(false);
-const somoimEvents = ref([]);
-const somoimLoading = ref(false);
 
-const allMeetups = computed(() =>
-  [
-    ...meetups.value,
-    // 날짜 파싱에 실패한(scheduledAt null) 정모는 캘린더/목록에서 제외 —
-    // now()로 대체하면 "오늘 예정"으로 둔갑해 혼란을 준다.
-    ...somoimEvents.value
-      .filter((event) => event.scheduledAt)
-      .map(toMeetupFromSomoimEvent),
-  ]
-);
-
-const activeMeetups = computed(() => allMeetups.value.filter((meetup) => meetup.state !== 'done'));
-
-const openMeetups = computed(() =>
-  [...activeMeetups.value]
-    .sort((a, b) => sortTime(a.scheduledAt) - sortTime(b.scheduledAt)),
-);
-
-const meetupsByDay = computed(() => {
-  const map = {};
-  for (const meetup of activeMeetups.value) {
-    const key = dayKey(new Date(meetup.scheduledAt));
-    (map[key] ??= []).push(meetup);
-  }
-  for (const key of Object.keys(map)) {
-    map[key].sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-  }
-  return map;
-});
+const previewMeetups = computed(() => upcomingMeetups.value.slice(0, PREVIEW_COUNT));
+const hiddenCount = computed(() => Math.max(0, upcomingMeetups.value.length - PREVIEW_COUNT));
 
 const monthLabel = computed(() =>
   new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long' }).format(viewMonth.value),
@@ -65,7 +51,6 @@ const calendarDays = computed(() => {
 const selectedMeetups = computed(() =>
   selectedDate.value ? meetupsByDay.value[dayKey(selectedDate.value)] ?? [] : [],
 );
-const todayMeetupsCount = computed(() => meetupsByDay.value[dayKey(new Date())]?.length ?? 0);
 const selectedLabel = computed(() =>
   selectedDate.value
     ? new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }).format(
@@ -75,19 +60,11 @@ const selectedLabel = computed(() =>
 );
 
 onMounted(() => {
-  void loadMeetups();
-  void loadSomoimEvents();
+  void loadAll();
 });
 
 function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function dayKey(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
 }
 
 function countOn(date) {
@@ -140,27 +117,6 @@ function shiftMonth(delta) {
     viewMonth.value.getMonth() + delta,
     1,
   );
-}
-
-async function loadSomoimEvents() {
-  somoimLoading.value = true;
-  try {
-    const body = await apiFetch('/api/members/events');
-    somoimEvents.value = body.data ?? [];
-  } catch (_error) {
-    somoimEvents.value = [];
-  } finally {
-    somoimLoading.value = false;
-  }
-}
-
-function toMeetupFromSomoimEvent(event) {
-  // 공통 변환 + 홈 화면 전용 필드(참여/개설 상태). 정모는 읽기전용이라 모두 false.
-  return { ...somoimEventToMeetup(event), joined: false, isHost: false };
-}
-
-function sortTime(value) {
-  return value ? new Date(value).getTime() : Number.MAX_SAFE_INTEGER;
 }
 
 function calendarAttendeeStack(meetup) {
@@ -287,10 +243,10 @@ function calendarAttendeeStack(meetup) {
           <CalendarDays :size="18" class="text-[#03C75A]" />
           <h3 class="text-lg font-semibold text-[#333333]">예정 모임</h3>
           <span
-            v-if="!loading && !somoimLoading && !errorMessage"
+            v-if="!loadingAny && !errorMessage"
             class="ml-1 rounded-lg bg-[#f5f6f7] px-2 py-0.5 text-sm font-semibold text-[#5f6368]"
           >
-            {{ openMeetups.length }}
+            {{ upcomingMeetups.length }}
           </span>
         </div>
         <RefreshSomoimButton @refreshed="loadSomoimEvents" />
@@ -301,7 +257,7 @@ function calendarAttendeeStack(meetup) {
       </p>
 
       <!-- 스켈레톤 -->
-      <ul v-if="loading || somoimLoading" class="divide-y divide-[#dadce0]">
+      <ul v-if="loadingAny" class="divide-y divide-[#dadce0]">
         <li
           v-for="n in 3"
           :key="n"
@@ -328,32 +284,41 @@ function calendarAttendeeStack(meetup) {
       <p v-else-if="errorMessage" class="py-6 text-[15px] font-semibold text-[#e74c3c]">
         {{ errorMessage }}
       </p>
-      <div v-else-if="openMeetups.length === 0" class="py-12 text-center">
-        <p class="text-[14px] text-[#333333]">열린 모임이 없습니다.</p>
-        <p class="mt-1 text-[13px] text-[#5f6368]">새 모임을 개설해 보세요.</p>
+      <div v-else-if="upcomingMeetups.length === 0" class="py-8 text-center">
+        <p class="text-[14px] text-[#333333]">예정된 모임이 없어요.</p>
+        <button
+          class="focus-ring ui-text-link mt-1 inline-flex items-center gap-1 px-2 py-1 text-[13px] font-semibold"
+          type="button"
+          @click="goToFeature('meetups')"
+        >
+          새 모임 만들기
+          <ArrowRight :size="14" />
+        </button>
       </div>
 
-      <ul v-else class="divide-y divide-[#dadce0]">
-        <MeetupCard
-          v-for="meetup in openMeetups"
-          :key="meetup.id"
-          :meetup="meetup"
-          :pending-id="pendingId"
-          :show-readonly-dot="false"
-          @toggle-join="toggleJoin"
-          @cancel="cancelMeetup"
-        />
-      </ul>
-    </section>
+      <template v-else>
+        <ul class="divide-y divide-[#dadce0]">
+          <MeetupCard
+            v-for="meetup in previewMeetups"
+            :key="meetup.id"
+            :meetup="meetup"
+            :pending-id="pendingId"
+            :show-readonly-dot="false"
+            @toggle-join="toggleJoin"
+            @cancel="cancelMeetup"
+          />
+        </ul>
 
-    <!-- 오늘 열린 모임 배너 -->
-    <div class="flex items-center gap-2.5 rounded-xl bg-[#f5f6f7] px-4 py-3.5">
-      <CalendarDays :size="18" class="text-[#03C75A]" />
-      <p class="text-[14px] font-medium text-[#333333]">
-        오늘 열린 모임
-        <span class="ml-0.5 font-bold text-[#03C75A]">{{ todayMeetupsCount }}개</span>
-      </p>
-    </div>
+        <button
+          class="focus-ring ui-radius-control ui-border mt-4 flex h-11 w-full items-center justify-center gap-1.5 border text-[14px] font-semibold transition"
+          type="button"
+          @click="goToFeature('meetups')"
+        >
+          {{ hiddenCount > 0 ? `모임 ${hiddenCount}건 더 보기` : '모임 탭에서 전체 보기' }}
+          <ArrowRight :size="16" />
+        </button>
+      </template>
+    </section>
 
     <!-- 모임 안내 (접기/펼치기) -->
     <!-- TODO(multi-group): 아래 시간/장소/타임라인은 현재 단일 모임
