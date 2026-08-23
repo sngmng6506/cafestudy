@@ -78,6 +78,26 @@ export function createMeetupService({ db, storage, hooks, queries = createMeetup
       return { meetupId, cancelled: true };
     },
 
+    async retrySomoimRegistration({ meetupId, userId }) {
+      const meetup = await queries.getMeetupById(meetupId);
+      if (!meetup) throwError(404, 'MEETUP_NOT_FOUND', '모임을 찾을 수 없습니다.');
+      if (meetup.hostId !== userId) {
+        throwError(403, 'NOT_MEETUP_HOST', '모임 개설자만 다시 시도할 수 있어요.');
+      }
+      if (meetup.somoimState !== 'failed') {
+        throwError(400, 'MEETUP_SOMOIM_NOT_FAILED', '다시 시도할 수 있는 상태가 아니에요.');
+      }
+
+      const results = await (hooks?.emit?.('meetupCreated', meetup) ?? Promise.resolve([]));
+      const jobId = results.find((result) => result?.jobId)?.jobId ?? null;
+      if (!jobId) {
+        throwError(503, 'SOMOIM_AUTOMATION_UNAVAILABLE', '지금은 소모임에 등록할 수 없어요.');
+      }
+
+      const updated = await queries.setSomoimState({ meetupId, state: 'pending', jobId });
+      return { meetupId, somoimState: updated?.somoimState ?? 'pending' };
+    },
+
     async leaveMeetup({ meetupId, userId }) {
       const meetup = await queries.getMeetupById(meetupId);
       if (meetup && deriveLifecycleState(meetup.scheduledAt) === 'done') {

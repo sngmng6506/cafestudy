@@ -293,3 +293,76 @@ test('createMeetup: 리스너가 jobId를 주면 pending으로 바꾼다', async
   assert.deepEqual(calls.stateUpdates, [{ meetupId: 'meetup-1', state: 'pending', jobId: 'job-1' }]);
   assert.equal(meetup.somoimState, 'pending', '응답이 바로 등록 중으로 보여야 한다');
 });
+
+test('retrySomoimRegistration: 개설자가 아니면 거부한다', async () => {
+  const service = createMeetupService({
+    db: {}, storage: null, hooks: null,
+    queries: { async getMeetupById() { return { id: 'm1', hostId: 'host', somoimState: 'failed' }; } },
+  });
+
+  await assert.rejects(
+    () => service.retrySomoimRegistration({ meetupId: 'm1', userId: 'other' }),
+    (error) => { assert.equal(error.code, 'NOT_MEETUP_HOST'); return true; },
+  );
+});
+
+test('retrySomoimRegistration: failed가 아니면 거부한다', async () => {
+  const service = createMeetupService({
+    db: {}, storage: null, hooks: null,
+    queries: { async getMeetupById() { return { id: 'm1', hostId: 'host', somoimState: 'registered' }; } },
+  });
+
+  await assert.rejects(
+    () => service.retrySomoimRegistration({ meetupId: 'm1', userId: 'host' }),
+    (error) => { assert.equal(error.code, 'MEETUP_SOMOIM_NOT_FAILED'); return true; },
+  );
+});
+
+test('retrySomoimRegistration: 새 job을 만들고 pending으로 되돌린다', async () => {
+  const updates = [];
+  const service = createMeetupService({
+    db: {}, storage: null,
+    hooks: { on() {}, async emit() { return [{ jobId: 'job-2' }]; } },
+    queries: {
+      async getMeetupById() { return { id: 'm1', hostId: 'host', somoimState: 'failed' }; },
+      async setSomoimState(input) { updates.push(input); return { somoimState: input.state }; },
+    },
+  });
+
+  const result = await service.retrySomoimRegistration({ meetupId: 'm1', userId: 'host' });
+
+  assert.equal(result.somoimState, 'pending');
+  assert.deepEqual(updates, [{ meetupId: 'm1', state: 'pending', jobId: 'job-2' }]);
+});
+
+test('retrySomoimRegistration: 자동화가 꺼져있으면 503으로 거부한다', async () => {
+  const service = createMeetupService({
+    db: {}, storage: null,
+    hooks: { on() {}, async emit() { return []; } },
+    queries: {
+      async getMeetupById() { return { id: 'm1', hostId: 'host', somoimState: 'failed' }; },
+      async setSomoimState() { throw new Error('setSomoimState should not be called'); },
+    },
+  });
+
+  await assert.rejects(
+    () => service.retrySomoimRegistration({ meetupId: 'm1', userId: 'host' }),
+    (error) => {
+      assert.equal(error.code, 'SOMOIM_AUTOMATION_UNAVAILABLE');
+      assert.equal(error.statusCode, 503);
+      return true;
+    },
+  );
+});
+
+test('retrySomoimRegistration: 모임이 없으면 404를 던진다', async () => {
+  const service = createMeetupService({
+    db: {}, storage: null, hooks: null,
+    queries: { async getMeetupById() { return null; } },
+  });
+
+  await assert.rejects(
+    () => service.retrySomoimRegistration({ meetupId: 'missing', userId: 'host' }),
+    (error) => { assert.equal(error.code, 'MEETUP_NOT_FOUND'); return true; },
+  );
+});

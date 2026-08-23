@@ -41,6 +41,17 @@ export function createMeetupRouter(ctx) {
     }
   });
 
+  router.post('/:id/retry-somoim', ctx.auth.requireUser, async (req, res, next) => {
+    try {
+      sendOk(res, await meetupService.retrySomoimRegistration({
+        meetupId: req.params.id,
+        userId: req.user.id,
+      }));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/:id/join', ctx.auth.requireUser, async (req, res, next) => {
     try {
       const result = await meetupService.joinMeetup({ meetupId: req.params.id, userId: req.user.id });
