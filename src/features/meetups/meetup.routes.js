@@ -4,7 +4,7 @@ import { createMeetupService } from './meetup.service.js';
 
 export function createMeetupRouter(ctx) {
   const router = Router();
-  const meetupService = createMeetupService(ctx);
+  const meetupService = createMeetupService({ db: ctx.db, storage: ctx.storage, hooks: ctx.hooks });
 
   router.get('/', async (req, res, next) => {
     try {

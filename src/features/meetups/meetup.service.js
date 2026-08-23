@@ -6,9 +6,7 @@ import { MEETUP_LIMITS } from '../../../shared/domain-constraints.js';
 export const MIN_LEAD_MS = MEETUP_LIMITS.minLeadMs;
 export const MAX_CAPACITY = MEETUP_LIMITS.maxCapacity;
 
-export function createMeetupService({ db, storage }) {
-  const queries = createMeetupQueries(db);
-
+export function createMeetupService({ db, storage, hooks, queries = createMeetupQueries(db) }) {
   return {
     async listMeetups(userId) {
       const meetups = await queries.listMeetups(userId);
@@ -26,8 +24,24 @@ export function createMeetupService({ db, storage }) {
     async createMeetup(input) {
       validateMeetupInput(input);
       const meetup = await queries.createMeetup(input);
+
+      // 듣는 리스너가 없으면 자동 등록도 없다. 자동화가 꺼진 환경은 여기서 그대로 끝난다.
+      const results = await (hooks?.emit?.('meetupCreated', meetup) ?? Promise.resolve([]));
+      const jobId = results.find((result) => result?.jobId)?.jobId ?? null;
+
+      let somoimState = meetup.somoimState ?? 'none';
+      if (jobId) {
+        const updated = await queries.setSomoimState({
+          meetupId: meetup.id,
+          state: 'pending',
+          jobId,
+        });
+        somoimState = updated?.somoimState ?? 'pending';
+      }
+
       return {
         ...withLifecycleState(meetup),
+        somoimState,
         participantCount: 1,
         joined: true,
         isHost: true,

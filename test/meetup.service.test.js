@@ -194,3 +194,58 @@ test('cancelMeetup rejects a non-host with 403', async () => {
     (err) => err.statusCode === 403 && err.code === 'NOT_MEETUP_HOST',
   );
 });
+
+function serviceWithHooks({ listenerResult } = {}) {
+  const calls = { emitted: [], stateUpdates: [] };
+  const queries = {
+    async createMeetup(input) {
+      return { id: 'meetup-1', ...input, status: 'open', somoimState: 'none', somoimJobId: null };
+    },
+    async setSomoimState(input) {
+      calls.stateUpdates.push(input);
+      return { id: input.meetupId, somoimState: input.state, somoimJobId: input.jobId };
+    },
+  };
+  const hooks = {
+    on() {},
+    async emit(event, payload) {
+      calls.emitted.push({ event, payload });
+      return listenerResult === undefined ? [] : [listenerResult];
+    },
+  };
+  return { service: createMeetupService({ db: {}, storage: null, hooks, queries }), calls };
+}
+
+const VALID_INPUT = {
+  hostId: '00000000-0000-0000-0000-000000000001',
+  title: '토요일 카페 스터디',
+  description: null,
+  location: '강남역 스타벅스',
+  scheduledAt: new Date(Date.now() + 3_600_000).toISOString(),
+  capacity: 4,
+};
+
+test('createMeetup: 모임 생성 후 meetupCreated를 발행한다', async () => {
+  const { service, calls } = serviceWithHooks();
+  await service.createMeetup(VALID_INPUT);
+
+  assert.equal(calls.emitted.length, 1);
+  assert.equal(calls.emitted[0].event, 'meetupCreated');
+  assert.equal(calls.emitted[0].payload.id, 'meetup-1');
+});
+
+test('createMeetup: 듣는 리스너가 없으면 상태를 건드리지 않는다', async () => {
+  const { service, calls } = serviceWithHooks();
+  const meetup = await service.createMeetup(VALID_INPUT);
+
+  assert.deepEqual(calls.stateUpdates, [], '자동화가 꺼진 환경에서는 지금과 똑같이 동작해야 한다');
+  assert.equal(meetup.somoimState, 'none');
+});
+
+test('createMeetup: 리스너가 jobId를 주면 pending으로 바꾼다', async () => {
+  const { service, calls } = serviceWithHooks({ listenerResult: { jobId: 'job-1' } });
+  const meetup = await service.createMeetup(VALID_INPUT);
+
+  assert.deepEqual(calls.stateUpdates, [{ meetupId: 'meetup-1', state: 'pending', jobId: 'job-1' }]);
+  assert.equal(meetup.somoimState, 'pending', '응답이 바로 등록 중으로 보여야 한다');
+});
