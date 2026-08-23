@@ -10,9 +10,13 @@ source of truth다.
 
 ## 현재 상태
 
-배관(job 루프, 안전장치, 실패 분기)은 동작하고 **ADB handler는 아직 비어 있다.**
-`handlers/create-meetup.js`가 `ManualReviewError`를 던지므로, 지금 실행하면 job은
-`needs_manual_review`로 끝난다. 태블릿 화면 트리를 확인한 뒤 handler를 채우면 된다.
+배관(job 루프, 안전장치, 실패 분기)과 `handlers/create-meetup.js`(dryRun) 모두 동작한다.
+자동화 계정은 "[홍대] it&ai 스터디" 클럽 운영진 전용이며(`create-meetup.js`의
+`TARGET_GROUP_NAME`), 다른 클럽은 지원하지 않는다. 태블릿에 ADBKeyBoard IME
+(`com.android.adbkeyboard/.AdbIME`)가 설치·활성화돼 있어야 한글 입력이 된다. `submit`
+모드 코드도 구현돼 있지만 worker의 `ALLOW_SOMOIM_SUBMIT`과 서버의
+`SOMOIM_AUTOMATION_ALLOW_SUBMIT` 이중 스위치가 꺼져 있는 한 실행되지 않고, 실기기로
+검증한 적도 없다.
 
 ## 실행
 

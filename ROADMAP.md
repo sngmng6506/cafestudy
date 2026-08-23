@@ -19,10 +19,13 @@
 
 남은 것:
 
-- **ADB handler** — 소모임 앱 모임 개설 화면 자동화(`worker/handlers/create-meetup.js`).
-  화면 트리를 확인해 입력창을 어떻게 특정할지(resource-id / text / 좌표) 정해야 한다.
-  날짜·시간 위젯 조작과 결과 검증이 가장 까다로운 부분이다.
-- **실제 제출 개방** — 지금은 dry-run만 만든다. 서버와 worker 스위치를 모두 켜고,
+- ~~**ADB handler**~~ — `worker/handlers/create-meetup.js` dryRun 구현 완료. 자동화
+  계정은 "[홍대] it&ai 스터디" 클럽 운영진 권한으로 고정되어 있고(다른 클럽 미지원),
+  ADBKeyBoard IME로 한글을 입력한다. 날짜·시간은 겉보기엔 별개 필드(date_text/
+  time_text)지만 실제로는 하나의 위젯이라 날짜 확정 직후 화면이 폼으로 돌아오는지
+  시간 선택기로 바로 넘어가는지 매번 다시 읽어 분기해야 했다 — 라이브 기기로 직접
+  검증. `submit` 모드 코드는 있지만 두 스위치가 꺼져 있어 미검증 상태다.
+- **실제 제출 개방** — 지금은 dry-run만 검증됐다. 서버와 worker 스위치를 모두 켜고,
   제출 직전 화면 대조까지 확인한 뒤에 연다. 관리자 화면에도 제출 토글이 필요하다
   (서버의 `allowSubmit` 여부를 클라이언트가 알 수 있어야 한다).
 - **job type 확장** — 모임 수정, 참석자 확인. 현재 DB CHECK가 `create_meetup`만 허용한다.
