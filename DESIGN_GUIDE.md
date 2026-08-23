@@ -30,7 +30,15 @@ CafeStudy UI의 시각·컴포넌트·접근성 기준. 사용자 문구는 [WRI
 | stroke | `#DADCE0` | 기본 테두리 |
 | stroke-subtle | `#E9EBEE` | 약한 구분선 |
 | destructive | `#E74C3C` | 오류, 삭제 |
+| destructive-surface | `#FFF1F2` | 오류 메시지 배경 |
+| success-surface | `#E9F8EF` | 모집 중 배지 배경 |
+| success-content | `#03883F` | 모집 중 배지 텍스트 |
 | link | `#0068C3` | 링크, 정보성 액션 |
+
+컴포넌트에서는 위 값을 직접 쓰지 말고 `text-[var(--ui-color-content)]`,
+`bg-[var(--ui-color-surface-subtle)]`처럼 token 변수를 참조한다. `hover:`,
+`placeholder:` 같은 variant와도 그대로 조합된다. 색 하나만 필요한 곳은
+`.ui-text-muted` 같은 공통 클래스를 써도 된다.
 
 아바타는 `client/src/shared/useAvatar.js`의 이름 해시 팔레트를 사용한다. 흰 텍스트 대비를 위해 임의로 밝게 바꾸지 않는다.
 
@@ -95,9 +103,18 @@ Tailwind radius 단계를 감각적으로 고르지 말고 역할 token을 사�
 ### 배지·칩
 
 - 선택형 pill: surface-subtle, 선택 시 brand와 흰 텍스트
-- 모집 중: `#E9F8EF` / `#03883F`
+- 모집 중: success-surface / success-content
 - 마감: surface-subtle / content-muted
 - 색상만으로 상태를 구분하지 않고 텍스트를 함께 제공
+
+### 잠금 상태
+
+로그인이 필요해 쓸 수 없는 탭·버튼은 숨기지 않고 잠금으로 표시해 기능의 존재를 알린다.
+
+- 흐리게(`opacity` 40~45%) + 아이콘에 자물쇠 배지를 함께 사용한다.
+  투명도만으로 상태를 표현하지 않는다.
+- `disabled` 대신 `aria-disabled`를 쓴다. 키보드 포커스를 유지해야 이유를 안내할 수 있다.
+- 눌렀을 때 아무 반응이 없으면 고장으로 읽힌다. 왜 막혔는지 알리고 로그인으로 이어준다.
 
 ### 아바타
 
