@@ -1,0 +1,102 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import {
+  findByResourceId,
+  formatEnglishHeader,
+  formatKoreanDate,
+  formatKoreanTime,
+  monthsBetween,
+  parseEnglishHeaderDate,
+  parseUiNodes,
+  to12Hour,
+  toKstParts,
+} from '../worker/handlers/create-meetup.js';
+
+// 실제 uiautomator dump에서 뽑아낸 조각들(이 세션에서 태블릿으로 직접 확인한 값).
+const GROUP_SEARCH_RESULT_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/groupname_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[196,660][1568,708]" drawing-order="1" hint="" /></hierarchy>`;
+
+const DATE_PICKER_HEADER_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="2026" resource-id="android:id/date_picker_header_year" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[504,820][612,894]" drawing-order="1" hint="" /><node index="1" text="Sat, Sep 5" resource-id="android:id/date_picker_header_date" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[520,878][856,967]" drawing-order="2" hint="" /></hierarchy>`;
+
+test('parseUiNodes: decodes XML entities and computes bounds/center', () => {
+  const nodes = parseUiNodes(GROUP_SEARCH_RESULT_XML);
+  assert.equal(nodes.length, 1);
+  assert.equal(nodes[0].text, '[홍대] it&ai 스터디');
+  assert.equal(nodes[0].resourceId, 'com.friendscube.somoim:id/groupname_text');
+  assert.deepEqual(nodes[0].bounds, { x1: 196, y1: 660, x2: 1568, y2: 708 });
+  assert.deepEqual(nodes[0].center, { x: 882, y: 684 });
+  assert.equal(nodes[0].enabled, true);
+  assert.equal(nodes[0].clickable, false);
+});
+
+test('parseUiNodes: returns an empty list for a screen with no nodes', () => {
+  assert.deepEqual(parseUiNodes('<hierarchy rotation="0"></hierarchy>'), []);
+});
+
+test('findByResourceId: matches by suffix across app and android namespaces', () => {
+  const nodes = parseUiNodes(DATE_PICKER_HEADER_XML);
+  assert.equal(findByResourceId(nodes, 'date_picker_header_year').text, '2026');
+  assert.equal(findByResourceId(nodes, 'date_picker_header_date').text, 'Sat, Sep 5');
+  assert.equal(findByResourceId(nodes, 'does_not_exist'), undefined);
+});
+
+test('toKstParts: converts a UTC scheduledAt into KST wall-clock parts', () => {
+  // 2026-09-05T10:00:00.000Z + 9h = 2026-09-05 19:00 KST (Saturday)
+  const parts = toKstParts('2026-09-05T10:00:00.000Z');
+  assert.deepEqual(parts, { year: 2026, month: 9, day: 5, hour24: 19, minute: 0, weekday: 6 });
+});
+
+test('toKstParts: a date near midnight UTC can roll into the next KST day', () => {
+  // 2026-09-05T20:00:00.000Z + 9h = 2026-09-06 05:00 KST
+  const parts = toKstParts('2026-09-05T20:00:00.000Z');
+  assert.equal(parts.day, 6);
+  assert.equal(parts.hour24, 5);
+});
+
+test('toKstParts: rejects an invalid date as a manual-review error', () => {
+  assert.throws(() => toKstParts('not-a-date'), (error) => {
+    assert.equal(error.needsManualReview, true);
+    assert.match(error.message, /not a valid date/);
+    return true;
+  });
+});
+
+test('to12Hour: converts 24h boundaries to the 12h clock used by the time picker', () => {
+  assert.deepEqual(to12Hour(0), { hour12: 12, period: 'AM' });
+  assert.deepEqual(to12Hour(7), { hour12: 7, period: 'AM' });
+  assert.deepEqual(to12Hour(12), { hour12: 12, period: 'PM' });
+  assert.deepEqual(to12Hour(19), { hour12: 7, period: 'PM' });
+  assert.deepEqual(to12Hour(23), { hour12: 11, period: 'PM' });
+});
+
+test('formatKoreanDate: matches the app’s date_text format', () => {
+  assert.equal(formatKoreanDate({ month: 9, day: 5, weekday: 6 }), '9월 5일 (토)');
+});
+
+test('formatKoreanTime: matches the app’s time_text format', () => {
+  assert.equal(formatKoreanTime({ hour24: 19, minute: 0 }), '오후 7:00');
+  assert.equal(formatKoreanTime({ hour24: 9, minute: 5 }), '오전 9:05');
+});
+
+test('formatEnglishHeader: matches the date picker header format', () => {
+  assert.deepEqual(formatEnglishHeader({ year: 2026, month: 9, day: 5, weekday: 6 }), {
+    yearText: '2026',
+    dateText: 'Sat, Sep 5',
+  });
+});
+
+test('parseEnglishHeaderDate: reads the month/day back out of the header text', () => {
+  assert.deepEqual(parseEnglishHeaderDate('Sat, Sep 5'), { month: 9, day: 5 });
+  assert.deepEqual(parseEnglishHeaderDate('Sun, Aug 23'), { month: 8, day: 23 });
+});
+
+test('parseEnglishHeaderDate: returns null for unrecognised text instead of guessing', () => {
+  assert.equal(parseEnglishHeaderDate('garbage'), null);
+  assert.equal(parseEnglishHeaderDate('Sat, Foo 5'), null);
+});
+
+test('monthsBetween: counts month deltas across year boundaries', () => {
+  assert.equal(monthsBetween({ year: 2026, month: 8 }, { year: 2026, month: 9 }), 1);
+  assert.equal(monthsBetween({ year: 2026, month: 8 }, { year: 2026, month: 8 }), 0);
+  assert.equal(monthsBetween({ year: 2026, month: 12 }, { year: 2027, month: 2 }), 2);
+  assert.equal(monthsBetween({ year: 2026, month: 9 }, { year: 2026, month: 8 }), -1);
+});
