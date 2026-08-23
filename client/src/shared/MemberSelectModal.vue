@@ -7,9 +7,11 @@ import { avatarColor, initials } from './useAvatar.js';
 
 const props = defineProps({
   dismissable: { type: Boolean, default: false },
+  // 잠긴 기능을 눌러서 열렸다면 왜 막혔는지 알려준다.
+  reason: { type: String, default: '' },
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'browse']);
 const { currentUserId, setCurrentUser } = useCurrentUser();
 
 const members = ref([]);
@@ -125,6 +127,13 @@ async function submitAuth() {
       </button>
 
       <template v-if="step === 'select'">
+        <p
+          v-if="reason"
+          class="ui-radius-control mb-3 bg-[var(--ui-color-surface-subtle)] px-3 py-2.5 text-[13px] text-[var(--ui-color-content)]"
+        >
+          {{ reason }}
+        </p>
+
         <h2 class="text-[18px] font-bold text-[var(--ui-color-content)]">나는 누구인가요?</h2>
         <p class="mt-1 text-[13px] text-[var(--ui-color-content-muted)]">본인 이름을 선택하면 비밀번호로 로그인해요.</p>
 
@@ -179,6 +188,14 @@ async function submitAuth() {
             </div>
           </li>
         </ul>
+
+        <button
+          class="focus-ring ui-radius-control mt-4 h-11 w-full border border-[var(--ui-color-stroke)] text-[14px] font-semibold text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)]"
+          type="button"
+          @click="emit('browse')"
+        >
+          먼저 둘러보기
+        </button>
       </template>
 
       <template v-else>

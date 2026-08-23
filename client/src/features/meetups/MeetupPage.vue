@@ -5,11 +5,13 @@ import { apiFetch } from '../../shared/api.js';
 import { formatDate } from '../../shared/useMeetups.js';
 import { useUpcomingMeetups } from '../../shared/useUpcomingMeetups.js';
 import { useToast } from '../../shared/useToast.js';
+import { useGuestGate } from '../../shared/useGuestGate.js';
 import MeetupCard from '../../shared/MeetupCard.vue';
 import RefreshSomoimButton from '../../shared/RefreshSomoimButton.vue';
 import { MEETUP_LIMITS } from '../../../../shared/domain-constraints.js';
 
 const toast = useToast();
+const { isGuest, requireLogin } = useGuestGate();
 const {
   upcomingMeetups,
   loadingAny,
@@ -148,6 +150,11 @@ const creating = ref(false);
 
 // 만들기 버튼: 입력 검증만 통과하면 바로 만들지 않고 장소·일시 확인 팝업을 띄운다.
 function requestCreateMeetup() {
+  if (isGuest.value) {
+    requireLogin('모임 만들기는 로그인하면 쓸 수 있어요.');
+    return;
+  }
+
   const scheduled = new Date(form.value.scheduledAt);
   if (Number.isNaN(scheduled.getTime()) || scheduled.getTime() < Date.now() + MEETUP_LIMITS.minLeadMs) {
     toast.error('모임은 지금부터 30분 이후 시간으로만 만들 수 있어요.');

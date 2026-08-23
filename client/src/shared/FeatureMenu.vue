@@ -1,9 +1,11 @@
 <script setup>
 import { onBeforeUnmount, onMounted } from 'vue';
+import { Lock } from '@lucide/vue';
 
 const props = defineProps({
   features: { type: Array, required: true },
   activeName: { type: String, default: '' },
+  isLocked: { type: Function, default: () => false },
 });
 
 const emit = defineEmits(['select', 'close']);
@@ -48,16 +50,25 @@ onBeforeUnmount(() => {
           v-for="feature in props.features"
           :key="feature.name"
           class="focus-ring flex min-h-10 w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition"
-          :class="feature.name === activeName ? 'bg-[var(--ui-color-success-surface)] text-[var(--ui-color-brand)]' : 'text-[var(--ui-color-content)] hover:bg-[var(--ui-color-surface-subtle)]'"
+          :class="[
+            feature.name === activeName ? 'bg-[var(--ui-color-success-surface)] text-[var(--ui-color-brand)]' : 'text-[var(--ui-color-content)] hover:bg-[var(--ui-color-surface-subtle)]',
+            props.isLocked(feature) ? 'opacity-45' : '',
+          ]"
           type="button"
           role="menuitem"
+          :aria-disabled="props.isLocked(feature)"
           @click="emit('select', feature.name)"
         >
           <span
-            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border"
+            class="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border"
             :class="feature.name === activeName ? 'border-[var(--ui-color-brand)] bg-white' : 'border-[var(--ui-color-stroke)] bg-[var(--ui-color-canvas)]'"
           >
             <component :is="feature.icon" :size="16" />
+            <Lock
+              v-if="props.isLocked(feature)"
+              class="ui-bg-surface absolute -right-1 -top-1 rounded-full"
+              :size="10"
+            />
           </span>
           <span class="min-w-0 flex-1 truncate text-[14px] font-semibold leading-snug">
             {{ feature.label }}

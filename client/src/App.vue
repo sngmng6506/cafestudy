@@ -1,5 +1,5 @@
 <script setup>
-import { MoreHorizontal, Search } from '@lucide/vue';
+import { Lock, MoreHorizontal, Search } from '@lucide/vue';
 import ToastContainer from './shared/ToastContainer.vue';
 import MemberSelectModal from './shared/MemberSelectModal.vue';
 import FeatureMenu from './shared/FeatureMenu.vue';
@@ -26,10 +26,27 @@ const {
   activeFeature,
   overflowActive,
   moreItems,
+  isGuest,
+  loginPromptOpen,
+  loginReason,
+  isLocked,
+  startBrowsing,
+  closeLoginPrompt,
   selectFeature,
   openMenuSearch,
   toggleMore,
 } = useAppShell();
+
+function browseAsGuest() {
+  startBrowsing();
+  memberSelectOpen.value = false;
+  closeLoginPrompt();
+}
+
+function closeLogin() {
+  memberSelectOpen.value = false;
+  closeLoginPrompt();
+}
 </script>
 
 <template>
@@ -69,6 +86,13 @@ const {
       </div>
     </header>
 
+    <p
+      v-if="isGuest"
+      class="ui-radius-item ui-bg-subtle ui-text-muted mb-5 px-4 py-2.5 text-[13px] font-medium"
+    >
+      둘러보는 중이에요.
+    </p>
+
     <component :is="activeFeature.component" />
 
     <div
@@ -97,11 +121,22 @@ const {
           v-for="feature in primaryFeatures"
           :key="feature.name"
           class="focus-ring relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition"
-          :class="feature.name === activeFeatureName ? 'ui-nav-item-active' : 'ui-nav-item'"
+          :class="[
+            feature.name === activeFeatureName ? 'ui-nav-item-active' : 'ui-nav-item',
+            isLocked(feature) ? 'opacity-40' : '',
+          ]"
           type="button"
+          :aria-disabled="isLocked(feature)"
           @click="selectFeature(feature.name)"
         >
-          <component :is="feature.icon" :size="20" />
+          <span class="relative">
+            <component :is="feature.icon" :size="20" />
+            <Lock
+              v-if="isLocked(feature)"
+              class="ui-bg-surface absolute -right-1.5 -top-1 rounded-full"
+              :size="11"
+            />
+          </span>
           {{ feature.label }}
         </button>
 
@@ -123,9 +158,11 @@ const {
     <ToastContainer />
 
     <MemberSelectModal
-      v-if="memberSelectOpen"
-      :dismissable="!!currentToken"
-      @close="memberSelectOpen = false"
+      v-if="memberSelectOpen || loginPromptOpen"
+      :dismissable="!!currentToken || loginPromptOpen"
+      :reason="loginReason"
+      @close="closeLogin"
+      @browse="browseAsGuest"
     />
 
     <MenuSearchSheet
@@ -139,6 +176,7 @@ const {
       v-if="moreOpen && hasOverflow"
       :features="moreItems"
       :active-name="activeFeatureName"
+      :is-locked="isLocked"
       @select="selectFeature"
       @close="moreOpen = false"
     />

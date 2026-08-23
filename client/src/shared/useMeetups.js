@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { apiFetch } from './api.js';
+import { useGuestGate } from './useGuestGate.js';
 
 const meetups = ref([]);
 const loading = ref(false);
@@ -8,6 +9,8 @@ const errorMessage = ref('');
 const actionError = ref('');
 
 export function useMeetups() {
+  const { isGuest, requireLogin } = useGuestGate();
+
   async function loadMeetups() {
     loading.value = true;
     errorMessage.value = '';
@@ -22,6 +25,10 @@ export function useMeetups() {
   }
 
   async function toggleJoin(meetup) {
+    if (isGuest.value) {
+      requireLogin('모임 참여는 로그인하면 쓸 수 있어요.');
+      return;
+    }
     pendingId.value = meetup.id;
     actionError.value = '';
     try {

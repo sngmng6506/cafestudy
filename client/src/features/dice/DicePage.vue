@@ -3,8 +3,10 @@ import { onMounted, ref } from 'vue';
 import { Dices } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { useCurrentUser } from '../../shared/useCurrentUser.js';
+import { useGuestGate } from '../../shared/useGuestGate.js';
 
 const { currentUserId } = useCurrentUser();
+const { isGuest, requireLogin } = useGuestGate();
 
 const SIZE = 112;
 const HALF = SIZE / 2;
@@ -65,6 +67,10 @@ function rand(min, max) {
 }
 
 async function roll() {
+  if (isGuest.value) {
+    requireLogin('주사위는 로그인하면 굴릴 수 있어요.');
+    return;
+  }
   if (rolling.value || apiPending.value) return;
 
   lastEarned.value = null;
