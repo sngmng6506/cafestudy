@@ -57,6 +57,7 @@ export function createMeetupQueries(db) {
           ) attendee_summary ON true
           WHERE m.status = 'open'
             AND m.source_type = 'app'
+            AND (m.somoim_state <> 'failed' OR m.host_id = $1)
           ORDER BY m.scheduled_at ASC, m.created_at DESC
         `,
         [userId ?? null],
