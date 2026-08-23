@@ -31,7 +31,7 @@ const somoimLink = somoimAppLink();
   <li
     v-if="compact"
     class="grid gap-2 rounded-lg border p-3"
-    :class="meetup.readonly ? 'border-l-[3px] border-l-[#10B981] border-y-[var(--ui-color-stroke)] border-r-[var(--ui-color-stroke)] bg-[#F0FDF4]' : 'border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)]'"
+    :class="meetup.readonly ? 'ui-external-surface border-l-[3px] border-l-[var(--ui-color-external)] border-y-[var(--ui-color-stroke)] border-r-[var(--ui-color-stroke)]' : 'ui-bg-subtle border-[var(--ui-color-stroke)]'"
   >
     <div>
       <p class="flex flex-wrap items-center gap-1.5 text-[15px] font-semibold text-[var(--ui-color-content)]">
@@ -57,7 +57,7 @@ const somoimLink = somoimAppLink();
       </span>
       <span
         class="inline-flex h-6 items-center rounded-full px-2.5 text-[12px] font-semibold"
-        :class="isFull ? 'bg-[var(--ui-color-surface-subtle)] text-[var(--ui-color-content-muted)]' : 'bg-[var(--ui-color-success-surface)] text-[var(--ui-color-success-content)]'"
+        :class="isFull ? 'ui-badge-neutral' : 'ui-badge-success'"
       >
         {{ isFull ? '마감' : '모집중' }}
       </span>
@@ -68,7 +68,7 @@ const somoimLink = somoimAppLink();
   <li
     v-else
     class="flex flex-col gap-2.5 py-4 first:pt-0 last:pb-0"
-    :class="meetup.readonly ? 'border-l-[3px] border-l-[#10B981] -ml-4 pl-4' : ''"
+    :class="meetup.readonly ? 'border-l-[3px] border-l-[var(--ui-color-external)] -ml-4 pl-4' : ''"
   >
     <div class="flex items-start gap-2">
       <h4 class="min-w-0 flex-1 text-[17px] font-bold tracking-[-0.34px] text-[var(--ui-color-content)]">
@@ -76,7 +76,7 @@ const somoimLink = somoimAppLink();
       </h4>
       <span
         v-if="meetup.readonly && showReadonlyDot"
-        class="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#10B981]"
+        class="ui-external-accent mt-1 h-2 w-2 shrink-0 rounded-full"
         aria-label="소모임"
       ></span>
     </div>
@@ -96,7 +96,7 @@ const somoimLink = somoimAppLink();
       <span
         v-if="!meetup.readonly"
         class="inline-flex h-7 items-center rounded-full px-3 text-[12px] font-semibold"
-        :class="isFull ? 'bg-[var(--ui-color-surface-subtle)] text-[var(--ui-color-content-muted)]' : 'bg-[var(--ui-color-success-surface)] text-[var(--ui-color-success-content)]'"
+        :class="isFull ? 'ui-badge-neutral' : 'ui-badge-success'"
       >
         {{ isFull ? '마감' : '모집중' }}
       </span>
@@ -140,7 +140,7 @@ const somoimLink = somoimAppLink();
           v-for="attendee in attendees"
           :key="`name-${attendee.id ?? attendee.name}`"
           class="inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium leading-tight"
-          :class="attendee.isHost ? 'border-[var(--ui-color-brand)] bg-[var(--ui-color-success-surface)] text-[var(--ui-color-success-content)]' : 'border-transparent bg-[var(--ui-color-surface-subtle)] text-[var(--ui-color-content)]'"
+          :class="attendee.isHost ? 'ui-badge-success ui-border-brand' : 'ui-bg-subtle ui-text border-transparent'"
         >
           <span class="min-w-0 break-words">{{ attendee.name }}</span>
         </li>
@@ -172,7 +172,7 @@ const somoimLink = somoimAppLink();
       <div class="ml-auto flex items-center gap-2">
         <a
           v-if="meetup.readonly"
-          class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#059669] text-white transition hover:bg-[#047857]"
+          class="ui-button-external focus-ring ui-radius-control inline-flex h-9 w-9 items-center justify-center transition"
           :href="somoimLink.href"
           :target="somoimLink.target"
           rel="noreferrer"

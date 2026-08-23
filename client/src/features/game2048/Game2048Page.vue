@@ -297,7 +297,7 @@ const displayBest = computed(() => best.value.toLocaleString());
           </div>
           <div class="rounded-[10px] bg-[var(--ui-color-surface-subtle)] px-4 py-2 text-center">
             <div class="text-[11px] font-semibold text-[var(--ui-color-content-disabled)]">최고</div>
-            <div class="text-[18px] font-bold text-[var(--ui-color-success-content)]">{{ displayBest }}</div>
+            <div class="ui-text-success text-[18px] font-bold">{{ displayBest }}</div>
           </div>
         </div>
         <button

@@ -21,7 +21,7 @@ const knownIssues = [
 
 const statusMeta = {
   planned: { label: '개선 예정', cls: 'bg-[#EDE7FB] text-[#7C3AED]' },
-  'in-progress': { label: '진행 중', cls: 'bg-[var(--ui-color-success-surface)] text-[var(--ui-color-success-content)]' },
+  'in-progress': { label: '진행 중', cls: 'ui-badge-success' },
   done: { label: '완료', cls: 'bg-[var(--ui-color-surface-subtle)] text-[var(--ui-color-content-muted)]' },
 };
 </script>

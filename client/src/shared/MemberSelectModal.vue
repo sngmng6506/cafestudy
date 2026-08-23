@@ -143,7 +143,7 @@ async function submitAuth() {
             v-model="query"
             type="text"
             placeholder="이름으로 검색"
-            class="focus-ring h-10 w-full rounded border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] pl-9 pr-4 text-[14px] text-[var(--ui-color-content)] placeholder:text-[var(--ui-color-content-disabled)] focus:border-[var(--ui-color-brand)] focus:bg-white focus:outline-none"
+            class="ui-input ui-input--with-icon focus-ring"
           />
         </div>
 
@@ -184,7 +184,7 @@ async function submitAuth() {
                   {{ member.hasPassword ? '비밀번호로 로그인' : '비밀번호 설정 필요' }}
                 </p>
               </div>
-              <Check v-if="member.id === currentUserId" :size="18" class="shrink-0 text-[var(--ui-color-brand)]" />
+              <Check v-if="member.id === currentUserId" :size="18" class="ui-text-brand shrink-0" />
             </div>
           </li>
         </ul>
@@ -229,7 +229,7 @@ async function submitAuth() {
             type="password"
             autocomplete="off"
             :placeholder="isSetup ? '새 비밀번호 (4자 이상)' : '비밀번호'"
-            class="focus-ring h-10 w-full rounded border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] px-3 text-[16px] text-[var(--ui-color-content)] placeholder:text-[var(--ui-color-content-disabled)] focus:border-[var(--ui-color-brand)] focus:bg-white focus:outline-none"
+            class="ui-input focus-ring"
           />
           <input
             v-if="isSetup"
@@ -237,7 +237,7 @@ async function submitAuth() {
             type="password"
             autocomplete="off"
             placeholder="비밀번호 확인"
-            class="focus-ring h-10 w-full rounded border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] px-3 text-[16px] text-[var(--ui-color-content)] placeholder:text-[var(--ui-color-content-disabled)] focus:border-[var(--ui-color-brand)] focus:bg-white focus:outline-none"
+            class="ui-input focus-ring"
           />
           <input
             v-if="isSetup"
@@ -245,7 +245,7 @@ async function submitAuth() {
             type="text"
             autocomplete="one-time-code"
             placeholder="설정 코드 (관리자가 초기화한 계정만)"
-            class="focus-ring h-10 w-full rounded border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] px-3 text-[16px] text-[var(--ui-color-content)] placeholder:text-[var(--ui-color-content-disabled)] focus:border-[var(--ui-color-brand)] focus:bg-white focus:outline-none"
+            class="ui-input focus-ring"
           />
           <p v-if="isSetup" class="text-[12px] leading-5 text-[var(--ui-color-content-muted)]">
             처음 비밀번호를 만드는 계정은 코드를 비워 두세요. 관리자가 초기화했다면 전달받은 코드를 입력해야 해요.
@@ -256,7 +256,7 @@ async function submitAuth() {
           <button
             type="submit"
             :disabled="submitting"
-            class="focus-ring h-10 w-full rounded bg-[var(--ui-color-brand)] text-[15px] font-bold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
+            class="focus-ring ui-radius-control h-10 w-full bg-[var(--ui-color-brand)] text-[15px] font-bold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
           >
             {{ submitting ? '처리 중…' : isSetup ? '비밀번호 설정하고 시작하기' : '로그인' }}
           </button>

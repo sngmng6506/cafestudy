@@ -240,9 +240,9 @@ function formatBytes(bytes) {
 
       <div
         v-if="showSuccessEffect"
-        class="mt-4 rounded-xl border border-[var(--ui-color-brand)] bg-[var(--ui-color-success-surface)] p-4 text-center"
+        class="ui-bg-success ui-border-brand mt-4 rounded-xl border p-4 text-center"
       >
-        <p class="text-sm font-semibold text-[var(--ui-color-success-content)]">인증이 완료됐어요.</p>
+        <p class="ui-text-success text-sm font-semibold">인증이 완료됐어요.</p>
         <p class="mt-1 text-2xl font-bold text-[var(--ui-color-content)]">+10 포인트</p>
       </div>
     </section>
@@ -284,7 +284,7 @@ function formatBytes(bytes) {
             class="focus-ring flex w-full items-center gap-3 rounded-lg border p-3 text-left transition hover:bg-[var(--ui-color-surface-subtle)]"
             :class="
               meetup.id === selectedMeetupId
-                ? 'border-[var(--ui-color-brand)] bg-[var(--ui-color-success-surface)]'
+                ? 'ui-bg-success ui-border-brand'
                 : 'border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)]'
             "
             type="button"
@@ -303,7 +303,7 @@ function formatBytes(bytes) {
               class="shrink-0 rounded-full px-2 py-1 text-[12px] font-semibold"
               :class="
                 meetup.state === 'done'
-                  ? 'bg-[var(--ui-color-success-surface)] text-[var(--ui-color-success-content)]'
+                  ? 'ui-badge-success'
                   : 'bg-white text-[var(--ui-color-content-muted)]'
               "
             >

@@ -25,7 +25,7 @@ const limitations = [
     <article class="surface-card">
       <div class="mb-3 flex items-center justify-between gap-3">
         <h2 class="text-[16px] font-semibold text-[#222222]">Ternlight란?</h2>
-        <span class="rounded-full bg-[var(--ui-color-success-surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ui-color-success-content)]">
+        <span class="ui-badge-success ui-radius-pill px-2.5 py-1 text-[11px] font-semibold">
           브라우저 실행
         </span>
       </div>
@@ -59,7 +59,7 @@ const limitations = [
     </article>
 
     <article class="rounded-2xl border border-[#dcefe4] bg-[#f5fcf8] p-4">
-      <h2 class="text-[14px] font-semibold text-[var(--ui-color-success-content)]">예시</h2>
+      <h2 class="ui-text-success text-[14px] font-semibold">예시</h2>
       <p class="mt-2 text-[14px] leading-relaxed text-[var(--ui-color-content-muted)]">
         “지난번 스터디 사진 보고 싶어” → 모임 이력<br />
         “사진 올리고 포인트 받고 싶어” → 인증<br />

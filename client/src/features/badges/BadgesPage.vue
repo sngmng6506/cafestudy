@@ -211,7 +211,7 @@ async function activateBadge(badge) {
           </div>
           <span
             v-if="badge.isActive"
-            class="shrink-0 rounded bg-[var(--ui-color-success-surface)] px-2 py-1 text-[12px] font-bold text-[var(--ui-color-success-content)]"
+            class="ui-badge-success ui-radius-badge shrink-0 px-2 py-1 text-[12px] font-bold"
           >
             적용중
           </span>

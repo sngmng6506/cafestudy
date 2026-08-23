@@ -248,7 +248,7 @@ async function saveComment(cafe) {
                 <button
                   v-if="comment.isMine && !editing[cafe.location]"
                   type="button"
-                  class="focus-ring ml-auto rounded px-1 text-[12px] font-semibold text-[var(--ui-color-success-content)] hover:underline"
+                  class="focus-ring ui-text-success ml-auto rounded px-1 text-[12px] font-semibold hover:underline"
                   @click="startEdit(cafe)"
                 >
                   수정

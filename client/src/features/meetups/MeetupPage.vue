@@ -371,7 +371,7 @@ function toLocalInputValue(date) {
       class="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
       @click.self="showSearch = false"
     >
-      <div class="absolute inset-0 bg-[#333333]/30" @click="showSearch = false"></div>
+      <div class="absolute inset-0 bg-[var(--ui-color-content)]/30" @click="showSearch = false"></div>
       <div class="relative z-10 flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-t-xl bg-white shadow-sm sm:rounded-xl">
         <div class="flex items-center justify-between border-b border-[var(--ui-color-stroke)] px-4 py-3">
           <span class="text-[15px] font-semibold text-[var(--ui-color-content)]">장소 검색</span>
@@ -427,7 +427,7 @@ function toLocalInputValue(date) {
       class="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
       @click.self="showConfirm = false"
     >
-      <div class="absolute inset-0 bg-[#333333]/30" @click="showConfirm = false"></div>
+      <div class="absolute inset-0 bg-[var(--ui-color-content)]/30" @click="showConfirm = false"></div>
       <div class="relative z-10 w-full max-w-md rounded-t-xl bg-white p-5 shadow-sm sm:rounded-xl">
         <p class="text-[17px] font-bold text-[var(--ui-color-content)]">이 내용으로 모임을 만들까요?</p>
         <dl class="mt-4 grid gap-2.5 rounded-lg bg-[var(--ui-color-surface-subtle)] p-4 text-[14px]">

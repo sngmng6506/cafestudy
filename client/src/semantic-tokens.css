@@ -1,27 +1,39 @@
 :root {
   /* Semantic aliases: component code should prefer these over raw palette values. */
-  --ui-color-canvas: var(--color-page-bg);
-  --ui-color-surface: var(--color-bg);
-  --ui-color-surface-subtle: var(--color-sub-bg);
-  --ui-color-surface-hover: var(--color-surface-hover);
-  --ui-color-content: var(--color-text);
-  --ui-color-content-muted: var(--color-muted);
-  --ui-color-content-caption: var(--color-caption);
-  --ui-color-content-disabled: var(--color-disabled);
-  --ui-color-stroke: var(--color-border);
-  --ui-color-stroke-subtle: var(--color-border-subtle);
-  --ui-color-stroke-hover: var(--color-border-hover);
-  --ui-color-brand: var(--color-accent);
-  --ui-color-brand-hover: var(--color-accent-hover);
-  --ui-color-brand-active: var(--color-accent-active);
-  --ui-color-destructive: var(--color-danger);
-  --ui-color-link: var(--color-safe);
-  /* 모집중 배지처럼 반복되는 성공 상태 색. DESIGN_GUIDE의 배지 규칙과 같은 값이다. */
-  --ui-color-success-surface: #e9f8ef;
-  --ui-color-success-content: #03883f;
-  --ui-color-danger-surface: #fff1f2;
+  --ui-color-canvas: var(--color-gray-50);
+  --ui-color-surface: var(--color-white);
+  --ui-color-surface-subtle: var(--color-gray-100);
+  --ui-color-surface-hover: var(--color-gray-150);
+  --ui-color-content: var(--color-gray-900);
+  --ui-color-content-muted: var(--color-gray-700);
+  --ui-color-content-caption: var(--color-gray-600);
+  --ui-color-content-disabled: var(--color-gray-500);
+  --ui-color-stroke: var(--color-gray-300);
+  --ui-color-stroke-subtle: var(--color-gray-200);
+  --ui-color-stroke-hover: var(--color-gray-400);
+  --ui-color-brand: var(--color-green-500);
+  --ui-color-brand-hover: var(--color-green-600);
+  --ui-color-brand-active: var(--color-green-700);
+  --ui-color-destructive: var(--color-red-500);
+  /* 저강도 텍스트 액션(모두 읽음, 수정 등)과 실제 링크에 함께 쓴다. */
+  --ui-color-link: var(--color-blue-600);
+
+  /* 긍정·활성 상태 tint: 모집중, 인증 완료, 진행 중, 최고 점수 등 */
+  --ui-color-success-surface: var(--color-green-50);
+  --ui-color-success-content: var(--color-green-800);
+
+  /* 외부 출처(소모임) 표시. 브랜드 그린과 구분되는 색이므로 별도 역할이다. */
+  --ui-color-external: var(--color-emerald-500);
+  --ui-color-external-surface: var(--color-emerald-50);
+  --ui-color-external-strong: var(--color-emerald-600);
+  --ui-color-external-strong-hover: var(--color-emerald-700);
+
+  /* 오류 메시지 배경 */
+  --ui-color-danger-surface: var(--color-red-50);
 
   --ui-radius-badge: 4px;
+  /* 입력은 버튼(control, 10px)과 달리 4px를 쓴다 — 구현된 디자인 기준. */
+  --ui-radius-input: 4px;
   --ui-radius-control: 10px;
   --ui-radius-item: 12px;
   --ui-radius-card: 16px;
@@ -44,10 +56,13 @@
 .ui-text-brand { color: var(--ui-color-brand); }
 .ui-text-danger { color: var(--ui-color-destructive); }
 .ui-text-link { color: var(--ui-color-link); }
+.ui-text-success { color: var(--ui-color-success-content); }
 .ui-bg-surface { background-color: var(--ui-color-surface); }
 .ui-bg-subtle { background-color: var(--ui-color-surface-subtle); }
+.ui-bg-success { background-color: var(--ui-color-success-surface); }
 .ui-border { border-color: var(--ui-color-stroke); }
 .ui-border-subtle { border-color: var(--ui-color-stroke-subtle); }
+.ui-border-brand { border-color: var(--ui-color-brand); }
 .ui-radius-badge { border-radius: var(--ui-radius-badge); }
 .ui-radius-control { border-radius: var(--ui-radius-control); }
 .ui-radius-item { border-radius: var(--ui-radius-item); }
@@ -107,4 +122,61 @@
   background: var(--ui-color-brand);
   content: '';
   transform: translateX(-50%);
+}
+
+/*
+ * 상태 배지 — 배경과 전경을 한 쌍으로 묶는다.
+ * 색상만으로 상태를 전달하지 않도록 텍스트를 항상 함께 넣는다(DESIGN_GUIDE 참고).
+ */
+.ui-badge-success {
+  background-color: var(--ui-color-success-surface);
+  color: var(--ui-color-success-content);
+}
+
+.ui-badge-neutral {
+  background-color: var(--ui-color-surface-subtle);
+  color: var(--ui-color-content-muted);
+}
+
+/*
+ * 표준 입력. 이 규칙들은 레이어 밖이라 Tailwind 유틸리티보다 우선하므로
+ * padding을 덮어쓰려면 pl-* 유틸리티 대신 .ui-input--with-icon을 쓴다.
+ */
+.ui-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-color-stroke);
+  border-radius: var(--ui-radius-input);
+  background: var(--ui-color-surface-subtle);
+  color: var(--ui-color-content);
+  font-size: 16px;
+}
+
+.ui-input::placeholder {
+  color: var(--ui-color-content-disabled);
+}
+
+.ui-input:focus {
+  outline: none;
+  border-color: var(--ui-color-brand);
+  background: var(--ui-color-surface);
+}
+
+/* 좌측 아이콘이 붙는 검색 입력 */
+.ui-input--with-icon {
+  padding-left: 36px;
+}
+
+/* 외부 출처(소모임) 강조 */
+.ui-external-accent { background-color: var(--ui-color-external); }
+.ui-external-surface { background-color: var(--ui-color-external-surface); }
+
+.ui-button-external {
+  background-color: var(--ui-color-external-strong);
+  color: #fff;
+}
+
+.ui-button-external:hover {
+  background-color: var(--ui-color-external-strong-hover);
 }

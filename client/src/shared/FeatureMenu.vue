@@ -25,7 +25,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="fixed inset-0 z-40">
-    <div class="absolute inset-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] bg-[#333333]/20" @click="emit('close')"></div>
+    <div class="absolute inset-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] bg-[var(--ui-color-content)]/20" @click="emit('close')"></div>
 
     <section
       class="absolute bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-[max(0.75rem,calc((100vw-28rem)/2+0.75rem))] flex max-h-[52vh] w-[min(9rem,calc(100vw-1.5rem))] flex-col rounded-2xl bg-white shadow-[0_8px_28px_rgba(0,0,0,0.16)]"
@@ -51,7 +51,7 @@ onBeforeUnmount(() => {
           :key="feature.name"
           class="focus-ring flex min-h-10 w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition"
           :class="[
-            feature.name === activeName ? 'bg-[var(--ui-color-success-surface)] text-[var(--ui-color-brand)]' : 'text-[var(--ui-color-content)] hover:bg-[var(--ui-color-surface-subtle)]',
+            feature.name === activeName ? 'ui-bg-success ui-text-brand' : 'ui-text hover:bg-[var(--ui-color-surface-subtle)]',
             props.isLocked(feature) ? 'opacity-45' : '',
           ]"
           type="button"

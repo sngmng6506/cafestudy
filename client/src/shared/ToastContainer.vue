@@ -6,7 +6,7 @@ const { toasts, dismiss } = useToast();
 
 const ICONS = { success: CheckCircle, error: AlertCircle, info: Info };
 // Naver toasts are always neutral dark — only the icon carries semantic color.
-const ICON_COLOR = { success: 'text-[var(--ui-color-brand)]', error: 'text-[var(--ui-color-destructive)]', info: 'text-white' };
+const ICON_COLOR = { success: 'ui-text-brand', error: 'ui-text-danger', info: 'text-white' };
 </script>
 
 <template>
