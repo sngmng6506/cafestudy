@@ -17,7 +17,7 @@
   (포인트·활동 통계·뱃지 컬렉션)
 - **Notices** — 공지 목록, 우상단 종 알림, 사용자별 읽음 상태와 미확인 개수
 - **Admin** — 관리자 공지 작성·수정·삭제, 최고 관리자(owner)의 관리자 임명·해제,
-  소모임 앱 모임 만들기 요청과 진행 상태 확인(미니PC worker가 처리)
+  소모임 앱 모임 만들기 요청과 진행 상태 확인(worker가 처리)
 - **Settlements** — 앱 모임과 매핑된 소모임 일정을 대상으로 1차·2차·… n차 정산을 추가하고 차수별 총액·참여자별 금액, 계좌·카카오페이 정보, 송금 완료 상태 확인
 - **Badges** — AI 기반 뱃지 생성, 미리보기, 내 뱃지 적용·대표 뱃지 변경·삭제
   (인당 최대 5개). 대표 뱃지는 헤더·멤버 목록·모임 참석자·랭킹에 아바타로 표시
@@ -79,7 +79,7 @@ client/src/
 
 migrations/    # SQL 마이그레이션
 test/          # node:test 테스트
-worker/        # 소모임 앱 자동화 worker (미니PC에서 실행, 배포 이미지에 미포함)
+worker/        # 소모임 앱 자동화 worker (별도 서버에서 실행, 배포 이미지에 미포함)
 ```
 
 ## Contributing
@@ -100,8 +100,8 @@ AI 작업 규칙은 [AGENTS.md](./AGENTS.md)를 따릅니다. 사람이 직접 �
 | [README.md](./README.md) | 배포 방식, 기능, 스크립트 | 프로젝트를 처음 볼 때 |
 | [AGENTS.md](./AGENTS.md) | AI 작업 규칙과 아키텍처·보안 불변식 | AI로 코드를 짜거나 커밋하기 전 |
 | [ROADMAP.md](./ROADMAP.md) | 진행 중인 작업의 남은 일과 구현 후보 | 구현할 기능을 고를 때 |
-| [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md) | 소모임 앱 자동화 job API 계약, worker payload, dry-run/submit 규칙 | 미니PC worker나 소모임 자동화 API를 만들 때 |
-| [worker/README.md](./worker/README.md) | worker 실행 방법, 태블릿 ADB 준비, 실패 처리 원칙 | 미니PC에서 worker를 돌리거나 handler를 구현할 때 |
+| [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md) | 소모임 앱 자동화 job API 계약, worker payload, dry-run/submit 규칙 | worker나 소모임 자동화 API를 만들 때 |
+| [worker/README.md](./worker/README.md) | worker 실행 방법, 태블릿 ADB 준비, 실패 처리 원칙 | worker를 돌리거나 handler를 구현할 때 |
 | [CLAUDE.md](./CLAUDE.md) | AGENTS.md로의 포인터 | 안 봐도 됨 (도구 자동 인식용) |
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | 데이터 모델, 포인트 규칙, 트랜잭션, 설계 한계 | DB나 도메인 로직을 건드리기 전 |
 | [DESIGN_GUIDE.md](./DESIGN_GUIDE.md) | semantic token, 색상, 타이포, 컴포넌트, 접근성 | UI를 만들거나 고치기 전 |

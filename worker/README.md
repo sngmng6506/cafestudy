@@ -1,11 +1,11 @@
 # Somoim automation worker
 
-집 미니PC에서 돌면서 CafeStudy 서버의 자동화 job을 가져와 ADB로 안드로이드 태블릿의
+별도 서버에서 돌면서 CafeStudy 서버의 자동화 job을 가져와 ADB로 안드로이드 태블릿의
 소모임 앱을 조작한다. API 계약은 [SOMOIM_AUTOMATION.md](../SOMOIM_AUTOMATION.md)가
 source of truth다.
 
 이 디렉터리는 Railway 런타임 이미지에 포함되지 않는다(Dockerfile이 `src/`, `shared/`,
-`client/dist/`, `migrations/`, `scripts/`만 복사한다). 서버 배포와 무관하게 미니PC에서만
+`client/dist/`, `migrations/`, `scripts/`만 복사한다). CafeStudy 배포와 무관하게 worker 서버에서만
 실행한다.
 
 ## 현재 상태
@@ -64,7 +64,7 @@ api-client.js         # 서버 job endpoint 호출 (x-internal-key)
 job-runner.js         # job 하나 실행. dryRun/submit 안전장치와 실패 분기
 adb.js                # 기기 목록 파싱·선택, shell/screenshot/uiautomator 래퍼
 errors.js             # ManualReviewError / TransientError
-handlers/             # job type별 화면 자동화 (create_meetup은 미구현)
+handlers/             # job type별 화면 자동화
 ```
 
 서버 통신(`api-client`)과 job 실행(`job-runner`)을 분리해서, 기기 없이도 안전장치와

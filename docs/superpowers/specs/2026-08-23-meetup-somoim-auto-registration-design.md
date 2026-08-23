@@ -18,7 +18,7 @@
 
 1. 멤버가 웹에서 모임을 만든다.
 2. 모임이 "소모임 등록 중" 상태로 목록에 나타난다. 아직 참가할 수 없다.
-3. 미니PC worker가 job을 가져가 소모임 앱에서 정모를 개설한다. 정원은 웹 모임에서
+3. worker가 job을 가져가 소모임 앱에서 정모를 개설한다. 정원은 웹 모임에서
    정한 값을 그대로 쓴다.
 4. 성공하면 웹 모임이 정상 상태가 되고 참가 버튼이 열린다.
 5. 실패하면 다른 멤버에게는 목록에서 사라진다. 개설자에게만 남아
@@ -99,8 +99,14 @@ ALTER TABLE meetups ADD COLUMN somoim_job_id uuid
 | `scheduledAt` | 웹 모임 일시 |
 | `location` | 웹 모임 장소 |
 | `capacity` | 웹 모임 정원 그대로 |
-| `description` | 웹 모임 설명 그대로 |
+| `description` | 웹 모임 설명 그대로 보내되 **앱에는 반영되지 않는다**(아래 참고) |
 | `submit` | `true` — 자동 트리거이므로 실제 등록이 목적이다 |
+
+소모임 앱의 "새 게시글 자동 생성" 모드에는 설명을 넣을 자리가 없다. 정모 안내문은
+제목·일시·장소·비용으로 앱이 자동 생성한다. handler가 확인한 앱 제약이라 우회할 수
+없다. payload에는 설명을 그대로 담아 두는데, 관리자 화면의 job 목록에서 무엇을
+요청했는지 확인하는 기록으로 쓰기 위해서다. **소모임 정모에는 웹 모임의 설명이
+나타나지 않는다.**
 
 기존 제한값(`SOMOIM_AUTOMATION_LIMITS`)은 그대로 적용한다. 웹 모임 제목이 소모임
 한도를 넘으면 job 생성이 실패하고 `failed`로 간다.
@@ -122,7 +128,7 @@ ALTER TABLE meetups ADD COLUMN somoim_job_id uuid
   호출할 수 있다. `failed` 상태에서만 동작하고, 새 job을 만든 뒤 `pending`으로
   되돌린다. 취소는 기존 `DELETE /api/meetups/:id`를 그대로 쓴다.
 
-worker endpoint(`/api/somoim-automation/*`)는 바뀌지 않는다. 지금 미니PC에서 돌고
+worker endpoint(`/api/somoim-automation/*`)는 바뀌지 않는다. 지금 worker 서버에서 돌고
 있는 worker와 `SOMOIM_AUTOMATION.md` 계약을 그대로 유지한다.
 
 ## 실패와 재시도

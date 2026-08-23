@@ -6,7 +6,7 @@
 
 ### 앱 자동화 — 소모임 모임 만들기
 
-웹에 없는 운영진 기능을 소모임 앱 자동화로 대신한다. 운영 방식은 **집 미니PC + 안드로이드
+웹에 없는 운영진 기능을 소모임 앱 자동화로 대신한다. 운영 방식은 **서버 + 안드로이드
 실기기**로 정했다(에뮬레이터는 쓰지 않는다). 계약은
 [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md), worker는
 [worker/README.md](./worker/README.md)를 본다.

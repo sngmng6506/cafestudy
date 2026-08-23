@@ -1,6 +1,6 @@
 # 소모임 자동화 API 계약
 
-CafeStudy 서버는 자동화 job을 저장하고, 집 미니PC worker가 Android 기기에서 소모임 앱을 조작한다. 서버가 기기에 직접 접근하지 않는다.
+CafeStudy 서버는 자동화 job을 저장하고, worker 서버가 Android 기기에서 소모임 앱을 조작한다. 서버가 기기에 직접 접근하지 않는다.
 
 worker 구현과 실행 방법은 [worker/README.md](./worker/README.md)에 있다.
 
