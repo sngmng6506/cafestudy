@@ -20,6 +20,12 @@ const logger = {
   warn() {},
   error() {},
 };
+const hooks = {
+  on() {},
+  async emit() {
+    return [];
+  },
+};
 const healthyDb = {
   async query(text) {
     assert.equal(text, 'SELECT 1');
@@ -38,6 +44,7 @@ before(async () => {
     db: healthyDb,
     auth,
     logger,
+    hooks,
     config: { env: 'test' },
   });
 
@@ -85,6 +92,7 @@ test('GET /health returns 503 without exposing database details', async () => {
     },
     auth,
     logger,
+    hooks,
     config: { env: 'test' },
   });
   const failingServer = app.listen(0);
@@ -108,6 +116,7 @@ test('unexpected errors expose only a request id and generic message', async () 
     db: healthyDb,
     auth,
     logger,
+    hooks,
     storage: {
       status() {
         throw new Error('secret bucket endpoint: internal-storage-host');
