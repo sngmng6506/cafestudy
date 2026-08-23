@@ -3,6 +3,11 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { RotateCcw } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { createGameStateSaveRequest, discardSavedGame } from './game2048.persistence.js';
+import { useGuestGate } from '../../shared/useGuestGate.js';
+import { useToast } from '../../shared/useToast.js';
+
+const { isGuest } = useGuestGate();
+const toast = useToast();
 
 const SIZE = 4;
 
@@ -107,6 +112,12 @@ function move(dir) {
 // 게임오버 시 점수를 서버에 제출하고 랭킹을 갱신. 한 판당 한 번만.
 async function submitScore() {
   if (submitted || score.value <= 0) return;
+  // 게임오버는 버튼을 누른 순간이 아니라서 모달 대신 토스트로 알린다.
+  if (isGuest.value) {
+    submitted = true;
+    toast.info('둘러보는 중이라 점수가 기록되지 않아요.');
+    return;
+  }
   submitted = true;
   submitting.value = true;
   try {
@@ -182,6 +193,7 @@ function onTouchEnd(e) {
 }
 
 async function loadMyBest() {
+  if (isGuest.value) return;
   try {
     const { data } = await apiFetch('/api/game2048/my-best');
     if (typeof data?.bestScore === 'number') best.value = data.bestScore;
@@ -192,6 +204,10 @@ async function loadMyBest() {
 
 // 저장된 게임 상태가 있으면 복원, 없으면 새 게임. true면 복원됨.
 async function restoreOrNew() {
+  if (isGuest.value) {
+    reset();
+    return false;
+  }
   try {
     const { data } = await apiFetch('/api/game2048/state');
     const s = data?.savedState;
@@ -216,6 +232,8 @@ async function restoreOrNew() {
 // 진행 중인 게임 상태를 서버에 저장(페이지 이탈 시). 게임오버면 저장 안 함.
 async function saveState(options = {}) {
   if (over.value || score.value <= 0) return;
+  // 게스트는 서버에 저장할 곳이 없다. 401을 부르지 않고 건너뛴다.
+  if (isGuest.value) return;
   try {
     await apiFetch(
       '/api/game2048/state',
@@ -228,6 +246,7 @@ async function saveState(options = {}) {
 
 // 저장 상태 삭제(게임오버 시 — 이어할 게 없으므로).
 async function clearSavedState({ keepalive = false } = {}) {
+  if (isGuest.value) return;
   try {
     await apiFetch('/api/game2048/state', {
       method: 'DELETE',

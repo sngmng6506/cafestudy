@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { apiFetch } from './api.js';
+import { useGuestGate } from './useGuestGate.js';
 import { useToast } from './useToast.js';
 
 // '깨부수기'는 전역 장난 모드 — 한 명이 깨부수면 서버 상태(app_flags)가
@@ -40,8 +41,15 @@ function startSync() {
 
 export function useSmash() {
   startSync();
+  const { isGuest, requireLogin } = useGuestGate();
 
   async function toggleSmash() {
+    // 전역 상태를 바꾸는 동작이라 둘러보는 중에는 막는다.
+    if (isGuest.value) {
+      requireLogin('깨부수기는 로그인하면 쓸 수 있어요.');
+      return;
+    }
+
     // 깨부수기는 나뿐 아니라 모든 사람의 화면을 바꾼다. 되돌릴 수 있지만
     // 모르고 누르는 경우가 있어 켤 때만 한 번 확인한다.
     if (!smashed.value) {

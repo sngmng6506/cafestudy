@@ -4,9 +4,11 @@ import { Coffee, Map as MapIcon, MessageSquare } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { formatDate } from '../../shared/useMeetups.js';
 import { useToast } from '../../shared/useToast.js';
+import { useGuestGate } from '../../shared/useGuestGate.js';
 import CafeDetailSheet from './CafeDetailSheet.vue';
 
 const toast = useToast();
+const { isGuest, requireLogin } = useGuestGate();
 
 const cafes = ref([]);
 const loading = ref(true);
@@ -143,6 +145,11 @@ async function saveComment(cafe) {
   const body = (commentInputs[cafe.location] ?? '').trim();
   if (!body) {
     toast.error('코멘트를 입력해주세요.');
+    return;
+  }
+
+  if (isGuest.value) {
+    requireLogin('카페 코멘트는 로그인하면 남길 수 있어요.');
     return;
   }
 
