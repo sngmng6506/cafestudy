@@ -29,12 +29,32 @@ export function createSomoimAutomationService({
   staleClaimSeconds = DEFAULT_STALE_CLAIM_SECONDS,
   maxAttempts = DEFAULT_MAX_ATTEMPTS,
 } = {}) {
+  async function createMeetupJob({ requestedBy, input }) {
+    assertUuid(requestedBy, 'requestedBy');
+    const payload = normalizeMeetupPayload(input, { allowSubmit });
+    return summarizeJob(await queries.createJob({ requestedBy, type: JOB_TYPE_CREATE_MEETUP, payload }));
+  }
+
   return {
-    async createMeetupJob({ requestedBy, input }) {
-      assertUuid(requestedBy, 'requestedBy');
-      const payload = normalizeMeetupPayload(input, { allowSubmit });
-      return summarizeJob(await queries.createJob({ requestedBy, type: JOB_TYPE_CREATE_MEETUP, payload }));
+    createMeetupJob,
+
+    // 웹 모임 생성 훅이 부른다. 개설자를 요청자로 남겨 관리자 화면에서 추적할 수 있게 한다.
+    async createJobForMeetup(meetup) {
+      const { jobId } = await createMeetupJob({
+        requestedBy: meetup.hostId,
+        input: {
+          title: meetup.title,
+          scheduledAt: meetup.scheduledAt,
+          location: meetup.location,
+          capacity: meetup.capacity,
+          description: meetup.description ?? '',
+          cost: '',
+          submit: true,
+        },
+      });
+      return { jobId };
     },
+
     async listJobs({ status, limit = 20, offset = 0 } = {}) {
       const statuses = normalizeStatuses(status);
       if (!Number.isInteger(limit) || limit < 1 || limit > PAGE_LIMIT_MAX) {

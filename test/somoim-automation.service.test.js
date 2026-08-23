@@ -244,6 +244,49 @@ test('claimNextJob: honours configured stale window and attempt budget', async (
   assert.equal(calls.requeued[0].maxAttempts, 1);
 });
 
+test('createJobForMeetup: 웹 모임을 그대로 payload로 옮긴다', async () => {
+  const { service, calls } = serviceWith({ allowSubmit: true });
+
+  const result = await service.createJobForMeetup({
+    id: 'meetup-1',
+    hostId: USER_ID,
+    title: '토요일 카페 스터디',
+    description: '각자 할 일 가져오기',
+    location: '강남역 스타벅스',
+    scheduledAt: '2026-08-29T01:00:00.000Z',
+    capacity: 6,
+  });
+
+  assert.equal(result.jobId, JOB_ID);
+  const payload = calls.created[0].payload;
+  assert.equal(payload.title, '토요일 카페 스터디');
+  assert.equal(payload.location, '강남역 스타벅스');
+  assert.equal(payload.capacity, 6, '정원은 웹 모임 값을 그대로 쓴다');
+  // payload에는 담지만 앱에는 반영되지 않는다. 소모임 "새 게시글 자동 생성" 화면에
+  // 설명 입력란이 없어서 handler가 건너뛴다(worker/handlers/create-meetup.js 참고).
+  // job 목록에서 무엇을 요청했는지 확인하는 기록으로만 쓴다.
+  assert.equal(payload.description, '각자 할 일 가져오기', '설명에 안내 문구를 덧붙이지 않는다');
+  assert.equal(payload.submit, true, '자동 트리거는 실제 등록이 목적이다');
+  assert.equal(payload.dryRun, false);
+  assert.equal(calls.created[0].requestedBy, USER_ID);
+});
+
+test('createJobForMeetup: 설명이 없으면 빈 문자열로 보낸다', async () => {
+  const { service, calls } = serviceWith({ allowSubmit: true });
+
+  await service.createJobForMeetup({
+    id: 'meetup-1',
+    hostId: USER_ID,
+    title: '제목',
+    description: null,
+    location: '장소',
+    scheduledAt: '2026-08-29T01:00:00.000Z',
+    capacity: 6,
+  });
+
+  assert.equal(calls.created[0].payload.description, '');
+});
+
 test('completeJob/failJob: require a claimed job update to succeed', async () => {
   const { service } = serviceWith({ job: null });
 
