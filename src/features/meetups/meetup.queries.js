@@ -13,6 +13,8 @@ export function createMeetupQueries(db) {
             m.status,
             m.capacity,
             m.created_at AS "createdAt",
+            m.somoim_state AS "somoimState",
+            m.somoim_job_id AS "somoimJobId",
             COALESCE(attendee_summary.participant_count, 0)::int AS "participantCount",
             (
               m.host_id = $1
@@ -78,6 +80,8 @@ export function createMeetupQueries(db) {
               scheduled_at AS "scheduledAt",
               status,
               capacity,
+              somoim_state AS "somoimState",
+              somoim_job_id AS "somoimJobId",
               created_at AS "createdAt"
           `,
           [hostId, title, description, location, scheduledAt, capacity],
@@ -147,13 +151,26 @@ export function createMeetupQueries(db) {
     async getMeetupById(meetupId) {
       const result = await db.query(
         `
-          SELECT id, host_id AS "hostId", scheduled_at AS "scheduledAt", status, capacity
+          SELECT id, host_id AS "hostId", scheduled_at AS "scheduledAt", status, capacity,
+            somoim_state AS "somoimState"
           FROM meetups
           WHERE id = $1
         `,
         [meetupId],
       );
       return result.rows[0];
+    },
+
+    async setSomoimState({ meetupId, state, jobId = null }) {
+      const result = await db.query(
+        `UPDATE meetups
+            SET somoim_state = $2,
+                somoim_job_id = COALESCE($3, somoim_job_id)
+          WHERE id = $1
+          RETURNING id, somoim_state AS "somoimState", somoim_job_id AS "somoimJobId"`,
+        [meetupId, state, jobId],
+      );
+      return result.rows[0] ?? null;
     },
 
     async cancelMeetup(meetupId) {
