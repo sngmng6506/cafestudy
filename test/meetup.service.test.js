@@ -189,6 +189,32 @@ test('joinMeetup: 소모임 등록 중이면 참가를 막는다', async () => {
   );
 });
 
+test('joinMeetup rejects via the real query layer when somoimState is pending', async () => {
+  const future = new Date(Date.now() + 3_600_000).toISOString();
+  const service = createMeetupService({
+    db: participationDb({
+      meetup: { id: 'm1', scheduledAt: future, status: 'open', capacity: 10, somoimState: 'pending' },
+      count: 1,
+    }),
+  });
+  await assert.rejects(
+    () => service.joinMeetup({ meetupId: 'm1', userId: 'u1' }),
+    (err) => err.statusCode === 400 && err.code === 'MEETUP_SOMOIM_PENDING',
+  );
+});
+
+test('joinMeetup succeeds via the real query layer when somoimState is none', async () => {
+  const future = new Date(Date.now() + 3_600_000).toISOString();
+  const service = createMeetupService({
+    db: participationDb({
+      meetup: { id: 'm1', scheduledAt: future, status: 'open', capacity: 10, somoimState: 'none' },
+      count: 1,
+    }),
+  });
+  const result = await service.joinMeetup({ meetupId: 'm1', userId: 'u1' });
+  assert.deepEqual(result, { meetupId: 'm1', joined: true, participantCount: 2 });
+});
+
 test('leaveMeetup blocks the host from leaving', async () => {
   const future = new Date(Date.now() + 3_600_000).toISOString();
   const service = createMeetupService({
