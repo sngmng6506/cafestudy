@@ -46,10 +46,6 @@ function formatDate(value) {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="ui-page-title">공지사항</h1>
-    </div>
-
     <p v-if="loading && !notices.length" class="ui-text-muted py-12 text-center text-[14px]">공지를 불러오고 있어요.</p>
     <div v-else-if="errorMessage && !notices.length" class="py-12 text-center">
       <p class="ui-text-danger text-[14px] font-semibold">{{ errorMessage }}</p>

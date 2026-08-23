@@ -38,31 +38,27 @@ async function copyUrl() {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">접속 QR</h1>
-    </div>
-
     <section class="surface-card">
       <div class="mb-4 flex items-center gap-2">
-        <QrCode :size="18" class="text-[#03C75A]" />
-        <h2 class="text-lg font-semibold text-[#333333]">모바일 접속 주소</h2>
+        <QrCode :size="18" class="text-[var(--ui-color-brand)]" />
+        <h2 class="text-lg font-semibold text-[var(--ui-color-content)]">모바일 접속 주소</h2>
       </div>
 
       <div class="grid justify-items-center gap-4">
         <canvas
           ref="canvasEl"
-          class="rounded-xl border border-[#dadce0] bg-white p-2"
+          class="rounded-xl border border-[var(--ui-color-stroke)] bg-white p-2"
           aria-label="접속 주소 QR 코드"
         ></canvas>
 
-        <p class="break-all text-center text-[14px] font-medium text-[#5f6368]">{{ url }}</p>
+        <p class="break-all text-center text-[14px] font-medium text-[var(--ui-color-content-muted)]">{{ url }}</p>
 
         <button
-          class="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-[#dadce0] text-[15px] font-semibold text-[#333333] transition hover:bg-[#f5f6f7]"
+          class="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-[var(--ui-color-stroke)] text-[15px] font-semibold text-[var(--ui-color-content)] transition hover:bg-[var(--ui-color-surface-subtle)]"
           type="button"
           @click="copyUrl"
         >
-          <Check v-if="copied" :size="17" class="text-[#03C75A]" />
+          <Check v-if="copied" :size="17" class="text-[var(--ui-color-brand)]" />
           <Copy v-else :size="17" />
           {{ copied ? '복사됐어요' : '주소 복사' }}
         </button>

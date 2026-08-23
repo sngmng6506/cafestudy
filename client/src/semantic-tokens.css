@@ -16,6 +16,10 @@
   --ui-color-brand-active: var(--color-accent-active);
   --ui-color-destructive: var(--color-danger);
   --ui-color-link: var(--color-safe);
+  /* 모집중 배지처럼 반복되는 성공 상태 색. DESIGN_GUIDE의 배지 규칙과 같은 값이다. */
+  --ui-color-success-surface: #e9f8ef;
+  --ui-color-success-content: #03883f;
+  --ui-color-danger-surface: #fff1f2;
 
   --ui-radius-badge: 4px;
   --ui-radius-control: 10px;

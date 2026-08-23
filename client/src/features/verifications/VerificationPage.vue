@@ -210,29 +210,25 @@ function formatBytes(bytes) {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">출석 인증</h1>
-    </div>
-
     <!-- 사진 인증: 안내만. 실제 촬영·제출은 아래 '인증 대기' 카드에서 한다. -->
     <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
-        <Camera :size="18" class="text-[#03C75A]" />
-        <h2 class="text-lg font-semibold text-[#333333]">사진 인증</h2>
+        <Camera :size="18" class="text-[var(--ui-color-brand)]" />
+        <h2 class="text-lg font-semibold text-[var(--ui-color-content)]">사진 인증</h2>
       </div>
 
-      <div class="rounded-xl border border-[#dadce0] bg-[#f5f6f7] p-4">
+      <div class="rounded-xl border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] p-4">
         <div class="mb-2 flex items-center gap-2">
-          <Camera :size="15" class="text-[#03C75A]" />
-          <p class="text-[13px] font-bold text-[#03C75A]">인증하는 방법</p>
+          <Camera :size="15" class="text-[var(--ui-color-brand)]" />
+          <p class="text-[13px] font-bold text-[var(--ui-color-brand)]">인증하는 방법</p>
         </div>
-        <p class="text-[13px] leading-relaxed text-[#333333]">
+        <p class="text-[13px] leading-relaxed text-[var(--ui-color-content)]">
           모임이 시작된 뒤 아래 <strong>인증 대기</strong>에서 모임을 누르고 현장 사진을 올려 주세요.
           인증하면 <strong>10포인트</strong>를 받아요.
         </p>
       </div>
 
-      <p v-if="verifiableMeetups.length === 0" class="mt-4 text-[13px] text-[#5f6368]">
+      <p v-if="verifiableMeetups.length === 0" class="mt-4 text-[13px] text-[var(--ui-color-content-muted)]">
         아직 인증할 수 있는 모임이 없어요.
       </p>
 
@@ -244,71 +240,71 @@ function formatBytes(bytes) {
 
       <div
         v-if="showSuccessEffect"
-        class="mt-4 rounded-xl border border-[#03C75A] bg-[#e9f8ef] p-4 text-center"
+        class="mt-4 rounded-xl border border-[var(--ui-color-brand)] bg-[var(--ui-color-success-surface)] p-4 text-center"
       >
-        <p class="text-sm font-semibold text-[#03883f]">인증이 완료됐어요.</p>
-        <p class="mt-1 text-2xl font-bold text-[#333333]">+10 포인트</p>
+        <p class="text-sm font-semibold text-[var(--ui-color-success-content)]">인증이 완료됐어요.</p>
+        <p class="mt-1 text-2xl font-bold text-[var(--ui-color-content)]">+10 포인트</p>
       </div>
     </section>
 
     <section v-if="previewUrl" class="surface-card">
       <div class="mb-5 flex items-center gap-2">
-        <ImageIcon :size="18" class="text-[#03C75A]" />
-        <h2 class="text-lg font-semibold text-[#333333]">압축 정보</h2>
+        <ImageIcon :size="18" class="text-[var(--ui-color-brand)]" />
+        <h2 class="text-lg font-semibold text-[var(--ui-color-content)]">압축 정보</h2>
       </div>
 
       <dl class="grid grid-cols-3 gap-3">
-        <div class="rounded-lg border border-[#dadce0] bg-[#f5f6f7] p-4">
-          <dt class="text-sm font-semibold text-[#5f6368]">원본</dt>
-          <dd class="mt-1 text-base font-bold text-[#333333]">{{ formatBytes(originalSize) }}</dd>
+        <div class="rounded-lg border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] p-4">
+          <dt class="text-sm font-semibold text-[var(--ui-color-content-muted)]">원본</dt>
+          <dd class="mt-1 text-base font-bold text-[var(--ui-color-content)]">{{ formatBytes(originalSize) }}</dd>
         </div>
-        <div class="rounded-lg border border-[#dadce0] bg-[#f5f6f7] p-4">
-          <dt class="text-sm font-semibold text-[#5f6368]">압축본</dt>
-          <dd class="mt-1 text-base font-bold text-[#333333]">{{ formatBytes(compressedSize) }}</dd>
+        <div class="rounded-lg border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] p-4">
+          <dt class="text-sm font-semibold text-[var(--ui-color-content-muted)]">압축본</dt>
+          <dd class="mt-1 text-base font-bold text-[var(--ui-color-content)]">{{ formatBytes(compressedSize) }}</dd>
         </div>
-        <div class="rounded-lg border border-[#dadce0] bg-[#f5f6f7] p-4">
-          <dt class="text-sm font-semibold text-[#5f6368]">절감</dt>
-          <dd class="mt-1 text-base font-bold text-[#333333]">{{ compressionRatio || '-' }}</dd>
+        <div class="rounded-lg border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] p-4">
+          <dt class="text-sm font-semibold text-[var(--ui-color-content-muted)]">절감</dt>
+          <dd class="mt-1 text-base font-bold text-[var(--ui-color-content)]">{{ compressionRatio || '-' }}</dd>
         </div>
       </dl>
     </section>
 
     <section v-if="verifiableMeetups.length > 0" class="surface-card">
       <div class="mb-5 flex items-center gap-2">
-        <Clock3 :size="18" class="text-[#03C75A]" />
-        <h2 class="text-lg font-semibold text-[#333333]">인증 대기</h2>
+        <Clock3 :size="18" class="text-[var(--ui-color-brand)]" />
+        <h2 class="text-lg font-semibold text-[var(--ui-color-content)]">인증 대기</h2>
       </div>
 
-      <p v-if="pendingMeetups.length === 0" class="py-4 text-[15px] text-[#5f6368]">
+      <p v-if="pendingMeetups.length === 0" class="py-4 text-[15px] text-[var(--ui-color-content-muted)]">
         대기 중인 모임이 없어요.
       </p>
       <ul v-else class="grid gap-2">
         <li v-for="meetup in pendingMeetups" :key="meetup.id">
           <button
-            class="focus-ring flex w-full items-center gap-3 rounded-lg border p-3 text-left transition hover:bg-[#f5f6f7]"
+            class="focus-ring flex w-full items-center gap-3 rounded-lg border p-3 text-left transition hover:bg-[var(--ui-color-surface-subtle)]"
             :class="
               meetup.id === selectedMeetupId
-                ? 'border-[#03C75A] bg-[#e9f8ef]'
-                : 'border-[#dadce0] bg-[#f5f6f7]'
+                ? 'border-[var(--ui-color-brand)] bg-[var(--ui-color-success-surface)]'
+                : 'border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)]'
             "
             type="button"
             @click="selectPendingMeetup(meetup)"
           >
             <span
-              class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#03C75A]"
+              class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[var(--ui-color-brand)]"
             >
               <Camera :size="17" />
             </span>
             <span class="min-w-0 flex-1">
-              <span class="block truncate text-[14px] font-semibold text-[#333333]">{{ meetup.title }}</span>
-              <span class="mt-0.5 block text-[12px] text-[#5f6368]">{{ formatDate(meetup.scheduledAt) }}</span>
+              <span class="block truncate text-[14px] font-semibold text-[var(--ui-color-content)]">{{ meetup.title }}</span>
+              <span class="mt-0.5 block text-[12px] text-[var(--ui-color-content-muted)]">{{ formatDate(meetup.scheduledAt) }}</span>
             </span>
             <span
               class="shrink-0 rounded-full px-2 py-1 text-[12px] font-semibold"
               :class="
                 meetup.state === 'done'
-                  ? 'bg-[#e9f8ef] text-[#03883f]'
-                  : 'bg-white text-[#5f6368]'
+                  ? 'bg-[var(--ui-color-success-surface)] text-[var(--ui-color-success-content)]'
+                  : 'bg-white text-[var(--ui-color-content-muted)]'
               "
             >
               {{ pendingStatusLabel(meetup) }}
@@ -318,9 +314,9 @@ function formatBytes(bytes) {
           <!-- 선택한 카드 아래에서 그 자리서 인증을 진행한다 -->
           <div
             v-if="meetup.id === selectedMeetupId"
-            class="mt-2 rounded-lg border border-[#dadce0] bg-white p-4"
+            class="mt-2 rounded-lg border border-[var(--ui-color-stroke)] bg-white p-4"
           >
-            <p v-if="gateMessage" class="text-sm font-semibold text-[#5f6368]">{{ gateMessage }}</p>
+            <p v-if="gateMessage" class="text-sm font-semibold text-[var(--ui-color-content-muted)]">{{ gateMessage }}</p>
 
             <template v-if="canVerify">
               <input
@@ -334,7 +330,7 @@ function formatBytes(bytes) {
 
               <div class="mb-3 grid gap-3">
                 <div
-                  class="flex min-h-[148px] items-center justify-center overflow-hidden rounded-xl border border-[#dadce0] bg-[#f5f6f7]"
+                  class="flex min-h-[148px] items-center justify-center overflow-hidden rounded-xl border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)]"
                 >
                   <img
                     v-if="previewUrl"
@@ -342,7 +338,7 @@ function formatBytes(bytes) {
                     :src="previewUrl"
                     alt="선택한 사진 미리보기"
                   />
-                  <div v-else class="flex flex-col items-center gap-2 py-8 text-[#5f6368]">
+                  <div v-else class="flex flex-col items-center gap-2 py-8 text-[var(--ui-color-content-muted)]">
                     <ImageIcon :size="28" />
                     <p class="text-[13px] font-medium">사진을 찍으면 미리보기가 표시됩니다.</p>
                     <p class="text-[12px]">최대 1600px 자동 압축</p>
@@ -350,7 +346,7 @@ function formatBytes(bytes) {
                 </div>
 
                 <button
-                  class="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-[#dadce0] bg-white text-[15px] font-semibold text-[#333333] transition hover:bg-[#f5f6f7]"
+                  class="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-[var(--ui-color-stroke)] bg-white text-[15px] font-semibold text-[var(--ui-color-content)] transition hover:bg-[var(--ui-color-surface-subtle)]"
                   type="button"
                   @click="openCamera"
                 >
@@ -360,7 +356,7 @@ function formatBytes(bytes) {
               </div>
 
               <button
-                class="focus-ring flex h-12 w-full items-center justify-center rounded bg-[#03C75A] text-[15px] font-semibold text-white transition hover:bg-[#02b350] disabled:cursor-not-allowed disabled:opacity-50"
+                class="focus-ring flex h-12 w-full items-center justify-center rounded bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:cursor-not-allowed disabled:opacity-50"
                 type="button"
                 :disabled="submitting || !compressedFile"
                 @click="submitVerification"
@@ -371,7 +367,7 @@ function formatBytes(bytes) {
               <!-- 업로드 중 상태. 성공하면 status가 비고 카드 자체가 사라지므로
                    (인증된 모임은 pendingMeetups에서 빠짐) 여기엔 진행 상태만 뜬다.
                    성공 효과는 위 '사진 인증' 섹션에 있다. -->
-              <p v-if="status" class="mt-3 text-center text-sm font-semibold text-[#03C75A]">
+              <p v-if="status" class="mt-3 text-center text-sm font-semibold text-[var(--ui-color-brand)]">
                 {{ status }}
               </p>
             </template>
@@ -382,18 +378,18 @@ function formatBytes(bytes) {
 
     <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
-        <History :size="18" class="text-[#03C75A]" />
-        <h2 class="text-lg font-semibold text-[#333333]">인증 내역</h2>
+        <History :size="18" class="text-[var(--ui-color-brand)]" />
+        <h2 class="text-lg font-semibold text-[var(--ui-color-content)]">인증 내역</h2>
       </div>
 
-      <p v-if="myVerifications.length === 0" class="py-6 text-[15px] text-[#5f6368]">
+      <p v-if="myVerifications.length === 0" class="py-6 text-[15px] text-[var(--ui-color-content-muted)]">
         아직 인증한 모임이 없어요.
       </p>
       <ul v-else class="grid gap-3">
         <li
           v-for="verification in myVerifications"
           :key="verification.id"
-          class="flex items-center gap-3 rounded-lg border border-[#dadce0] bg-[#f5f6f7] p-3"
+          class="flex items-center gap-3 rounded-lg border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] p-3"
         >
           <img
             v-if="verification.photoViewUrl"
@@ -403,15 +399,15 @@ function formatBytes(bytes) {
           />
           <div
             v-else
-            class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-[#dadce0] text-[#5f6368]"
+            class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-color-stroke)] text-[var(--ui-color-content-muted)]"
           >
             <ImageIcon :size="18" />
           </div>
           <div class="min-w-0 flex-1">
-            <p class="truncate text-[15px] font-semibold text-[#333333]">{{ verification.meetupTitle }}</p>
-            <p class="mt-0.5 text-sm font-medium text-[#5f6368]">{{ formatDate(verification.createdAt) }}</p>
+            <p class="truncate text-[15px] font-semibold text-[var(--ui-color-content)]">{{ verification.meetupTitle }}</p>
+            <p class="mt-0.5 text-sm font-medium text-[var(--ui-color-content-muted)]">{{ formatDate(verification.createdAt) }}</p>
           </div>
-          <strong class="shrink-0 text-sm font-bold text-[#03C75A]">+{{ verification.pointsAwarded }}</strong>
+          <strong class="shrink-0 text-sm font-bold text-[var(--ui-color-brand)]">+{{ verification.pointsAwarded }}</strong>
         </li>
       </ul>
     </section>

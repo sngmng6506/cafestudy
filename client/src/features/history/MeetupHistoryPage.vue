@@ -63,66 +63,62 @@ function toHistoryFromSomoimEvent(event) {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">모임 이력</h1>
-    </div>
-
     <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
-        <CalendarCheck :size="18" class="text-[#03C75A]" />
-        <h2 class="text-lg font-semibold text-[#333333]">완료된 모임</h2>
+        <CalendarCheck :size="18" class="text-[var(--ui-color-brand)]" />
+        <h2 class="text-lg font-semibold text-[var(--ui-color-content)]">완료된 모임</h2>
         <span
           v-if="!loading && !errorMessage"
-          class="ml-1 rounded-lg bg-[#f5f6f7] px-2 py-0.5 text-sm font-semibold text-[#5f6368]"
+          class="ml-1 rounded-lg bg-[var(--ui-color-surface-subtle)] px-2 py-0.5 text-sm font-semibold text-[var(--ui-color-content-muted)]"
         >
           {{ completedMeetups.length }}
         </span>
       </div>
 
-      <ul v-if="loading" class="divide-y divide-[#dadce0]">
+      <ul v-if="loading" class="divide-y divide-[var(--ui-color-stroke)]">
         <li v-for="n in 3" :key="n" class="animate-pulse py-4 first:pt-0 last:pb-0">
-          <div class="h-5 w-3/4 rounded-md bg-[#f5f6f7]"></div>
-          <div class="mt-2 h-3 w-1/2 rounded bg-[#f5f6f7]"></div>
-          <div class="mt-3 h-20 rounded-lg bg-[#f5f6f7]"></div>
+          <div class="h-5 w-3/4 rounded-md bg-[var(--ui-color-surface-subtle)]"></div>
+          <div class="mt-2 h-3 w-1/2 rounded bg-[var(--ui-color-surface-subtle)]"></div>
+          <div class="mt-3 h-20 rounded-lg bg-[var(--ui-color-surface-subtle)]"></div>
         </li>
       </ul>
 
-      <p v-else-if="errorMessage" class="py-6 text-[15px] font-semibold text-[#e74c3c]">
+      <p v-else-if="errorMessage" class="py-6 text-[15px] font-semibold text-[var(--ui-color-destructive)]">
         {{ errorMessage }}
       </p>
 
       <div v-else-if="completedMeetups.length === 0" class="py-12 text-center">
-        <p class="text-[15px] font-semibold text-[#333333]">아직 지난 모임이 없어요.</p>
-        <p class="mt-1 text-[13px] text-[#5f6368]">모임 시간이 지나면 이곳에 표시됩니다.</p>
+        <p class="text-[15px] font-semibold text-[var(--ui-color-content)]">아직 지난 모임이 없어요.</p>
+        <p class="mt-1 text-[13px] text-[var(--ui-color-content-muted)]">모임 시간이 지나면 이곳에 표시됩니다.</p>
       </div>
 
-      <ul v-else class="divide-y divide-[#dadce0]">
+      <ul v-else class="divide-y divide-[var(--ui-color-stroke)]">
         <li v-for="meetup in completedMeetups" :key="meetup.id" class="grid gap-3 py-4 first:pt-0 last:pb-0">
           <div>
             <div class="mb-1 flex items-start justify-between gap-3">
-              <h3 class="min-w-0 flex-1 text-[17px] font-bold text-[#333333]">{{ meetup.title }}</h3>
-              <span class="shrink-0 rounded-lg bg-[#f5f6f7] px-2 py-0.5 text-[12px] font-semibold text-[#5f6368]">
+              <h3 class="min-w-0 flex-1 text-[17px] font-bold text-[var(--ui-color-content)]">{{ meetup.title }}</h3>
+              <span class="shrink-0 rounded-lg bg-[var(--ui-color-surface-subtle)] px-2 py-0.5 text-[12px] font-semibold text-[var(--ui-color-content-muted)]">
                 {{ meetup.sourceLabel }}
               </span>
             </div>
-            <p class="text-[12px] text-[#5f6368]">{{ formatDate(meetup.scheduledAt) }}</p>
+            <p class="text-[12px] text-[var(--ui-color-content-muted)]">{{ formatDate(meetup.scheduledAt) }}</p>
             <div class="mt-2 flex items-center gap-1.5">
-              <MapPin :size="16" class="shrink-0 text-[#5f6368]" />
-              <span class="text-[13px] text-[#5f6368]">{{ meetup.location }}</span>
+              <MapPin :size="16" class="shrink-0 text-[var(--ui-color-content-muted)]" />
+              <span class="text-[13px] text-[var(--ui-color-content-muted)]">{{ meetup.location }}</span>
             </div>
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
-            <span class="inline-flex h-7 items-center rounded-full bg-[#f5f6f7] px-3 text-[12px] font-medium text-[#5f6368]">
+            <span class="inline-flex h-7 items-center rounded-full bg-[var(--ui-color-surface-subtle)] px-3 text-[12px] font-medium text-[var(--ui-color-content-muted)]">
               {{ meetup.participantCount }}/{{ meetup.capacity }}명
             </span>
-            <span v-if="meetup.description" class="inline-flex h-7 items-center rounded-full bg-[#f5f6f7] px-3 text-[12px] font-medium text-[#5f6368]">
+            <span v-if="meetup.description" class="inline-flex h-7 items-center rounded-full bg-[var(--ui-color-surface-subtle)] px-3 text-[12px] font-medium text-[var(--ui-color-content-muted)]">
               {{ meetup.description }}
             </span>
           </div>
 
           <div v-if="attendeeStack(meetup.attendees).shown.length || attendeeStack(meetup.attendees).overflow" class="flex items-center gap-2">
-            <span class="text-[12px] font-medium text-[#5f6368]">참석자</span>
+            <span class="text-[12px] font-medium text-[var(--ui-color-content-muted)]">참석자</span>
             <div class="flex -space-x-1.5">
               <UserAvatar
                 v-for="attendee in attendeeStack(meetup.attendees).shown"
@@ -134,7 +130,7 @@ function toHistoryFromSomoimEvent(event) {
               />
               <span
                 v-if="attendeeStack(meetup.attendees).overflow"
-                class="flex h-7 items-center justify-center rounded-full bg-[#f5f6f7] px-2 text-[11px] font-bold text-[#5f6368] ring-2 ring-white"
+                class="flex h-7 items-center justify-center rounded-full bg-[var(--ui-color-surface-subtle)] px-2 text-[11px] font-bold text-[var(--ui-color-content-muted)] ring-2 ring-white"
               >
                 +{{ attendeeStack(meetup.attendees).overflow }}
               </span>
@@ -146,12 +142,12 @@ function toHistoryFromSomoimEvent(event) {
               v-for="photo in meetup.photos"
               :key="photo.id"
               :src="photo.photoViewUrl"
-              class="aspect-square rounded-lg bg-[#f5f6f7] object-cover"
+              class="aspect-square rounded-lg bg-[var(--ui-color-surface-subtle)] object-cover"
               alt="인증 사진"
               loading="lazy"
             />
           </div>
-          <div v-else class="flex items-center gap-2 rounded-lg bg-[#f5f6f7] px-3 py-2 text-[13px] text-[#5f6368]">
+          <div v-else class="flex items-center gap-2 rounded-lg bg-[var(--ui-color-surface-subtle)] px-3 py-2 text-[13px] text-[var(--ui-color-content-muted)]">
             <ImageIcon :size="16" />
             인증 사진이 올라오면 이곳에 표시됩니다.
           </div>

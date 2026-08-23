@@ -326,11 +326,8 @@ function emptyPaymentMethod() {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <div class="min-w-0">
-        <h1 class="ui-page-title">정산</h1>
-        <p class="ui-text-muted mt-1 text-[13px]">참여한 모임에서 차수별 비용과 송금 상태를 확인해요.</p>
-      </div>
+    <div class="min-w-0">
+      <p class="ui-text-muted mt-1 text-[13px]">참여한 모임에서 차수별 비용과 송금 상태를 확인해요.</p>
     </div>
 
     <div v-if="loading" class="surface-card py-12 text-center ui-text-muted">정산을 불러오는 중이에요.</div>

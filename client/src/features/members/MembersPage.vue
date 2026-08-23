@@ -12,6 +12,15 @@ const errorMessage = ref('');
 const query = ref('');
 const selectedMember = ref(null);
 
+// 크롤링해 온 소개글에는 "." 처럼 내용이 없는 값이 섞여 있다.
+// 그대로 렌더하면 행마다 두 줄/한 줄이 뒤섞여 목록 리듬이 흐트러진다.
+const EMPTY_BIO = /^[.,·・\-_~\s]*$/;
+
+function displayBio(member) {
+  const bio = (member.bio ?? '').trim();
+  return EMPTY_BIO.test(bio) ? '' : bio;
+}
+
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase();
   if (!q) return members.value;
@@ -41,9 +50,9 @@ onMounted(async () => {
 
 function avatarRingClass(memberId) {
   const rank = rankData.value[memberId]?.rank;
-  if (rank === 1) return 'ring-2 ring-[#03C75A]';
-  if (rank === 2) return 'ring-2 ring-[#5f6368]';
-  if (rank === 3) return 'ring-2 ring-[#999999]';
+  if (rank === 1) return 'ring-2 ring-[var(--ui-color-brand)]';
+  if (rank === 2) return 'ring-2 ring-[var(--ui-color-content-muted)]';
+  if (rank === 3) return 'ring-2 ring-[var(--ui-color-content-disabled)]';
   return '';
 }
 
@@ -66,68 +75,64 @@ function highlight(text) {
   const escaped = escapeHtml(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return safe.replace(
     new RegExp(`(${escaped})`, 'gi'),
-    '<mark class="bg-[#DFF5E7] text-[#333333]">$1</mark>',
+    '<mark class="bg-[#DFF5E7] text-[var(--ui-color-content)]">$1</mark>',
   );
 }
 </script>
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">모임 멤버</h1>
-    </div>
-
     <!-- 검색 -->
     <div class="relative">
-      <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6368]" />
+      <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ui-color-content-muted)]" />
       <input
         v-model="query"
         type="text"
         placeholder="이름으로 검색"
-        class="h-11 w-full rounded-xl border border-[#dadce0] bg-white pl-9 pr-4 text-[14px] text-[#333333] placeholder:text-[#5f6368] focus:border-[#03C75A] focus:outline-none"
+        class="h-11 w-full rounded-xl border border-[var(--ui-color-stroke)] bg-white pl-9 pr-4 text-[14px] text-[var(--ui-color-content)] placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)] focus:outline-none"
       />
     </div>
 
     <!-- 스켈레톤 -->
     <section v-if="loading" class="surface-card surface-card--flush">
-      <ul class="divide-y divide-[#dadce0]">
+      <ul class="divide-y divide-[var(--ui-color-stroke)]">
         <li
           v-for="n in 6"
           :key="n"
           class="flex animate-pulse items-center gap-3 px-4 py-3 first:pt-4 last:pb-4"
         >
-          <div class="h-10 w-10 shrink-0 rounded-full bg-[#f5f6f7]"></div>
+          <div class="h-10 w-10 shrink-0 rounded-full bg-[var(--ui-color-surface-subtle)]"></div>
           <div class="flex-1 space-y-2">
-            <div class="h-4 w-1/2 rounded bg-[#f5f6f7]"></div>
-            <div class="h-3 w-3/4 rounded bg-[#f5f6f7]"></div>
+            <div class="h-4 w-1/2 rounded bg-[var(--ui-color-surface-subtle)]"></div>
+            <div class="h-3 w-3/4 rounded bg-[var(--ui-color-surface-subtle)]"></div>
           </div>
-          <div class="h-5 w-10 rounded bg-[#f5f6f7]"></div>
+          <div class="h-5 w-10 rounded bg-[var(--ui-color-surface-subtle)]"></div>
         </li>
       </ul>
     </section>
 
     <!-- 에러 -->
-    <p v-else-if="errorMessage" class="py-12 text-center text-[15px] font-semibold text-[#e74c3c]">
+    <p v-else-if="errorMessage" class="py-12 text-center text-[15px] font-semibold text-[var(--ui-color-destructive)]">
       {{ errorMessage }}
     </p>
 
     <!-- 빈 결과 -->
     <div v-else-if="filtered.length === 0" class="py-12 text-center">
-      <p class="text-[15px] text-[#333333]">
+      <p class="text-[15px] text-[var(--ui-color-content)]">
         {{ query ? '검색 결과가 없어요.' : '아직 멤버가 없어요.' }}
       </p>
-      <p class="mt-1 text-[13px] text-[#5f6368]">
+      <p class="mt-1 text-[13px] text-[var(--ui-color-content-muted)]">
         {{ query ? '다른 이름으로 검색해 보세요.' : '모임에 참여하면 멤버로 등록돼요.' }}
       </p>
     </div>
 
     <!-- 멤버 목록 -->
     <section v-else class="member-list-card surface-card surface-card--flush">
-      <ul class="divide-y divide-[#dadce0]">
+      <ul class="divide-y divide-[var(--ui-color-stroke)]">
         <li
           v-for="member in filtered"
           :key="member.id"
-          class="member-row flex cursor-pointer items-center gap-3 px-4 py-3 transition first:pt-4 last:pb-4 hover:bg-[#f5f6f7]"
+          class="member-row flex cursor-pointer items-center gap-3 px-4 py-3 transition first:pt-4 last:pb-4 hover:bg-[var(--ui-color-surface-subtle)]"
           role="button"
           tabindex="0"
           :aria-label="`${member.name} 프로필 보기`"
@@ -141,31 +146,31 @@ function highlight(text) {
             :image-url="member.activeBadgeImageUrl ?? ''"
           />
           <div class="min-w-0 flex-1">
-            <p class="truncate text-[15px] font-semibold text-[#333333]" v-html="highlight(member.name)"></p>
-            <p v-if="member.bio" class="truncate text-[13px] text-[#5f6368]" v-html="highlight(member.bio)"></p>
+            <p class="truncate text-[15px] font-semibold text-[var(--ui-color-content)]" v-html="highlight(member.name)"></p>
+            <p v-if="displayBio(member)" class="truncate text-[13px] text-[var(--ui-color-content-muted)]" v-html="highlight(displayBio(member))"></p>
           </div>
           <div class="flex shrink-0 items-center gap-2">
             <span
               v-if="rankData[member.id]"
-              class="text-[12px] font-bold text-[#03C75A]"
+              class="text-[12px] font-bold text-[var(--ui-color-brand)]"
             >
               {{ rankData[member.id].points }}pt
             </span>
             <span
               v-if="rankData[member.id]?.rank === 1"
-              class="flex h-6 w-6 items-center justify-center rounded-full bg-[#03C75A]"
+              class="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--ui-color-brand)]"
             >
               <Crown :size="12" class="text-white" />
             </span>
             <span
               v-else-if="rankData[member.id]?.rank === 2"
-              class="flex h-6 w-6 items-center justify-center rounded-full bg-[#5f6368] text-[11px] font-bold text-white"
+              class="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--ui-color-content-muted)] text-[11px] font-bold text-white"
             >
               2
             </span>
             <span
               v-else-if="rankData[member.id]?.rank === 3"
-              class="flex h-6 w-6 items-center justify-center rounded-full bg-[#999999] text-[11px] font-bold text-white"
+              class="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--ui-color-content-disabled)] text-[11px] font-bold text-white"
             >
               3
             </span>

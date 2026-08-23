@@ -18,23 +18,20 @@ const limitations = [
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">자연어 기능 검색</h1>
-      <p class="mt-1 text-[14px] leading-relaxed text-[#5f6368]">
-        메뉴 이름을 몰라도 하고 싶은 일을 문장으로 입력해 관련 기능을 찾습니다.
-      </p>
-    </div>
+    <p class="mt-1 text-[14px] leading-relaxed text-[var(--ui-color-content-muted)]">
+      메뉴 이름을 몰라도 하고 싶은 일을 문장으로 입력해 관련 기능을 찾습니다.
+    </p>
 
     <article class="surface-card">
       <div class="mb-3 flex items-center justify-between gap-3">
         <h2 class="text-[16px] font-semibold text-[#222222]">Ternlight란?</h2>
-        <span class="rounded-full bg-[#e9f8ef] px-2.5 py-1 text-[11px] font-semibold text-[#03883f]">
+        <span class="rounded-full bg-[var(--ui-color-success-surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ui-color-success-content)]">
           브라우저 실행
         </span>
       </div>
-      <p class="text-[14px] leading-relaxed text-[#5f6368]">
+      <p class="text-[14px] leading-relaxed text-[var(--ui-color-content-muted)]">
         Ternlight는 문장의 의미를 작은 숫자 벡터로 바꾸는 경량 임베딩 모델입니다.
-        CafeStudy는 <strong class="font-semibold text-[#333333]">@ternlight/mini</strong>를 브라우저에서
+        CafeStudy는 <strong class="font-semibold text-[var(--ui-color-content)]">@ternlight/mini</strong>를 브라우저에서
         실행하며, 검색 문장을 서버로 보내지 않고 메뉴 문장과의 코사인 유사도를 비교합니다.
       </p>
     </article>
@@ -43,10 +40,10 @@ const limitations = [
       <h2 class="mb-3 text-[16px] font-semibold text-[#222222]">현재 검색 파이프라인</h2>
       <ol class="grid gap-3">
         <li v-for="(step, index) in pipeline" :key="step" class="flex gap-3">
-          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#03C75A] text-[11px] font-bold text-white">
+          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--ui-color-brand)] text-[11px] font-bold text-white">
             {{ index + 1 }}
           </span>
-          <p class="pt-0.5 text-[14px] leading-relaxed text-[#5f6368]">{{ step }}</p>
+          <p class="pt-0.5 text-[14px] leading-relaxed text-[var(--ui-color-content-muted)]">{{ step }}</p>
         </li>
       </ol>
     </article>
@@ -54,16 +51,16 @@ const limitations = [
     <article class="surface-card">
       <h2 class="mb-3 text-[16px] font-semibold text-[#222222]">현재 한계와 잠재 이슈</h2>
       <ul class="grid gap-2.5">
-        <li v-for="item in limitations" :key="item" class="flex gap-2.5 text-[14px] leading-relaxed text-[#5f6368]">
-          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#999999]" />
+        <li v-for="item in limitations" :key="item" class="flex gap-2.5 text-[14px] leading-relaxed text-[var(--ui-color-content-muted)]">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--ui-color-content-disabled)]" />
           <span>{{ item }}</span>
         </li>
       </ul>
     </article>
 
     <article class="rounded-2xl border border-[#dcefe4] bg-[#f5fcf8] p-4">
-      <h2 class="text-[14px] font-semibold text-[#03883f]">예시</h2>
-      <p class="mt-2 text-[14px] leading-relaxed text-[#5f6368]">
+      <h2 class="text-[14px] font-semibold text-[var(--ui-color-success-content)]">예시</h2>
+      <p class="mt-2 text-[14px] leading-relaxed text-[var(--ui-color-content-muted)]">
         “지난번 스터디 사진 보고 싶어” → 모임 이력<br />
         “사진 올리고 포인트 받고 싶어” → 인증<br />
         “친구에게 사이트 공유하고 싶어” → 접속 QR

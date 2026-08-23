@@ -139,20 +139,16 @@ async function loadRanking() {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">랭킹</h1>
-    </div>
-
     <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
-        <Trophy :size="18" class="text-[#03C75A]" />
-        <p class="text-[14px] text-[#5f6368]">인증으로 쌓은 포인트 순이에요.</p>
+        <Trophy :size="18" class="text-[var(--ui-color-brand)]" />
+        <p class="text-[14px] text-[var(--ui-color-content-muted)]">인증으로 쌓은 포인트 순이에요.</p>
       </div>
 
-      <div class="mb-5 grid grid-cols-2 rounded-xl border border-[#dadce0] bg-[#f5f6f7] p-1">
+      <div class="mb-5 grid grid-cols-2 rounded-xl border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] p-1">
         <button
           class="focus-ring h-11 rounded text-[15px] font-semibold transition"
-          :class="mode === 'monthly' ? 'bg-[#03C75A] text-white shadow-sm' : 'text-[#5f6368]'"
+          :class="mode === 'monthly' ? 'bg-[var(--ui-color-brand)] text-white shadow-sm' : 'text-[var(--ui-color-content-muted)]'"
           type="button"
           @click="switchMode('monthly')"
         >
@@ -160,7 +156,7 @@ async function loadRanking() {
         </button>
         <button
           class="focus-ring h-11 rounded text-[15px] font-semibold transition"
-          :class="mode === 'all-time' ? 'bg-[#03C75A] text-white shadow-sm' : 'text-[#5f6368]'"
+          :class="mode === 'all-time' ? 'bg-[var(--ui-color-brand)] text-white shadow-sm' : 'text-[var(--ui-color-content-muted)]'"
           type="button"
           @click="switchMode('all-time')"
         >
@@ -170,16 +166,16 @@ async function loadRanking() {
 
       <div v-if="mode === 'monthly'" class="mb-5 flex items-center justify-center gap-2">
         <button
-          class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[#5f6368] transition hover:bg-[#f5f6f7] hover:text-[#333333]"
+          class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
           type="button"
           aria-label="이전 달"
           @click="shiftMonth(-1)"
         >
           <ChevronLeft :size="18" />
         </button>
-        <span class="min-w-[100px] text-center text-[15px] font-semibold text-[#333333]">{{ monthLabel }}</span>
+        <span class="min-w-[100px] text-center text-[15px] font-semibold text-[var(--ui-color-content)]">{{ monthLabel }}</span>
         <button
-          class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[#5f6368] transition hover:bg-[#f5f6f7] hover:text-[#333333] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#5f6368]"
+          class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-color-content-muted)]"
           type="button"
           aria-label="다음 달"
           :disabled="isCurrentMonth"
@@ -189,29 +185,29 @@ async function loadRanking() {
         </button>
       </div>
 
-      <ol v-if="loading" class="divide-y divide-[#dadce0] animate-pulse">
+      <ol v-if="loading" class="divide-y divide-[var(--ui-color-stroke)] animate-pulse">
         <li
           v-for="n in 5"
           :key="n"
           class="flex min-h-[56px] items-center gap-4 py-3 first:pt-0 last:pb-0"
         >
-          <div class="h-9 w-9 shrink-0 rounded-lg bg-[#f5f6f7]"></div>
+          <div class="h-9 w-9 shrink-0 rounded-lg bg-[var(--ui-color-surface-subtle)]"></div>
           <div class="flex-1 space-y-2">
-            <div class="h-4 w-2/3 rounded bg-[#f5f6f7]"></div>
-            <div class="h-3 w-1/3 rounded bg-[#f5f6f7]"></div>
+            <div class="h-4 w-2/3 rounded bg-[var(--ui-color-surface-subtle)]"></div>
+            <div class="h-3 w-1/3 rounded bg-[var(--ui-color-surface-subtle)]"></div>
           </div>
-          <div class="h-5 w-10 shrink-0 rounded bg-[#f5f6f7]"></div>
+          <div class="h-5 w-10 shrink-0 rounded bg-[var(--ui-color-surface-subtle)]"></div>
         </li>
       </ol>
-      <p v-else-if="errorMessage" class="py-8 text-center text-[15px] font-semibold text-[#e74c3c]">
+      <p v-else-if="errorMessage" class="py-8 text-center text-[15px] font-semibold text-[var(--ui-color-destructive)]">
         {{ errorMessage }}
       </p>
       <div v-else-if="rankings.length === 0" class="py-12 text-center">
-        <p class="text-[15px] text-[#333333]">{{ emptyMessage }}</p>
-        <p class="mt-1 text-[13px] text-[#5f6368]">모임에 참여하고 인증하면 포인트가 쌓여요.</p>
+        <p class="text-[15px] text-[var(--ui-color-content)]">{{ emptyMessage }}</p>
+        <p class="mt-1 text-[13px] text-[var(--ui-color-content-muted)]">모임에 참여하고 인증하면 포인트가 쌓여요.</p>
       </div>
 
-      <ol v-else class="divide-y divide-[#dadce0]">
+      <ol v-else class="divide-y divide-[var(--ui-color-stroke)]">
         <li
           v-for="user in rankings"
           :key="user.id"
@@ -219,21 +215,21 @@ async function loadRanking() {
         >
           <span
             v-if="user.rank === 1"
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#03C75A] text-white"
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-color-brand)] text-white"
           >
             <Crown :size="16" />
           </span>
           <span
             v-else
             class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
-            :class="user.rank <= 3 ? 'bg-[#03C75A] text-white' : 'bg-[#f5f6f7] text-[#5f6368]'"
+            :class="user.rank <= 3 ? 'bg-[var(--ui-color-brand)] text-white' : 'bg-[var(--ui-color-surface-subtle)] text-[var(--ui-color-content-muted)]'"
           >
             {{ user.rank }}
           </span>
 
           <div class="min-w-0 flex-1">
             <p
-              class="flex items-center gap-1.5 truncate text-[#333333]"
+              class="flex items-center gap-1.5 truncate text-[var(--ui-color-content)]"
               :class="user.rank === 1 ? 'text-[17px] font-bold' : user.rank <= 3 ? 'text-[15px] font-semibold' : 'text-[14px] font-medium'"
             >
               <UserAvatar
@@ -244,12 +240,12 @@ async function loadRanking() {
               />
               <span class="truncate">{{ user.nickname }}</span>
             </p>
-            <p class="mt-0.5 text-[12px] font-medium text-[#5f6368]">스터디 인증 포인트</p>
+            <p class="mt-0.5 text-[12px] font-medium text-[var(--ui-color-content-muted)]">스터디 인증 포인트</p>
           </div>
 
           <strong
             class="shrink-0 font-bold"
-            :class="user.rank === 1 ? 'text-[17px] text-[#03C75A]' : 'text-base text-[#333333]'"
+            :class="user.rank === 1 ? 'text-[17px] text-[var(--ui-color-brand)]' : 'text-base text-[var(--ui-color-content)]'"
           >
             {{ user.points }}점
           </strong>
@@ -261,9 +257,9 @@ async function loadRanking() {
     <section class="surface-card">
       <div class="mb-5 flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
-          <Dices v-if="currentMini.key === 'dice'" :size="18" class="text-[#03C75A]" />
-          <Gamepad2 v-else :size="18" class="text-[#03C75A]" />
-          <h3 class="text-[15px] font-semibold text-[#333333]">{{ currentMini.title }}</h3>
+          <Dices v-if="currentMini.key === 'dice'" :size="18" class="text-[var(--ui-color-brand)]" />
+          <Gamepad2 v-else :size="18" class="text-[var(--ui-color-brand)]" />
+          <h3 class="text-[15px] font-semibold text-[var(--ui-color-content)]">{{ currentMini.title }}</h3>
         </div>
         <!-- 페이지 인디케이터 (탭도 가능) -->
         <div class="flex items-center gap-1.5">
@@ -272,7 +268,7 @@ async function loadRanking() {
             :key="g"
             type="button"
             class="h-2 rounded-full transition-all"
-            :class="i === miniIndex ? 'w-5 bg-[#03C75A]' : 'w-2 bg-[#dadce0]'"
+            :class="i === miniIndex ? 'w-5 bg-[var(--ui-color-brand)]' : 'w-2 bg-[var(--ui-color-stroke)]'"
             :aria-label="`${i + 1}번째 랭킹`"
             @click="goMini(i)"
           ></button>
@@ -280,20 +276,20 @@ async function loadRanking() {
       </div>
 
       <div @touchstart.passive="onMiniTouchStart" @touchend="onMiniTouchEnd">
-        <ol v-if="currentMini.loading" class="divide-y divide-[#dadce0] animate-pulse">
+        <ol v-if="currentMini.loading" class="divide-y divide-[var(--ui-color-stroke)] animate-pulse">
           <li v-for="n in 5" :key="n" class="flex min-h-[52px] items-center gap-4 py-3 first:pt-0 last:pb-0">
-            <div class="h-8 w-8 shrink-0 rounded-lg bg-[#f5f6f7]"></div>
-            <div class="h-4 flex-1 rounded bg-[#f5f6f7]"></div>
-            <div class="h-4 w-12 shrink-0 rounded bg-[#f5f6f7]"></div>
+            <div class="h-8 w-8 shrink-0 rounded-lg bg-[var(--ui-color-surface-subtle)]"></div>
+            <div class="h-4 flex-1 rounded bg-[var(--ui-color-surface-subtle)]"></div>
+            <div class="h-4 w-12 shrink-0 rounded bg-[var(--ui-color-surface-subtle)]"></div>
           </li>
         </ol>
 
         <div v-else-if="currentMini.rows.length === 0" class="py-8 text-center">
-          <p class="text-[15px] text-[#333333]">{{ currentMini.empty[0] }}</p>
-          <p class="mt-1 text-[13px] text-[#5f6368]">{{ currentMini.empty[1] }}</p>
+          <p class="text-[15px] text-[var(--ui-color-content)]">{{ currentMini.empty[0] }}</p>
+          <p class="mt-1 text-[13px] text-[var(--ui-color-content-muted)]">{{ currentMini.empty[1] }}</p>
         </div>
 
-        <ol v-else class="divide-y divide-[#dadce0]">
+        <ol v-else class="divide-y divide-[var(--ui-color-stroke)]">
           <li
             v-for="user in currentMini.rows"
             :key="user.id"
@@ -301,13 +297,13 @@ async function loadRanking() {
           >
             <span
               class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold"
-              :class="user.rank === 1 ? 'bg-[#03C75A] text-white' : user.rank <= 3 ? 'bg-[#03C75A]/15 text-[#02b350]' : 'bg-[#f5f6f7] text-[#5f6368]'"
+              :class="user.rank === 1 ? 'bg-[var(--ui-color-brand)] text-white' : user.rank <= 3 ? 'bg-[#03C75A]/15 text-[var(--ui-color-brand-hover)]' : 'bg-[var(--ui-color-surface-subtle)] text-[var(--ui-color-content-muted)]'"
             >
               <Crown v-if="user.rank === 1" :size="14" />
               <template v-else>{{ user.rank }}</template>
             </span>
 
-            <p class="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[14px] font-medium text-[#333333]">
+            <p class="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[14px] font-medium text-[var(--ui-color-content)]">
               <UserAvatar
                 class="h-6 w-6"
                 :name="user.nickname"
@@ -317,7 +313,7 @@ async function loadRanking() {
               <span class="truncate">{{ user.nickname }}</span>
             </p>
 
-            <strong class="shrink-0 text-[14px] font-bold" :class="user.rank === 1 ? 'text-[#03C75A]' : 'text-[#333333]'">
+            <strong class="shrink-0 text-[14px] font-bold" :class="user.rank === 1 ? 'text-[var(--ui-color-brand)]' : 'text-[var(--ui-color-content)]'">
               {{ currentMini.valueOf(user) }}
             </strong>
           </li>

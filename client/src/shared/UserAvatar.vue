@@ -21,7 +21,7 @@ watch(() => props.imageUrl, () => {
 <template>
   <img
     v-if="imageUrl && !failed"
-    class="shrink-0 rounded-full border border-[#dadce0] bg-[#f5f6f7] object-cover"
+    class="shrink-0 rounded-full border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] object-cover"
     :src="imageUrl"
     :alt="name"
     @error="failed = true"

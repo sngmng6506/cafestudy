@@ -266,27 +266,24 @@ const displayBest = computed(() => best.value.toLocaleString());
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">2048</h1>
-      <p class="mt-1 text-[14px] text-[#5f6368]">같은 숫자를 합쳐 2048을 만들어보세요.</p>
-    </div>
+    <p class="mt-1 text-[14px] text-[var(--ui-color-content-muted)]">같은 숫자를 합쳐 2048을 만들어보세요.</p>
 
     <section class="surface-card">
       <!-- 점수판 -->
       <div class="mb-4 flex items-center justify-between gap-3">
         <div class="flex gap-2">
-          <div class="rounded-[10px] bg-[#f5f6f7] px-4 py-2 text-center">
-            <div class="text-[11px] font-semibold text-[#999999]">점수</div>
-            <div class="text-[18px] font-bold text-[#333333]">{{ displayScore }}</div>
+          <div class="rounded-[10px] bg-[var(--ui-color-surface-subtle)] px-4 py-2 text-center">
+            <div class="text-[11px] font-semibold text-[var(--ui-color-content-disabled)]">점수</div>
+            <div class="text-[18px] font-bold text-[var(--ui-color-content)]">{{ displayScore }}</div>
           </div>
-          <div class="rounded-[10px] bg-[#f5f6f7] px-4 py-2 text-center">
-            <div class="text-[11px] font-semibold text-[#999999]">최고</div>
-            <div class="text-[18px] font-bold text-[#03883f]">{{ displayBest }}</div>
+          <div class="rounded-[10px] bg-[var(--ui-color-surface-subtle)] px-4 py-2 text-center">
+            <div class="text-[11px] font-semibold text-[var(--ui-color-content-disabled)]">최고</div>
+            <div class="text-[18px] font-bold text-[var(--ui-color-success-content)]">{{ displayBest }}</div>
           </div>
         </div>
         <button
           type="button"
-          class="focus-ring inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-[#dadce0] bg-white px-3 text-[13px] font-semibold text-[#5f6368] transition hover:bg-[#f5f6f7]"
+          class="focus-ring inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-[var(--ui-color-stroke)] bg-white px-3 text-[13px] font-semibold text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)]"
           @click="startNewGame"
         >
           <RotateCcw :size="15" /> 새 게임
@@ -303,7 +300,7 @@ const displayBest = computed(() => best.value.toLocaleString());
           <div
             v-for="(cell, i) in board"
             :key="i"
-            class="flex aspect-square items-center justify-center rounded-[8px] bg-[#f7f8f9]"
+            class="flex aspect-square items-center justify-center rounded-[8px] bg-[var(--ui-color-canvas)]"
           >
             <div
               v-if="cell !== 0"
@@ -320,12 +317,12 @@ const displayBest = computed(() => best.value.toLocaleString());
           v-if="over || won"
           class="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-[12px] bg-white/85"
         >
-          <p class="text-[20px] font-bold text-[#333333]">
+          <p class="text-[20px] font-bold text-[var(--ui-color-content)]">
             {{ won ? '2048 달성! 🎉' : '게임 오버' }}
           </p>
           <button
             type="button"
-            class="focus-ring rounded-[10px] bg-[#03C75A] px-5 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#02b350]"
+            class="focus-ring rounded-[10px] bg-[var(--ui-color-brand)] px-5 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)]"
             @click="reset"
           >
             다시 하기
@@ -333,7 +330,7 @@ const displayBest = computed(() => best.value.toLocaleString());
           <button
             v-if="won"
             type="button"
-            class="text-[13px] font-semibold text-[#5f6368] underline"
+            class="text-[13px] font-semibold text-[var(--ui-color-content-muted)] underline"
             @click="won = false"
           >
             계속 이어서 하기
@@ -341,7 +338,7 @@ const displayBest = computed(() => best.value.toLocaleString());
         </div>
       </div>
 
-      <p class="mt-4 text-center text-[13px] text-[#999999]">
+      <p class="mt-4 text-center text-[13px] text-[var(--ui-color-content-disabled)]">
         방향키 또는 스와이프로 타일을 밀어보세요.
       </p>
     </section>

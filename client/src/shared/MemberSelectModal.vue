@@ -116,7 +116,7 @@ async function submitAuth() {
     <div class="relative z-10 w-full max-w-sm rounded-xl bg-white px-5 pb-6 pt-5 shadow-lg">
       <button
         v-if="dismissable"
-        class="focus-ring absolute right-4 top-4 rounded p-1 text-[#5f6368] transition hover:text-[#333333]"
+        class="focus-ring absolute right-4 top-4 rounded p-1 text-[var(--ui-color-content-muted)] transition hover:text-[var(--ui-color-content)]"
         type="button"
         aria-label="닫기"
         @click="emit('close')"
@@ -125,38 +125,38 @@ async function submitAuth() {
       </button>
 
       <template v-if="step === 'select'">
-        <h2 class="text-[18px] font-bold text-[#333333]">나는 누구인가요?</h2>
-        <p class="mt-1 text-[13px] text-[#5f6368]">본인 이름을 선택하면 비밀번호로 로그인해요.</p>
+        <h2 class="text-[18px] font-bold text-[var(--ui-color-content)]">나는 누구인가요?</h2>
+        <p class="mt-1 text-[13px] text-[var(--ui-color-content-muted)]">본인 이름을 선택하면 비밀번호로 로그인해요.</p>
 
         <div class="relative mb-3 mt-4">
-          <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6368]" />
+          <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ui-color-content-muted)]" />
           <input
             v-model="query"
             type="text"
             placeholder="이름으로 검색"
-            class="focus-ring h-10 w-full rounded border border-[#dadce0] bg-[#f5f6f7] pl-9 pr-4 text-[14px] text-[#333333] placeholder:text-[#999999] focus:border-[#03C75A] focus:bg-white focus:outline-none"
+            class="focus-ring h-10 w-full rounded border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] pl-9 pr-4 text-[14px] text-[var(--ui-color-content)] placeholder:text-[var(--ui-color-content-disabled)] focus:border-[var(--ui-color-brand)] focus:bg-white focus:outline-none"
           />
         </div>
 
-        <ul v-if="loading" class="divide-y divide-[#dadce0]">
+        <ul v-if="loading" class="divide-y divide-[var(--ui-color-stroke)]">
           <li v-for="n in 5" :key="n" class="flex animate-pulse items-center gap-3 py-3 first:pt-0 last:pb-0">
-            <div class="h-10 w-10 shrink-0 rounded-full bg-[#f5f6f7]"></div>
-            <div class="h-4 w-32 rounded bg-[#f5f6f7]"></div>
+            <div class="h-10 w-10 shrink-0 rounded-full bg-[var(--ui-color-surface-subtle)]"></div>
+            <div class="h-4 w-32 rounded bg-[var(--ui-color-surface-subtle)]"></div>
           </li>
         </ul>
 
-        <p v-else-if="errorMessage" class="py-4 text-center text-[14px] font-semibold text-[#e74c3c]">
+        <p v-else-if="errorMessage" class="py-4 text-center text-[14px] font-semibold text-[var(--ui-color-destructive)]">
           {{ errorMessage }}
         </p>
 
-        <p v-else-if="filtered.length === 0" class="py-6 text-center text-[14px] text-[#5f6368]">
+        <p v-else-if="filtered.length === 0" class="py-6 text-center text-[14px] text-[var(--ui-color-content-muted)]">
           검색 결과가 없어요.
         </p>
 
-        <ul v-else class="max-h-64 divide-y divide-[#dadce0] overflow-y-auto">
+        <ul v-else class="max-h-64 divide-y divide-[var(--ui-color-stroke)] overflow-y-auto">
           <li v-for="member in filtered" :key="member.id" class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
             <div
-              class="focus-ring flex flex-1 cursor-pointer items-center gap-3 rounded transition hover:bg-[#f5f6f7]"
+              class="focus-ring flex flex-1 cursor-pointer items-center gap-3 rounded transition hover:bg-[var(--ui-color-surface-subtle)]"
               tabindex="0"
               role="button"
               @click="pick(member)"
@@ -165,17 +165,17 @@ async function submitAuth() {
             >
               <span
                 class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[15px] font-bold"
-                :class="[avatarColor(member.name), member.id === currentUserId ? 'ring-2 ring-[#03C75A] ring-offset-1' : '']"
+                :class="[avatarColor(member.name), member.id === currentUserId ? 'ring-2 ring-[var(--ui-color-brand)] ring-offset-1' : '']"
               >
                 {{ initials(member.name) }}
               </span>
               <div class="min-w-0 flex-1">
-                <p class="truncate text-[15px] font-semibold text-[#333333]">{{ member.name }}</p>
-                <p class="truncate text-[13px] text-[#767676]">
+                <p class="truncate text-[15px] font-semibold text-[var(--ui-color-content)]">{{ member.name }}</p>
+                <p class="truncate text-[13px] text-[var(--ui-color-content-caption)]">
                   {{ member.hasPassword ? '비밀번호로 로그인' : '비밀번호 설정 필요' }}
                 </p>
               </div>
-              <Check v-if="member.id === currentUserId" :size="18" class="shrink-0 text-[#03C75A]" />
+              <Check v-if="member.id === currentUserId" :size="18" class="shrink-0 text-[var(--ui-color-brand)]" />
             </div>
           </li>
         </ul>
@@ -183,7 +183,7 @@ async function submitAuth() {
 
       <template v-else>
         <button
-          class="focus-ring -ml-1 mb-2 flex items-center gap-1 rounded p-1 text-[13px] text-[#5f6368] transition hover:text-[#333333]"
+          class="focus-ring -ml-1 mb-2 flex items-center gap-1 rounded p-1 text-[13px] text-[var(--ui-color-content-muted)] transition hover:text-[var(--ui-color-content)]"
           type="button"
           @click="backToSelect"
         >
@@ -199,8 +199,8 @@ async function submitAuth() {
             {{ initials(selectedMember.name) }}
           </span>
           <div class="min-w-0">
-            <h2 class="truncate text-[18px] font-bold text-[#333333]">{{ selectedMember.name }}</h2>
-            <p class="text-[13px] text-[#5f6368]">
+            <h2 class="truncate text-[18px] font-bold text-[var(--ui-color-content)]">{{ selectedMember.name }}</h2>
+            <p class="text-[13px] text-[var(--ui-color-content-muted)]">
               {{ isSetup ? '사용할 비밀번호를 설정해 주세요.' : '비밀번호를 입력해 주세요.' }}
             </p>
           </div>
@@ -212,7 +212,7 @@ async function submitAuth() {
             type="password"
             autocomplete="off"
             :placeholder="isSetup ? '새 비밀번호 (4자 이상)' : '비밀번호'"
-            class="focus-ring h-10 w-full rounded border border-[#dadce0] bg-[#f5f6f7] px-3 text-[16px] text-[#333333] placeholder:text-[#999999] focus:border-[#03C75A] focus:bg-white focus:outline-none"
+            class="focus-ring h-10 w-full rounded border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] px-3 text-[16px] text-[var(--ui-color-content)] placeholder:text-[var(--ui-color-content-disabled)] focus:border-[var(--ui-color-brand)] focus:bg-white focus:outline-none"
           />
           <input
             v-if="isSetup"
@@ -220,7 +220,7 @@ async function submitAuth() {
             type="password"
             autocomplete="off"
             placeholder="비밀번호 확인"
-            class="focus-ring h-10 w-full rounded border border-[#dadce0] bg-[#f5f6f7] px-3 text-[16px] text-[#333333] placeholder:text-[#999999] focus:border-[#03C75A] focus:bg-white focus:outline-none"
+            class="focus-ring h-10 w-full rounded border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] px-3 text-[16px] text-[var(--ui-color-content)] placeholder:text-[var(--ui-color-content-disabled)] focus:border-[var(--ui-color-brand)] focus:bg-white focus:outline-none"
           />
           <input
             v-if="isSetup"
@@ -228,18 +228,18 @@ async function submitAuth() {
             type="text"
             autocomplete="one-time-code"
             placeholder="설정 코드 (관리자가 초기화한 계정만)"
-            class="focus-ring h-10 w-full rounded border border-[#dadce0] bg-[#f5f6f7] px-3 text-[16px] text-[#333333] placeholder:text-[#999999] focus:border-[#03C75A] focus:bg-white focus:outline-none"
+            class="focus-ring h-10 w-full rounded border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] px-3 text-[16px] text-[var(--ui-color-content)] placeholder:text-[var(--ui-color-content-disabled)] focus:border-[var(--ui-color-brand)] focus:bg-white focus:outline-none"
           />
-          <p v-if="isSetup" class="text-[12px] leading-5 text-[#5f6368]">
+          <p v-if="isSetup" class="text-[12px] leading-5 text-[var(--ui-color-content-muted)]">
             처음 비밀번호를 만드는 계정은 코드를 비워 두세요. 관리자가 초기화했다면 전달받은 코드를 입력해야 해요.
           </p>
 
-          <p v-if="authError" class="text-[13px] font-semibold text-[#e74c3c]">{{ authError }}</p>
+          <p v-if="authError" class="text-[13px] font-semibold text-[var(--ui-color-destructive)]">{{ authError }}</p>
 
           <button
             type="submit"
             :disabled="submitting"
-            class="focus-ring h-10 w-full rounded bg-[#03C75A] text-[15px] font-bold text-white transition hover:bg-[#02b350] disabled:opacity-50"
+            class="focus-ring h-10 w-full rounded bg-[var(--ui-color-brand)] text-[15px] font-bold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
           >
             {{ submitting ? '처리 중…' : isSetup ? '비밀번호 설정하고 시작하기' : '로그인' }}
           </button>

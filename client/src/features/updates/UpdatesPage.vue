@@ -21,17 +21,13 @@ const knownIssues = [
 
 const statusMeta = {
   planned: { label: '개선 예정', cls: 'bg-[#EDE7FB] text-[#7C3AED]' },
-  'in-progress': { label: '진행 중', cls: 'bg-[#e9f8ef] text-[#03883f]' },
-  done: { label: '완료', cls: 'bg-[#f5f6f7] text-[#5f6368]' },
+  'in-progress': { label: '진행 중', cls: 'bg-[var(--ui-color-success-surface)] text-[var(--ui-color-success-content)]' },
+  done: { label: '완료', cls: 'bg-[var(--ui-color-surface-subtle)] text-[var(--ui-color-content-muted)]' },
 };
 </script>
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">알려진 이슈 & 개선 예정</h1>
-    </div>
-
     <ul class="grid gap-3">
       <li v-for="issue in knownIssues" :key="issue.title" class="surface-card">
         <div class="mb-3 flex items-start justify-between gap-3">
@@ -46,18 +42,18 @@ const statusMeta = {
 
         <div class="grid gap-3">
           <div>
-            <p class="mb-1 text-[12px] font-semibold text-[#999999]">문제</p>
-            <p class="text-[14px] leading-relaxed text-[#5f6368]">{{ issue.problem }}</p>
+            <p class="mb-1 text-[12px] font-semibold text-[var(--ui-color-content-disabled)]">문제</p>
+            <p class="text-[14px] leading-relaxed text-[var(--ui-color-content-muted)]">{{ issue.problem }}</p>
           </div>
           <div>
-            <p class="mb-1 text-[12px] font-semibold text-[#999999]">해결 계획</p>
-            <p class="text-[14px] leading-relaxed text-[#5f6368]">{{ issue.plan }}</p>
+            <p class="mb-1 text-[12px] font-semibold text-[var(--ui-color-content-disabled)]">해결 계획</p>
+            <p class="text-[14px] leading-relaxed text-[var(--ui-color-content-muted)]">{{ issue.plan }}</p>
           </div>
         </div>
       </li>
     </ul>
 
-    <p class="px-1 text-[13px] text-[#999999]">
+    <p class="px-1 text-[13px] text-[var(--ui-color-content-disabled)]">
       다른 문제를 발견하면 팀에 알려주세요.
     </p>
   </section>

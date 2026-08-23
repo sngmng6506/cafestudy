@@ -170,59 +170,55 @@ async function saveComment(cafe) {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">카페 정보</h1>
-    </div>
-
     <!-- 카페 지도 -->
     <section v-if="mappedCafes.length" class="surface-card">
       <div class="mb-4 flex items-center gap-2">
-        <MapIcon :size="18" class="text-[#03C75A]" />
-        <h2 class="text-lg font-semibold text-[#333333]">카페 지도</h2>
-        <span class="ml-auto text-[12px] text-[#5f6368]">마커를 누르면 상세 정보</span>
+        <MapIcon :size="18" class="text-[var(--ui-color-brand)]" />
+        <h2 class="text-lg font-semibold text-[var(--ui-color-content)]">카페 지도</h2>
+        <span class="ml-auto text-[12px] text-[var(--ui-color-content-muted)]">마커를 누르면 상세 정보</span>
       </div>
       <!-- relative z-0: Leaflet 내부 z-index(400~1000)를 이 안에 가둬서
            z-50 모달(카페 시트 등)이 지도 뒤로 깔리지 않게 한다. -->
-      <div ref="mapEl" class="relative z-0 h-64 w-full overflow-hidden rounded-xl border border-[#dadce0]"></div>
-      <p v-if="unmappedCount > 0" class="mt-2 text-[12px] text-[#5f6368]">
+      <div ref="mapEl" class="relative z-0 h-64 w-full overflow-hidden rounded-xl border border-[var(--ui-color-stroke)]"></div>
+      <p v-if="unmappedCount > 0" class="mt-2 text-[12px] text-[var(--ui-color-content-muted)]">
         위치를 찾지 못한 카페 {{ unmappedCount }}곳은 아래 목록에서만 표시됩니다.
       </p>
     </section>
 
     <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
-        <Coffee :size="18" class="text-[#03C75A]" />
-        <h2 class="text-lg font-semibold text-[#333333]">카페 이력</h2>
+        <Coffee :size="18" class="text-[var(--ui-color-brand)]" />
+        <h2 class="text-lg font-semibold text-[var(--ui-color-content)]">카페 이력</h2>
         <span
           v-if="!loading && !errorMessage"
-          class="ml-1 rounded-lg bg-[#f5f6f7] px-2 py-0.5 text-sm font-semibold text-[#5f6368]"
+          class="ml-1 rounded-lg bg-[var(--ui-color-surface-subtle)] px-2 py-0.5 text-sm font-semibold text-[var(--ui-color-content-muted)]"
         >
           {{ cafes.length }}
         </span>
       </div>
 
-      <ul v-if="loading" class="divide-y divide-[#dadce0]">
+      <ul v-if="loading" class="divide-y divide-[var(--ui-color-stroke)]">
         <li v-for="n in 3" :key="n" class="animate-pulse py-4 first:pt-0 last:pb-0">
-          <div class="h-5 w-3/4 rounded-md bg-[#f5f6f7]"></div>
-          <div class="mt-2 h-3 w-1/2 rounded bg-[#f5f6f7]"></div>
-          <div class="mt-3 h-10 rounded-lg bg-[#f5f6f7]"></div>
+          <div class="h-5 w-3/4 rounded-md bg-[var(--ui-color-surface-subtle)]"></div>
+          <div class="mt-2 h-3 w-1/2 rounded bg-[var(--ui-color-surface-subtle)]"></div>
+          <div class="mt-3 h-10 rounded-lg bg-[var(--ui-color-surface-subtle)]"></div>
         </li>
       </ul>
 
-      <p v-else-if="errorMessage" class="py-6 text-[15px] font-semibold text-[#e74c3c]">
+      <p v-else-if="errorMessage" class="py-6 text-[15px] font-semibold text-[var(--ui-color-destructive)]">
         {{ errorMessage }}
       </p>
 
       <div v-else-if="cafes.length === 0" class="py-12 text-center">
-        <p class="text-[15px] font-semibold text-[#333333]">아직 다녀온 카페가 없어요.</p>
-        <p class="mt-1 text-[13px] text-[#5f6368]">완료된 모임 장소가 생기면 이곳에 표시됩니다.</p>
+        <p class="text-[15px] font-semibold text-[var(--ui-color-content)]">아직 다녀온 카페가 없어요.</p>
+        <p class="mt-1 text-[13px] text-[var(--ui-color-content-muted)]">완료된 모임 장소가 생기면 이곳에 표시됩니다.</p>
       </div>
 
-      <ul v-else class="divide-y divide-[#dadce0]">
+      <ul v-else class="divide-y divide-[var(--ui-color-stroke)]">
         <li v-for="cafe in cafes" :key="cafe.location" class="grid gap-3 py-4 first:pt-0 last:pb-0">
           <div>
-            <h3 class="text-[17px] font-bold text-[#333333]">{{ cafe.location }}</h3>
-            <p class="mt-1 text-[12px] text-[#5f6368]">
+            <h3 class="text-[17px] font-bold text-[var(--ui-color-content)]">{{ cafe.location }}</h3>
+            <p class="mt-1 text-[12px] text-[var(--ui-color-content-muted)]">
               {{ cafe.meetupCount }}회 방문 · 최근 {{ formatDate(cafe.lastVisitedAt) }}
             </p>
           </div>
@@ -231,9 +227,9 @@ async function saveComment(cafe) {
             <div
               v-for="comment in cafe.comments"
               :key="comment.id"
-              class="rounded-lg bg-[#f5f6f7] px-3 py-2"
+              class="rounded-lg bg-[var(--ui-color-surface-subtle)] px-3 py-2"
             >
-              <div class="mb-1 flex items-center gap-1.5 text-[12px] font-semibold text-[#5f6368]">
+              <div class="mb-1 flex items-center gap-1.5 text-[12px] font-semibold text-[var(--ui-color-content-muted)]">
                 <MessageSquare :size="14" />
                 {{ comment.authorName }}
                 <span
@@ -245,16 +241,16 @@ async function saveComment(cafe) {
                 <button
                   v-if="comment.isMine && !editing[cafe.location]"
                   type="button"
-                  class="focus-ring ml-auto rounded px-1 text-[12px] font-semibold text-[#03883f] hover:underline"
+                  class="focus-ring ml-auto rounded px-1 text-[12px] font-semibold text-[var(--ui-color-success-content)] hover:underline"
                   @click="startEdit(cafe)"
                 >
                   수정
                 </button>
               </div>
-              <p class="text-[13px] leading-relaxed text-[#333333]">{{ comment.body }}</p>
+              <p class="text-[13px] leading-relaxed text-[var(--ui-color-content)]">{{ comment.body }}</p>
             </div>
           </div>
-          <p v-else class="text-[13px] text-[#5f6368]">아직 남긴 코멘트가 없어요.</p>
+          <p v-else class="text-[13px] text-[var(--ui-color-content-muted)]">아직 남긴 코멘트가 없어요.</p>
 
           <form
             v-if="cafe.canComment && (!myComment(cafe) || editing[cafe.location])"
@@ -264,12 +260,12 @@ async function saveComment(cafe) {
             <div class="flex gap-2">
               <input
                 v-model="commentInputs[cafe.location]"
-                class="h-10 min-w-0 flex-1 rounded-lg border border-[#dadce0] px-3 text-[14px] outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
+                class="h-10 min-w-0 flex-1 rounded-lg border border-[var(--ui-color-stroke)] px-3 text-[14px] outline-none transition placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
                 maxlength="120"
                 placeholder="이 카페에 대한 한줄 코멘트"
               />
               <button
-                class="focus-ring h-10 shrink-0 rounded bg-[#03C75A] px-3 text-sm font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-50"
+                class="focus-ring h-10 shrink-0 rounded bg-[var(--ui-color-brand)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
                 type="submit"
                 :disabled="pendingLocation === cafe.location"
               >
@@ -277,7 +273,7 @@ async function saveComment(cafe) {
               </button>
               <button
                 v-if="editing[cafe.location]"
-                class="focus-ring h-10 shrink-0 rounded border border-[#dadce0] px-3 text-sm font-semibold text-[#5f6368] transition hover:bg-[#f5f6f7]"
+                class="focus-ring h-10 shrink-0 rounded border border-[var(--ui-color-stroke)] px-3 text-sm font-semibold text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)]"
                 type="button"
                 @click="cancelEdit(cafe)"
               >
@@ -285,7 +281,7 @@ async function saveComment(cafe) {
               </button>
             </div>
             <div class="flex items-center justify-between">
-              <label class="flex cursor-pointer items-center gap-1.5 text-[12px] text-[#5f6368]">
+              <label class="flex cursor-pointer items-center gap-1.5 text-[12px] text-[var(--ui-color-content-muted)]">
                 <input
                   v-model="anonymousInputs[cafe.location]"
                   type="checkbox"
@@ -293,12 +289,12 @@ async function saveComment(cafe) {
                 />
                 익명으로 남기기
               </label>
-              <span class="pr-1 text-[11px] text-[#5f6368]">
+              <span class="pr-1 text-[11px] text-[var(--ui-color-content-muted)]">
                 {{ (commentInputs[cafe.location] ?? '').length }}/120
               </span>
             </div>
           </form>
-          <p v-else-if="!cafe.canComment" class="text-[12px] text-[#5f6368]">
+          <p v-else-if="!cafe.canComment" class="text-[12px] text-[var(--ui-color-content-muted)]">
             다녀온 카페에만 코멘트를 남길 수 있어요.
           </p>
         </li>

@@ -38,21 +38,25 @@ const {
     :class="[smashed ? 'smashed' : '', showBottomSearch ? 'pb-44' : 'pb-28']"
     :style="smashStyle"
   >
-    <div class="relative">
-      <div class="absolute right-0 top-0 z-20 flex items-center gap-1">
+    <header class="mb-5 flex items-start justify-between gap-3">
+      <h1 class="ui-page-title min-w-0 flex-1 break-keep">
+        {{ activeFeature.title ?? activeFeature.label }}
+      </h1>
+
+      <div class="flex shrink-0 items-center gap-1">
         <NotificationBell v-if="currentToken" @open-notices="selectFeature('notices')" />
         <button
           v-if="currentUserId"
-          class="focus-ring ui-text-muted ui-radius-pill flex items-center gap-2 py-1 pl-2 pr-3 text-[13px] font-medium transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+          class="focus-ring ui-text-muted ui-radius-pill flex max-w-[9rem] items-center gap-2 py-1 pl-2 pr-3 text-[13px] font-medium transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
           type="button"
           @click="memberSelectOpen = true"
         >
           <UserAvatar
-            class="h-7 w-7 text-[12px]"
+            class="h-7 w-7 shrink-0 text-[12px]"
             :name="currentUserName"
             :image-url="activeBadgeImageUrl"
           />
-          {{ currentUserName }}
+          <span class="truncate">{{ currentUserName }}</span>
         </button>
         <button
           v-else
@@ -63,9 +67,9 @@ const {
           멤버 선택
         </button>
       </div>
+    </header>
 
-      <component :is="activeFeature.component" />
-    </div>
+    <component :is="activeFeature.component" />
 
     <div
       class="ui-bg-surface ui-border fixed bottom-0 left-1/2 z-50 w-full max-w-md -translate-x-1/2 border-t px-2 pt-2 shadow-[0_-4px_18px_rgba(0,0,0,0.06)]"

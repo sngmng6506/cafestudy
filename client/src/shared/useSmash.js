@@ -42,6 +42,15 @@ export function useSmash() {
   startSync();
 
   async function toggleSmash() {
+    // 깨부수기는 나뿐 아니라 모든 사람의 화면을 바꾼다. 되돌릴 수 있지만
+    // 모르고 누르는 경우가 있어 켤 때만 한 번 확인한다.
+    if (!smashed.value) {
+      const confirmed = window.confirm(
+        '화면을 깨부술까요?\n지금 앱을 보고 있는 모든 사람의 화면이 함께 깨져요. 같은 버튼으로 되돌릴 수 있어요.',
+      );
+      if (!confirmed) return;
+    }
+
     try {
       const body = await apiFetch('/api/smash/toggle', { method: 'POST' });
       applyState(body.data);

@@ -110,10 +110,6 @@ function isFilled(value, slot) {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">주사위</h1>
-    </div>
-
     <section class="surface-card">
       <div class="flex flex-col items-center gap-8 pb-2">
         <div class="scene">
@@ -133,25 +129,25 @@ function isFilled(value, slot) {
 
         <!-- 결과 + 획득 포인트 -->
         <div class="flex flex-col items-center gap-1">
-          <p class="text-[15px] font-semibold text-[#5f6368]">
-            결과 <span class="ml-1 text-lg text-[#333333]">{{ rolling ? '…' : result }}</span>
+          <p class="text-[15px] font-semibold text-[var(--ui-color-content-muted)]">
+            결과 <span class="ml-1 text-lg text-[var(--ui-color-content)]">{{ rolling ? '…' : result }}</span>
           </p>
-          <p v-if="lastEarned !== null && !rolling" class="text-[13px] font-semibold text-[#03C75A]">
+          <p v-if="lastEarned !== null && !rolling" class="text-[13px] font-semibold text-[var(--ui-color-brand)]">
             +{{ lastEarned }}점 획득!
           </p>
-          <p v-else-if="rollError && !rolling" class="text-[13px] font-semibold text-[#e74c3c]">
+          <p v-else-if="rollError && !rolling" class="text-[13px] font-semibold text-[var(--ui-color-destructive)]">
             {{ rollError }}
           </p>
         </div>
 
         <!-- 내 누적 주사위 포인트 -->
-        <div v-if="myPoints !== null" class="w-full rounded-lg bg-[#f5f6f7] px-4 py-3 text-center">
-          <p class="text-[13px] text-[#5f6368]">내 주사위 포인트</p>
-          <p class="mt-0.5 text-[22px] font-bold text-[#333333]">{{ myPoints }}<span class="ml-1 text-[14px] font-medium text-[#5f6368]">점</span></p>
+        <div v-if="myPoints !== null" class="w-full rounded-lg bg-[var(--ui-color-surface-subtle)] px-4 py-3 text-center">
+          <p class="text-[13px] text-[var(--ui-color-content-muted)]">내 주사위 포인트</p>
+          <p class="mt-0.5 text-[22px] font-bold text-[var(--ui-color-content)]">{{ myPoints }}<span class="ml-1 text-[14px] font-medium text-[var(--ui-color-content-muted)]">점</span></p>
         </div>
 
         <button
-          class="focus-ring flex h-12 w-full items-center justify-center gap-2 rounded bg-[#03C75A] text-[15px] font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-50"
+          class="focus-ring flex h-12 w-full items-center justify-center gap-2 rounded bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
           type="button"
           :disabled="rolling || apiPending"
           @click="roll"

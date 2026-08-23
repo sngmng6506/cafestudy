@@ -234,10 +234,6 @@ function formatJobTime(value) {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="ui-page-title">관리자</h1>
-    </div>
-
     <div class="ui-bg-subtle ui-radius-item grid gap-1 p-1" :class="tabColumns">
       <button class="focus-ring ui-radius-control flex h-10 items-center justify-center gap-2 text-[13px] font-semibold" :class="activeSection === 'notices' ? 'ui-bg-surface ui-text-brand' : 'ui-text-muted'" type="button" @click="activeSection = 'notices'">
         <Megaphone :size="17" /> 공지

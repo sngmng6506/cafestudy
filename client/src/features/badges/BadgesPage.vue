@@ -126,29 +126,25 @@ async function activateBadge(badge) {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="text-[22px] font-bold leading-snug text-[#333333]">AI 뱃지</h1>
-    </div>
-
     <section class="surface-card">
       <div class="mb-4 flex items-center gap-2">
-        <Sparkles :size="18" class="text-[#03C75A]" />
-        <h2 class="text-lg font-semibold text-[#333333]">뱃지 생성</h2>
-        <span class="ml-auto rounded bg-[#f5f6f7] px-2 py-0.5 text-[12px] font-semibold text-[#5f6368]">0pt</span>
+        <Sparkles :size="18" class="text-[var(--ui-color-brand)]" />
+        <h2 class="text-lg font-semibold text-[var(--ui-color-content)]">뱃지 생성</h2>
+        <span class="ml-auto rounded bg-[var(--ui-color-surface-subtle)] px-2 py-0.5 text-[12px] font-semibold text-[var(--ui-color-content-muted)]">0pt</span>
       </div>
 
-      <label class="grid gap-1.5 text-[13px] font-medium text-[#333333]">
+      <label class="grid gap-1.5 text-[13px] font-medium text-[var(--ui-color-content)]">
         프롬프트
         <textarea
           v-model="prompt"
-          class="min-h-[92px] rounded-lg border border-[#dadce0] px-4 py-3 text-[15px] outline-none transition placeholder:text-[#5f6368] focus:border-[#03C75A]"
+          class="min-h-[92px] rounded-lg border border-[var(--ui-color-stroke)] px-4 py-3 text-[15px] outline-none transition placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
           :maxlength="MAX_PROMPT_LENGTH"
           placeholder="예: 주말마다 카페에서 코딩하는 사람"
         ></textarea>
       </label>
 
       <button
-        class="focus-ring mt-4 flex h-11 w-full items-center justify-center gap-2 rounded bg-[#03C75A] text-[15px] font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-50"
+        class="focus-ring mt-4 flex h-11 w-full items-center justify-center gap-2 rounded bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
         type="button"
         :disabled="generating || atLimit"
         @click="generateBadge"
@@ -156,30 +152,30 @@ async function activateBadge(badge) {
         <Sparkles :size="17" />
         {{ generating ? '생성 중...' : '뱃지 만들기' }}
       </button>
-      <p v-if="atLimit" class="mt-2 text-[13px] text-[#5f6368]">
+      <p v-if="atLimit" class="mt-2 text-[13px] text-[var(--ui-color-content-muted)]">
         뱃지는 최대 {{ MAX_BADGES }}개까지 보관할 수 있어요. 기존 뱃지를 삭제하면 새로 만들 수 있어요.
       </p>
     </section>
 
     <section v-if="preview" class="surface-card">
-      <h2 class="mb-3 text-lg font-semibold text-[#333333]">미리보기</h2>
+      <h2 class="mb-3 text-lg font-semibold text-[var(--ui-color-content)]">미리보기</h2>
       <div class="grid gap-4">
         <img
           v-if="preview.imageViewUrl"
-          class="mx-auto h-40 w-40 rounded-xl border border-[#dadce0] bg-[#f5f6f7] object-contain p-2"
+          class="mx-auto h-40 w-40 rounded-xl border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] object-contain p-2"
           :src="preview.imageViewUrl"
           alt="생성된 뱃지"
         />
-        <label class="grid gap-1.5 text-[13px] font-medium text-[#333333]">
+        <label class="grid gap-1.5 text-[13px] font-medium text-[var(--ui-color-content)]">
           뱃지 이름
           <input
             v-model="title"
-            class="h-11 rounded-lg border border-[#dadce0] px-4 text-[15px] outline-none transition focus:border-[#03C75A]"
+            class="h-11 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] outline-none transition focus:border-[var(--ui-color-brand)]"
             :maxlength="MAX_TITLE_LENGTH"
           />
         </label>
         <button
-          class="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded bg-[#333333] text-[15px] font-semibold text-white transition hover:bg-[#111111] disabled:opacity-50"
+          class="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded bg-[var(--ui-color-content)] text-[15px] font-semibold text-white transition hover:bg-[#111111] disabled:opacity-50"
           type="button"
           :disabled="applying"
           @click="applyBadge"
@@ -192,36 +188,36 @@ async function activateBadge(badge) {
 
     <section class="surface-card surface-card--flush">
       <div class="flex items-center gap-2 px-5 py-4">
-        <Award :size="18" class="text-[#03C75A]" />
-        <h2 class="text-[15px] font-bold text-[#333333]">내 뱃지</h2>
-        <span v-if="!loading" class="ml-auto text-[13px] font-semibold text-[#5f6368]">
+        <Award :size="18" class="text-[var(--ui-color-brand)]" />
+        <h2 class="text-[15px] font-bold text-[var(--ui-color-content)]">내 뱃지</h2>
+        <span v-if="!loading" class="ml-auto text-[13px] font-semibold text-[var(--ui-color-content-muted)]">
           {{ badges.length }}/{{ MAX_BADGES }}
         </span>
       </div>
-      <p v-if="loading" class="px-5 pb-5 text-[14px] text-[#5f6368]">불러오는 중...</p>
-      <p v-else-if="errorMessage" class="px-5 pb-5 text-[14px] font-semibold text-[#e74c3c]">{{ errorMessage }}</p>
-      <p v-else-if="badges.length === 0" class="px-5 pb-5 text-[14px] text-[#5f6368]">아직 적용한 뱃지가 없어요.</p>
-      <ul v-else class="divide-y divide-[#dadce0]">
+      <p v-if="loading" class="px-5 pb-5 text-[14px] text-[var(--ui-color-content-muted)]">불러오는 중...</p>
+      <p v-else-if="errorMessage" class="px-5 pb-5 text-[14px] font-semibold text-[var(--ui-color-destructive)]">{{ errorMessage }}</p>
+      <p v-else-if="badges.length === 0" class="px-5 pb-5 text-[14px] text-[var(--ui-color-content-muted)]">아직 적용한 뱃지가 없어요.</p>
+      <ul v-else class="divide-y divide-[var(--ui-color-stroke)]">
         <li v-for="badge in badges" :key="badge.id" class="flex items-center gap-3 px-5 py-3">
           <img
             v-if="badge.imageViewUrl"
-            class="h-12 w-12 shrink-0 rounded-lg border border-[#dadce0] bg-[#f5f6f7] object-contain p-1"
+            class="h-12 w-12 shrink-0 rounded-lg border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] object-contain p-1"
             :src="badge.imageViewUrl"
             :alt="badge.title"
           />
           <div class="min-w-0 flex-1">
-            <p class="truncate text-[15px] font-semibold text-[#333333]">{{ badge.title }}</p>
-            <p v-if="badge.description" class="truncate text-[13px] text-[#5f6368]">{{ badge.description }}</p>
+            <p class="truncate text-[15px] font-semibold text-[var(--ui-color-content)]">{{ badge.title }}</p>
+            <p v-if="badge.description" class="truncate text-[13px] text-[var(--ui-color-content-muted)]">{{ badge.description }}</p>
           </div>
           <span
             v-if="badge.isActive"
-            class="shrink-0 rounded bg-[#e9f8ef] px-2 py-1 text-[12px] font-bold text-[#03883f]"
+            class="shrink-0 rounded bg-[var(--ui-color-success-surface)] px-2 py-1 text-[12px] font-bold text-[var(--ui-color-success-content)]"
           >
             적용중
           </span>
           <button
             v-else
-            class="focus-ring h-8 shrink-0 rounded-[10px] border border-[#dadce0] px-2 text-[12px] font-semibold text-[#333333] transition hover:bg-[#f5f6f7] disabled:opacity-50"
+            class="focus-ring h-8 shrink-0 rounded-[10px] border border-[var(--ui-color-stroke)] px-2 text-[12px] font-semibold text-[var(--ui-color-content)] transition hover:bg-[var(--ui-color-surface-subtle)] disabled:opacity-50"
             type="button"
             :disabled="!!activatingId"
             @click="activateBadge(badge)"
@@ -229,7 +225,7 @@ async function activateBadge(badge) {
             {{ activatingId === badge.id ? '변경중' : '적용' }}
           </button>
           <button
-            class="focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[#dadce0] text-[#5f6368] transition hover:bg-[#f5f6f7] hover:text-[#e74c3c] disabled:opacity-50"
+            class="focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[var(--ui-color-stroke)] text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-destructive)] disabled:opacity-50"
             type="button"
             :disabled="!!deletingId"
             :aria-label="`${badge.title} 뱃지 삭제`"

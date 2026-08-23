@@ -220,10 +220,6 @@ function toLocalInputValue(date) {
 
 <template>
   <section class="grid gap-5">
-    <div class="mb-1 pr-32">
-      <h1 class="ui-page-title">모임</h1>
-    </div>
-
     <button
       class="focus-ring ui-radius-control flex h-12 w-full items-center justify-center gap-2 bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition"
       type="button"
@@ -236,76 +232,76 @@ function toLocalInputValue(date) {
     </button>
 
     <form v-if="formOpen" class="surface-card" @submit.prevent="requestCreateMeetup">
-      <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#333333]">
+      <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[var(--ui-color-content)]">
         제목
         <input
           v-model="form.title"
-          class="h-12 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[#5f6368] focus:border-[#03C75A]"
+          class="h-12 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
           placeholder="예: 모여서 각자 코딩"
           required
         />
       </label>
 
-      <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#333333]">
+      <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[var(--ui-color-content)]">
         내용
         <textarea
           v-model="form.description"
-          class="min-h-[88px] rounded-lg border border-[#dadce0] px-4 py-3 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[#5f6368] focus:border-[#03C75A]"
+          class="min-h-[88px] rounded-lg border border-[var(--ui-color-stroke)] px-4 py-3 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
           placeholder="호스트는 무엇을 할지 간단히 적어주세요 (예: 사이드 프로젝트, 바이브 코딩)"
           rows="3"
         ></textarea>
       </label>
 
-      <div class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#333333]">
+      <div class="mb-4 grid gap-1.5 text-[13px] font-medium text-[var(--ui-color-content)]">
         위치
         <button
           type="button"
-          class="focus-ring flex h-12 items-center justify-between gap-2 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium transition hover:border-[#03C75A]"
+          class="focus-ring flex h-12 items-center justify-between gap-2 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] font-medium transition hover:border-[var(--ui-color-brand)]"
           @click="openPlaceSearch"
         >
-          <span :class="form.location ? 'text-[#333333]' : 'text-[14px] text-[#5f6368]'">
+          <span :class="form.location ? 'text-[var(--ui-color-content)]' : 'text-[14px] text-[var(--ui-color-content-muted)]'">
             {{ form.location || '카페·장소를 검색하세요' }}
           </span>
-          <Search :size="16" class="shrink-0 text-[#5f6368]" />
+          <Search :size="16" class="shrink-0 text-[var(--ui-color-content-muted)]" />
         </button>
       </div>
 
-      <div v-if="form.lat != null" class="mb-4 overflow-hidden rounded-lg border border-[#dadce0]">
+      <div v-if="form.lat != null" class="mb-4 overflow-hidden rounded-lg border border-[var(--ui-color-stroke)]">
         <!-- relative z-0: Leaflet 내부 z-index가 z-50 모달을 덮지 않게 가둔다. -->
         <div ref="mapEl" class="relative z-0 h-44 w-full"></div>
       </div>
 
-      <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[#333333]">
+      <label class="mb-4 grid gap-1.5 text-[13px] font-medium text-[var(--ui-color-content)]">
         일정
         <input
           v-model="form.scheduledAt"
-          class="h-12 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition focus:border-[#03C75A]"
+          class="h-12 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] font-medium outline-none transition focus:border-[var(--ui-color-brand)]"
           type="datetime-local"
           :min="minScheduledAt"
           required
         />
       </label>
 
-      <label class="mb-5 grid gap-1.5 text-[13px] font-medium text-[#333333]">
+      <label class="mb-5 grid gap-1.5 text-[13px] font-medium text-[var(--ui-color-content)]">
         최대 참가 인원
         <div class="relative">
           <ChevronDown
             :size="16"
-            class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#5f6368]"
+            class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ui-color-content-muted)]"
           />
           <select
             v-model.number="form.capacity"
-            class="h-12 w-full appearance-none rounded-lg border border-[#dadce0] bg-white pl-10 pr-4 text-[15px] font-medium outline-none transition focus:border-[#03C75A]"
+            class="h-12 w-full appearance-none rounded-lg border border-[var(--ui-color-stroke)] bg-white pl-10 pr-4 text-[15px] font-medium outline-none transition focus:border-[var(--ui-color-brand)]"
             required
           >
             <option v-for="n in CAPACITY_CHOICES" :key="n" :value="n">{{ n }}명</option>
           </select>
         </div>
-        <span class="text-[12px] font-medium text-[#5f6368]">나를 포함한 인원이에요.</span>
+        <span class="text-[12px] font-medium text-[var(--ui-color-content-muted)]">나를 포함한 인원이에요.</span>
       </label>
 
       <button
-        class="focus-ring flex h-12 w-full items-center justify-center gap-2 rounded bg-[#03C75A] text-[15px] font-semibold text-white transition hover:bg-[#02b350]"
+        class="focus-ring flex h-12 w-full items-center justify-center gap-2 rounded bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)]"
         type="submit"
       >
         <Plus :size="18" />
@@ -328,7 +324,7 @@ function toLocalInputValue(date) {
         <RefreshSomoimButton @refreshed="loadSomoimEvents" />
       </div>
 
-      <p v-if="actionError" class="ui-text-danger ui-radius-item mb-4 bg-[#FFF1F2] px-4 py-3 text-sm font-semibold">
+      <p v-if="actionError" class="ui-text-danger ui-radius-item mb-4 bg-[var(--ui-color-danger-surface)] px-4 py-3 text-sm font-semibold">
         {{ actionError }}
       </p>
 
@@ -370,11 +366,11 @@ function toLocalInputValue(date) {
     >
       <div class="absolute inset-0 bg-[#333333]/30" @click="showSearch = false"></div>
       <div class="relative z-10 flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-t-xl bg-white shadow-sm sm:rounded-xl">
-        <div class="flex items-center justify-between border-b border-[#dadce0] px-4 py-3">
-          <span class="text-[15px] font-semibold text-[#333333]">장소 검색</span>
+        <div class="flex items-center justify-between border-b border-[var(--ui-color-stroke)] px-4 py-3">
+          <span class="text-[15px] font-semibold text-[var(--ui-color-content)]">장소 검색</span>
           <button
             type="button"
-            class="text-[#5f6368] transition hover:text-[#333333]"
+            class="text-[var(--ui-color-content-muted)] transition hover:text-[var(--ui-color-content)]"
             aria-label="닫기"
             @click="showSearch = false"
           >
@@ -384,33 +380,33 @@ function toLocalInputValue(date) {
         <form class="flex gap-2 p-4" @submit.prevent="runPlaceSearch">
           <input
             v-model="searchQuery"
-            class="h-11 flex-1 rounded-lg border border-[#dadce0] px-4 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[#5f6368] focus:border-[#03C75A]"
+            class="h-11 flex-1 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
             placeholder="예: 강남 스타벅스"
           />
           <button
             type="submit"
-            class="focus-ring h-11 shrink-0 rounded bg-[#03C75A] px-4 text-sm font-semibold text-white transition hover:bg-[#02b350]"
+            class="focus-ring h-11 shrink-0 rounded bg-[var(--ui-color-brand)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)]"
           >
             검색
           </button>
         </form>
         <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-          <p v-if="searching" class="py-6 text-center text-[15px] text-[#5f6368]">검색 중입니다.</p>
-          <p v-else-if="searchError" class="py-6 text-center text-[15px] font-semibold text-[#e74c3c]">
+          <p v-if="searching" class="py-6 text-center text-[15px] text-[var(--ui-color-content-muted)]">검색 중입니다.</p>
+          <p v-else-if="searchError" class="py-6 text-center text-[15px] font-semibold text-[var(--ui-color-destructive)]">
             {{ searchError }}
           </p>
-          <p v-else-if="searchResults.length === 0" class="py-6 text-center text-[15px] text-[#5f6368]">
+          <p v-else-if="searchResults.length === 0" class="py-6 text-center text-[15px] text-[var(--ui-color-content-muted)]">
             카페·장소 이름으로 검색해보세요.
           </p>
-          <ul v-else class="divide-y divide-[#dadce0]">
+          <ul v-else class="divide-y divide-[var(--ui-color-stroke)]">
             <li v-for="(place, index) in searchResults" :key="index">
               <button
                 type="button"
                 class="w-full py-3 text-left transition hover:opacity-80"
                 @click="selectPlace(place)"
               >
-                <p class="text-[15px] font-semibold text-[#333333]">{{ place.placeName }}</p>
-                <p class="mt-0.5 text-sm text-[#5f6368]">{{ place.roadAddress || place.address }}</p>
+                <p class="text-[15px] font-semibold text-[var(--ui-color-content)]">{{ place.placeName }}</p>
+                <p class="mt-0.5 text-sm text-[var(--ui-color-content-muted)]">{{ place.roadAddress || place.address }}</p>
               </button>
             </li>
           </ul>
@@ -426,28 +422,28 @@ function toLocalInputValue(date) {
     >
       <div class="absolute inset-0 bg-[#333333]/30" @click="showConfirm = false"></div>
       <div class="relative z-10 w-full max-w-md rounded-t-xl bg-white p-5 shadow-sm sm:rounded-xl">
-        <p class="text-[17px] font-bold text-[#333333]">이 내용으로 모임을 만들까요?</p>
-        <dl class="mt-4 grid gap-2.5 rounded-lg bg-[#f5f6f7] p-4 text-[14px]">
+        <p class="text-[17px] font-bold text-[var(--ui-color-content)]">이 내용으로 모임을 만들까요?</p>
+        <dl class="mt-4 grid gap-2.5 rounded-lg bg-[var(--ui-color-surface-subtle)] p-4 text-[14px]">
           <div class="flex gap-3">
-            <dt class="w-8 shrink-0 font-semibold text-[#5f6368]">장소</dt>
-            <dd class="min-w-0 break-keep font-medium text-[#333333]">{{ form.location }}</dd>
+            <dt class="w-8 shrink-0 font-semibold text-[var(--ui-color-content-muted)]">장소</dt>
+            <dd class="min-w-0 break-keep font-medium text-[var(--ui-color-content)]">{{ form.location }}</dd>
           </div>
           <div class="flex gap-3">
-            <dt class="w-8 shrink-0 font-semibold text-[#5f6368]">일시</dt>
-            <dd class="font-medium text-[#333333]">{{ formatDate(form.scheduledAt) }}</dd>
+            <dt class="w-8 shrink-0 font-semibold text-[var(--ui-color-content-muted)]">일시</dt>
+            <dd class="font-medium text-[var(--ui-color-content)]">{{ formatDate(form.scheduledAt) }}</dd>
           </div>
         </dl>
         <div class="mt-5 flex gap-2">
           <button
             type="button"
-            class="focus-ring h-12 flex-1 rounded border border-[#dadce0] text-[15px] font-semibold text-[#333333] transition hover:bg-[#f5f6f7]"
+            class="focus-ring h-12 flex-1 rounded border border-[var(--ui-color-stroke)] text-[15px] font-semibold text-[var(--ui-color-content)] transition hover:bg-[var(--ui-color-surface-subtle)]"
             @click="showConfirm = false"
           >
             돌아가기
           </button>
           <button
             type="button"
-            class="focus-ring h-12 flex-1 rounded bg-[#03C75A] text-[15px] font-semibold text-white transition hover:bg-[#02b350] disabled:opacity-60"
+            class="focus-ring h-12 flex-1 rounded bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-60"
             :disabled="creating"
             @click="createMeetup"
           >
