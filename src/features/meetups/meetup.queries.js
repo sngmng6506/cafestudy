@@ -104,7 +104,7 @@ export function createMeetupQueries(db) {
       return db.transaction(async (client) => {
         const meetupResult = await client.query(
           `
-            SELECT id, scheduled_at AS "scheduledAt", status, capacity
+            SELECT id, scheduled_at AS "scheduledAt", status, capacity, somoim_state AS "somoimState"
             FROM meetups
             WHERE id = $1
             FOR UPDATE
@@ -114,6 +114,9 @@ export function createMeetupQueries(db) {
         const meetup = meetupResult.rows[0];
 
         if (!meetup) return { outcome: 'not_found' };
+        if (meetup.somoimState === 'pending' || meetup.somoimState === 'failed') {
+          return { outcome: 'somoim_pending' };
+        }
         if (meetup.status !== 'open' || new Date(meetup.scheduledAt).getTime() <= Date.now()) {
           return { outcome: 'closed' };
         }

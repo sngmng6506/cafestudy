@@ -171,6 +171,24 @@ test('joinMeetup returns 404 when the meetup is missing', async () => {
   );
 });
 
+test('joinMeetup: 소모임 등록 중이면 참가를 막는다', async () => {
+  const service = createMeetupService({
+    db: {},
+    storage: null,
+    hooks: null,
+    queries: { async joinMeetup() { return { outcome: 'somoim_pending' }; } },
+  });
+
+  await assert.rejects(
+    () => service.joinMeetup({ meetupId: 'meetup-1', userId: 'user-1' }),
+    (error) => {
+      assert.equal(error.code, 'MEETUP_SOMOIM_PENDING');
+      assert.equal(error.statusCode, 400);
+      return true;
+    },
+  );
+});
+
 test('leaveMeetup blocks the host from leaving', async () => {
   const future = new Date(Date.now() + 3_600_000).toISOString();
   const service = createMeetupService({

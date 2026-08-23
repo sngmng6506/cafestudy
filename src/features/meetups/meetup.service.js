@@ -53,6 +53,9 @@ export function createMeetupService({ db, storage, hooks, queries = createMeetup
       if (result.outcome === 'not_found') {
         throwError(404, 'MEETUP_NOT_FOUND', '모임을 찾을 수 없습니다.');
       }
+      if (result.outcome === 'somoim_pending') {
+        throwError(400, 'MEETUP_SOMOIM_PENDING', '소모임에 등록하는 중이에요. 잠시 뒤에 참여할 수 있어요.');
+      }
       if (result.outcome === 'closed') {
         throwError(400, 'MEETUP_CLOSED', '참여할 수 없는 모임입니다.');
       }
