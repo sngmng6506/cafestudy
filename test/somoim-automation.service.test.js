@@ -12,6 +12,7 @@ function serviceWith({ allowSubmit = false, job = null, jobs = [], recovered = [
     failed: [],
     listed: [],
     requeued: [],
+    jobRequeues: [],
     order: [],
   };
   const queries = {
@@ -49,6 +50,10 @@ function serviceWith({ allowSubmit = false, job = null, jobs = [], recovered = [
     async failJob(input) {
       calls.failed.push(input);
       return job;
+    },
+    async requeueJob(id) {
+      calls.jobRequeues.push(id);
+      return { ...job, status: 'pending' };
     },
   };
 
@@ -299,4 +304,47 @@ test('completeJob/failJob: require a claimed job update to succeed', async () =>
     () => service.failJob({ id: JOB_ID, errorMessage: '앱 화면 변경' }),
     /Only claimed jobs can be failed/,
   );
+});
+
+test('failJob: 일시적 장애면 시도 횟수가 남는 동안 다시 큐에 넣는다', async () => {
+  const claimed = { id: JOB_ID, status: 'claimed', attempts: 1, payload: {} };
+  const { service, calls } = serviceWith({ job: claimed, maxAttempts: 3 });
+
+  const outcome = await service.failJob({
+    id: JOB_ID,
+    errorMessage: 'app launch timed out',
+    needsManualReview: false,
+  });
+
+  assert.equal(outcome.requeued, true);
+  assert.deepEqual(calls.jobRequeues, [JOB_ID]);
+  assert.deepEqual(calls.failed, [], '아직 실패로 확정하지 않는다');
+});
+
+test('failJob: 사람 확인이 필요하면 재시도하지 않는다', async () => {
+  const claimed = { id: JOB_ID, status: 'claimed', attempts: 1, payload: {} };
+  const { service, calls } = serviceWith({ job: claimed, maxAttempts: 3 });
+
+  const outcome = await service.failJob({
+    id: JOB_ID,
+    errorMessage: 'Create button was not found',
+    needsManualReview: true,
+  });
+
+  assert.equal(outcome.requeued, false);
+  assert.equal(calls.failed.length, 1);
+});
+
+test('failJob: 시도 횟수를 다 쓰면 재시도하지 않는다', async () => {
+  const claimed = { id: JOB_ID, status: 'claimed', attempts: 3, payload: {} };
+  const { service, calls } = serviceWith({ job: claimed, maxAttempts: 3 });
+
+  const outcome = await service.failJob({
+    id: JOB_ID,
+    errorMessage: 'timeout',
+    needsManualReview: false,
+  });
+
+  assert.equal(outcome.requeued, false);
+  assert.equal(calls.failed.length, 1);
 });

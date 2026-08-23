@@ -96,6 +96,16 @@ export function createSomoimAutomationService({
     },
     async failJob({ id, errorMessage, needsManualReview, result }) {
       assertUuid(id, 'jobId');
+      const current = await queries.getJob(id);
+      const canRetry = needsManualReview !== true
+        && (current?.attempts ?? maxAttempts) < maxAttempts;
+
+      if (canRetry) {
+        const requeued = await queries.requeueJob(id);
+        if (!requeued) throwConflict('JOB_NOT_CLAIMED', 'Only claimed jobs can be failed');
+        return { ...requeued, requeued: true };
+      }
+
       const job = await queries.failJob({
         id,
         errorMessage: normalizeErrorMessage(errorMessage),
@@ -103,7 +113,7 @@ export function createSomoimAutomationService({
         result: normalizeResult(result),
       });
       if (!job) throwConflict('JOB_NOT_CLAIMED', 'Only claimed jobs can be failed');
-      return job;
+      return { ...job, requeued: false };
     },
   };
 }

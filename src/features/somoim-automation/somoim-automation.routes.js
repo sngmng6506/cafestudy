@@ -45,12 +45,18 @@ export function createSomoimAutomationRouter(ctx, service = createSomoimAutomati
   });
   router.post('/jobs/:id/fail', requireInternalKey, async (req, res, next) => {
     try {
-      return sendOk(res, await service.failJob({
+      const job = await service.failJob({
         id: req.params.id,
         errorMessage: req.body?.errorMessage,
         needsManualReview: req.body?.needsManualReview,
         result: req.body?.result,
-      }));
+      });
+
+      // 재시도 여지가 없을 때만 모임 쪽에 실패를 알린다.
+      if (!job.requeued) {
+        await ctx.hooks?.emit?.('somoimRegistrationFailed', { jobId: job.id });
+      }
+      return sendOk(res, job);
     } catch (err) { return next(err); }
   });
   return router;

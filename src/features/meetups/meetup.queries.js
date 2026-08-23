@@ -177,6 +177,17 @@ export function createMeetupQueries(db) {
       return result.rows[0] ?? null;
     },
 
+    async markSomoimFailedByJob(jobId) {
+      const result = await db.query(
+        `UPDATE meetups
+            SET somoim_state = 'failed'
+          WHERE somoim_job_id = $1 AND somoim_state = 'pending'
+          RETURNING id, somoim_state AS "somoimState"`,
+        [jobId],
+      );
+      return result.rows[0] ?? null;
+    },
+
     async cancelMeetup(meetupId) {
       await db.query(`UPDATE meetups SET status = 'closed' WHERE id = $1`, [meetupId]);
     },
