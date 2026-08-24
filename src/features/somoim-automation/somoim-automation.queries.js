@@ -114,6 +114,23 @@ export function createSomoimAutomationQueries(db) {
       return result.rows[0] ?? null;
     },
 
+    // 모임이 취소되면 아직 아무도 안 집어간 job만 중단한다.
+    // status='pending' 조건이 핵심 — claim된 job은 worker가 기기를 조작하는 중이라
+    // 여기서 상태를 바꾸면 worker의 complete/fail 보고와 어긋난다.
+    async cancelPendingJob({ id, errorMessage }) {
+      const result = await db.query(
+        `UPDATE somoim_automation_jobs
+            SET status = 'failed',
+                error_message = $2,
+                completed_at = now(),
+                updated_at = now()
+          WHERE id = $1 AND status = 'pending'
+          RETURNING id, status`,
+        [id, errorMessage],
+      );
+      return result.rows[0] ?? null;
+    },
+
     async failJob({ id, errorMessage, needsManualReview, result }) {
       const status = needsManualReview ? 'needs_manual_review' : 'failed';
       const queryResult = await db.query(

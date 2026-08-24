@@ -522,3 +522,79 @@ test('retrySomoimRegistration: 모임이 없으면 404를 던진다', async () =
     (error) => { assert.equal(error.code, 'MEETUP_NOT_FOUND'); return true; },
   );
 });
+
+// --- 모임 취소 시 대기 중인 소모임 등록 job 중단 ---
+
+function cancelService({ somoimState, somoimJobId }) {
+  const emitted = [];
+  const cancelled = [];
+  const service = createMeetupService({
+    db: {},
+    storage: null,
+    hooks: {
+      on() {},
+      async emit(event, payload) {
+        emitted.push({ event, payload });
+        return [];
+      },
+    },
+    queries: {
+      async getMeetupById() {
+        return { id: 'm1', hostId: 'host', status: 'open', somoimState, somoimJobId };
+      },
+      async cancelMeetup(id) { cancelled.push(id); },
+    },
+  });
+  return { service, emitted, cancelled };
+}
+
+test('cancelMeetup: 등록 대기 중이면 job을 멈추라고 알린다', async () => {
+  const { service, emitted, cancelled } = cancelService({
+    somoimState: 'pending',
+    somoimJobId: 'job-1',
+  });
+
+  const result = await service.cancelMeetup({ meetupId: 'm1', userId: 'host' });
+
+  assert.deepEqual(cancelled, ['m1'], '모임 취소가 먼저 일어나야 한다');
+  assert.deepEqual(emitted, [{ event: 'meetupCancelled', payload: { jobId: 'job-1' } }]);
+  assert.equal(result.cancelled, true);
+});
+
+test('cancelMeetup: 등록과 무관한 모임은 아무것도 알리지 않는다', async () => {
+  for (const somoimState of ['none', 'registered', 'failed']) {
+    const { service, emitted, cancelled } = cancelService({ somoimState, somoimJobId: 'job-1' });
+
+    await service.cancelMeetup({ meetupId: 'm1', userId: 'host' });
+
+    assert.deepEqual(cancelled, ['m1'], `${somoimState}: 취소 자체는 되어야 한다`);
+    assert.deepEqual(emitted, [], `${somoimState}: 멈출 job이 없다`);
+  }
+});
+
+test('cancelMeetup: job id가 없으면 알리지 않는다', async () => {
+  const { service, emitted } = cancelService({ somoimState: 'pending', somoimJobId: null });
+
+  await service.cancelMeetup({ meetupId: 'm1', userId: 'host' });
+
+  assert.deepEqual(emitted, []);
+});
+
+test('cancelMeetup: hooks가 없어도 취소는 성공한다', async () => {
+  const cancelled = [];
+  const service = createMeetupService({
+    db: {},
+    storage: null,
+    queries: {
+      async getMeetupById() {
+        return { id: 'm1', hostId: 'host', status: 'open', somoimState: 'pending', somoimJobId: 'job-1' };
+      },
+      async cancelMeetup(id) { cancelled.push(id); },
+    },
+  });
+
+  const result = await service.cancelMeetup({ meetupId: 'm1', userId: 'host' });
+
+  assert.equal(result.cancelled, true);
+  assert.deepEqual(cancelled, ['m1']);
+});

@@ -15,6 +15,7 @@ const OFFSET_MAX = 100_000;
 const DEFAULT_STALE_CLAIM_SECONDS = 900;
 const DEFAULT_MAX_ATTEMPTS = 3;
 const STALE_CLAIM_MESSAGE = 'Worker stopped responding before reporting a result';
+const CANCELLED_MESSAGE = '모임이 취소되어 등록을 중단했어요';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_TITLE_LENGTH = SOMOIM_AUTOMATION_LIMITS.meetupTitleMaxLength;
 const MAX_LOCATION_LENGTH = SOMOIM_AUTOMATION_LIMITS.locationMaxLength;
@@ -62,6 +63,12 @@ export function createSomoimAutomationService({
         }
         throw err;
       }
+    },
+
+    // 모임 취소 훅이 부른다. 아직 claim되지 않은 job만 중단된다.
+    async cancelJobForMeetup(jobId) {
+      assertUuid(jobId, 'jobId');
+      return queries.cancelPendingJob({ id: jobId, errorMessage: CANCELLED_MESSAGE });
     },
 
     async listJobs({ status, limit = 20, offset = 0 } = {}) {

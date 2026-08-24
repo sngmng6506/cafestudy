@@ -394,3 +394,34 @@ test('failJob: 시도 횟수를 다 쓰면 재시도하지 않는다', async () 
   assert.equal(outcome.requeued, false);
   assert.equal(calls.failed.length, 1);
 });
+
+test('cancelJobForMeetup: 아직 집어가지 않은 job만 중단한다', async () => {
+  let capturedSql = '';
+  let capturedParams = null;
+  const db = {
+    async query(sql, params) {
+      capturedSql = sql;
+      capturedParams = params;
+      return { rows: [{ id: JOB_ID, status: 'failed' }] };
+    },
+  };
+  const service = createSomoimAutomationService({ db });
+
+  const result = await service.cancelJobForMeetup(JOB_ID);
+
+  assert.equal(result.status, 'failed');
+  assert.match(capturedSql, /status = 'pending'/, 'claim된 job은 건드리면 안 된다');
+  assert.deepEqual(capturedParams, [JOB_ID, '모임이 취소되어 등록을 중단했어요']);
+});
+
+test('cancelJobForMeetup: 이미 claim된 job이면 아무것도 바꾸지 않는다', async () => {
+  const db = { async query() { return { rows: [] }; } };
+  const service = createSomoimAutomationService({ db });
+
+  assert.equal(await service.cancelJobForMeetup(JOB_ID), null);
+});
+
+test('cancelJobForMeetup: jobId 형식을 검증한다', async () => {
+  const service = createSomoimAutomationService({ db: {} });
+  await assert.rejects(() => service.cancelJobForMeetup('not-a-uuid'), /jobId must be a valid UUID/);
+});

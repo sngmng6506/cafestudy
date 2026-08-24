@@ -157,7 +157,7 @@ export function createMeetupQueries(db) {
         `
           SELECT id, host_id AS "hostId", title, description, location,
             scheduled_at AS "scheduledAt", status, capacity,
-            somoim_state AS "somoimState"
+            somoim_state AS "somoimState", somoim_job_id AS "somoimJobId"
           FROM meetups
           WHERE id = $1
         `,

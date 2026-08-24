@@ -79,6 +79,14 @@ export function createMeetupService({ db, storage, hooks, queries = createMeetup
       }
 
       await queries.cancelMeetup(meetupId);
+
+      // 아직 큐에 남아 있는 등록 job을 멈춘다. 이걸 안 하면 worker가 나중에 그 job을
+      // 집어가 소모임에 정모를 만들고, 웹에는 닫힌 모임만 남아 손으로 지워야 한다.
+      // 이미 claim된 job은 worker가 실기기를 조작하는 중이라 멈출 수 없다(자동화 쪽에서 거른다).
+      if (meetup.somoimState === 'pending' && meetup.somoimJobId) {
+        await (hooks?.emit?.('meetupCancelled', { jobId: meetup.somoimJobId }) ?? Promise.resolve([]));
+      }
+
       return { meetupId, cancelled: true };
     },
 

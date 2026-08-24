@@ -85,6 +85,12 @@ meetups                       -- 앱 안에서 직접 만든 모임
 - `POST /api/meetups/:id/retry-somoim`은 개설자(host)만, `somoim_state='failed'`인
   모임만 재시도할 수 있다. 모임 취소는 별도 endpoint 없이 기존
   `DELETE /api/meetups/:id`를 그대로 쓴다.
+- `somoim_state='pending'`인 모임을 취소하면 `meetupCancelled`를 emit해 아직 큐에
+  남아 있는 job을 중단한다. 이걸 안 하면 worker가 나중에 그 job을 집어가 소모임에
+  정모를 만들고, 웹에는 닫힌 모임만 남는다.
+  **다만 job이 이미 claim된 뒤라면 멈출 수 없다** — worker가 실기기를 조작하는
+  중이라 중간에 끊으면 화면 상태를 알 수 없게 된다. 이 경우 소모임 정모는
+  생성되며 손으로 지워야 한다. 알려진 제약이다.
 
 participants                  -- meetup 참가 (UNIQUE meetup_id+user_id)
 - id, meetup_id, user_id, joined_at

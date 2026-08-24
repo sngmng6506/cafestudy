@@ -176,6 +176,11 @@ pending → claimed → succeeded
   (재시도 여유가 있으면 `pending`, 다 썼으면 `needs_manual_review`).
 - 완료·실패가 **보고된** job은 다시 실행하지 않는다. worker가 결과를 보고했다면
   그 판단을 뒤집지 않는다.
+- 아직 claim되지 않은 `pending` job은 서버가 중단할 수 있다. 개설자가 모임을
+  취소하면 그 job을 `failed`로 바꾸고 `error_message`에
+  `모임이 취소되어 등록을 중단했어요`를 남긴다. 이미 claim된 job은 건드리지
+  않는다 — worker가 기기를 조작하는 중이라 상태를 바꾸면 complete/fail 보고와
+  어긋난다. 그때는 정모가 생성되며 사람이 정리해야 한다.
 
 ## dryRun과 submit
 

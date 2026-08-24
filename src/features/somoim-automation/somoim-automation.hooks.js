@@ -15,4 +15,11 @@ export function registerMeetupCreatedListener(ctx) {
   });
 
   ctx.hooks.on('meetupCreated', (meetup) => service.createJobForMeetup(meetup));
+
+  // 모임이 취소되면 아직 큐에 남아 있는 job을 중단한다. 자동화가 job을 만든 적이
+  // 없으면(같은 가드로 구독하지 않았으면) 취소할 것도 없다.
+  ctx.hooks.on('meetupCancelled', ({ jobId }) => {
+    if (!jobId) return undefined;
+    return service.cancelJobForMeetup(jobId);
+  });
 }
