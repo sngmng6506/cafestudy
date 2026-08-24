@@ -10,13 +10,15 @@ source of truth다.
 
 ## 현재 상태
 
-배관(job 루프, 안전장치, 실패 분기)과 `handlers/create-meetup.js`(dryRun) 모두 동작한다.
+배관(job 루프, 안전장치, 실패 분기)과 `handlers/create-meetup.js`가 모두 구현돼 있다.
 자동화 계정은 "[홍대] it&ai 스터디" 클럽 운영진 전용이며(`create-meetup.js`의
-`TARGET_GROUP_NAME`), 다른 클럽은 지원하지 않는다. 태블릿에 ADBKeyBoard IME
-(`com.android.adbkeyboard/.AdbIME`)가 설치·활성화돼 있어야 한글 입력이 된다. `submit`
-모드 코드도 구현돼 있지만 worker의 `ALLOW_SOMOIM_SUBMIT`과 서버의
-`SOMOIM_AUTOMATION_ALLOW_SUBMIT` 이중 스위치가 꺼져 있는 한 실행되지 않고, 실기기로
-검증한 적도 없다.
+`TARGET_GROUP_NAME`), 다른 클럽은 다루지 않는다. 태블릿에 ADBKeyBoard IME
+(`com.android.adbkeyboard/.AdbIME`)가 설치·활성화돼 있어야 한글 입력이 된다.
+
+**실제 제출은 아직 실기기로 검증되지 않았다.** 정모 개설 화면까지 도달하는 경로가
+최근 바뀌었고(검색 → `내모임`), 바뀐 경로로 정모가 실제로 만들어지는 것과 "제출 직전
+화면 대조" 조건은 확인 전이다. worker의 `ALLOW_SOMOIM_SUBMIT`과 서버의
+`SOMOIM_AUTOMATION_ALLOW_SUBMIT`이 둘 다 켜져야 제출이 실행된다.
 
 ## 실행
 
