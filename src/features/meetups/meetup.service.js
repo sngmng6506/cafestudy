@@ -27,9 +27,8 @@ export function createMeetupService({ db, storage, hooks, queries = createMeetup
 
       // 듣는 리스너가 없으면 자동 등록도 없다. 자동화가 꺼진 환경은 여기서 그대로 끝난다.
       const results = await (hooks?.emit?.('meetupCreated', meetup) ?? Promise.resolve([]));
-      const jobId = results.find((result) => result?.jobId)?.jobId ?? null;
-
       let somoimState = meetup.somoimState ?? 'none';
+      const jobId = results.find((result) => result?.jobId)?.jobId ?? null;
       if (jobId) {
         const updated = await queries.setSomoimState({
           meetupId: meetup.id,
@@ -37,6 +36,11 @@ export function createMeetupService({ db, storage, hooks, queries = createMeetup
           jobId,
         });
         somoimState = updated?.somoimState ?? 'pending';
+      } else if (results.some((result) => result?.failed)) {
+        // 리스너가 구독은 했지만(빈 배열이 아님) 입력을 거부한 경우다 — 자동화가
+        // 꺼진 것과 구분해서 failed로 남긴다(예: 제목이 소모임 쪽 길이 제한을 넘음).
+        const updated = await queries.setSomoimState({ meetupId: meetup.id, state: 'failed' });
+        somoimState = updated?.somoimState ?? 'failed';
       }
 
       return {
@@ -89,12 +93,17 @@ export function createMeetupService({ db, storage, hooks, queries = createMeetup
       }
 
       // emit이 상태 쓰기보다 먼저 일어난다: 아래에서 경쟁에 지면(이미 다른 요청이
-      // pending으로 바꿨다면) 이 job은 버려진 채로 큐에 남는다. 의도적으로 그대로 둔다 —
-      // 모임은 이미 pending이고, 남은 job은 처리되어도 상태를 다시 덮어쓰지 않으므로
-      // 무해하다. 취소하려고 별도 보상 로직을 두는 것은 이 경합의 희귀함에 비해 과하다.
+      // pending으로 바꿨다면) 이 job은 버려진 채로 큐에 남는다. 취소하지 않고 그대로 둔다 —
+      // 하지만 무해하지 않다. 이 job은 나중에 worker에게 claim되어, 승자가 이미 만든
+      // 소모임 정모와 별개로 중복 정모를 만들 수 있다. 보상 트랜잭션의 복잡도보다
+      // 이 경합의 희귀함이 낫다고 판단해 감수하기로 한 비용이다(진행 계획 결정 기록 참고).
       const results = await (hooks?.emit?.('meetupCreated', meetup) ?? Promise.resolve([]));
       const jobId = results.find((result) => result?.jobId)?.jobId ?? null;
       if (!jobId) {
+        const rejected = results.find((result) => result?.failed);
+        if (rejected) {
+          throwError(400, 'MEETUP_SOMOIM_REJECTED', '지금 내용으로는 소모임에 등록할 수 없어요. 제목이나 장소 길이를 확인해주세요.');
+        }
         throwError(503, 'SOMOIM_AUTOMATION_UNAVAILABLE', '지금은 소모임에 등록할 수 없어요.');
       }
 

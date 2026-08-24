@@ -120,6 +120,72 @@ test('setSomoimState: expectedState가 있으면 조건부 UPDATE SQL과 파라�
   assert.equal(result, null, '조건에 안 맞으면 행이 없어 null을 반환한다');
 });
 
+test('markSomoimFailedByJob: somoim_job_id와 pending 조건으로 UPDATE한다', async () => {
+  let capturedSql = '';
+  let capturedParams = [];
+  const queries = createMeetupQueries({
+    query: async (sql, params) => {
+      capturedSql = sql;
+      capturedParams = params;
+      return { rows: [{ id: 'm1', somoimState: 'failed' }] };
+    },
+  });
+
+  const result = await queries.markSomoimFailedByJob('job-1');
+
+  assert.match(capturedSql, /somoim_state = 'failed'/);
+  assert.match(capturedSql, /somoim_job_id = \$1/);
+  assert.match(capturedSql, /somoim_state = 'pending'/);
+  assert.deepEqual(capturedParams, ['job-1']);
+  assert.equal(result.somoimState, 'failed');
+});
+
+test('markSomoimRegisteredByJob: somoim_job_id와 pending 조건으로 UPDATE한다', async () => {
+  let capturedSql = '';
+  let capturedParams = [];
+  const queries = createMeetupQueries({
+    query: async (sql, params) => {
+      capturedSql = sql;
+      capturedParams = params;
+      return { rows: [{ id: 'm1', somoimState: 'registered' }] };
+    },
+  });
+
+  const result = await queries.markSomoimRegisteredByJob('job-1');
+
+  assert.match(capturedSql, /somoim_state = 'registered'/);
+  assert.match(capturedSql, /somoim_job_id = \$1/);
+  assert.match(capturedSql, /somoim_state = 'pending'/);
+  assert.deepEqual(capturedParams, ['job-1']);
+  assert.equal(result.somoimState, 'registered');
+});
+
+test('markSomoimRegisteredByJob: 이미 pending을 벗어난 행은 건드리지 않는다', async () => {
+  const queries = createMeetupQueries({
+    query: async () => ({ rows: [] }),
+  });
+
+  const result = await queries.markSomoimRegisteredByJob('job-1');
+
+  assert.equal(result, null, '조건에 안 맞으면(예: 재시도로 이미 다른 job으로 넘어감) 아무 행도 갱신되지 않는다');
+});
+
+test('getMeetupById: title/description/location을 함께 가져온다', async () => {
+  let capturedSql = '';
+  const queries = createMeetupQueries({
+    query: async (sql) => {
+      capturedSql = sql;
+      return { rows: [] };
+    },
+  });
+
+  await queries.getMeetupById('m1');
+
+  assert.match(capturedSql, /\btitle\b/);
+  assert.match(capturedSql, /\bdescription\b/);
+  assert.match(capturedSql, /\blocation\b/);
+});
+
 function participationDb({ meetup, count = 0, alreadyJoined = false }) {
   const directQuery = async (sql) => {
     if (sql.includes('FROM meetups')) return { rows: meetup ? [meetup] : [] };
@@ -335,6 +401,14 @@ test('createMeetup: 리스너가 jobId를 주면 pending으로 바꾼다', async
   assert.equal(meetup.somoimState, 'pending', '응답이 바로 등록 중으로 보여야 한다');
 });
 
+test('createMeetup: 리스너가 failed를 주면(제목 길이 초과 등) 상태를 failed로 남긴다', async () => {
+  const { service, calls } = serviceWithHooks({ listenerResult: { failed: true, reason: 'title too long' } });
+  const meetup = await service.createMeetup(VALID_INPUT);
+
+  assert.deepEqual(calls.stateUpdates, [{ meetupId: 'meetup-1', state: 'failed' }]);
+  assert.equal(meetup.somoimState, 'failed', '자동화가 꺼진 none과 구분되어야 한다');
+});
+
 test('retrySomoimRegistration: 개설자가 아니면 거부한다', async () => {
   const service = createMeetupService({
     db: {}, storage: null, hooks: null,
@@ -412,6 +486,26 @@ test('retrySomoimRegistration: 자동화가 꺼져있으면 503으로 거부한�
     (error) => {
       assert.equal(error.code, 'SOMOIM_AUTOMATION_UNAVAILABLE');
       assert.equal(error.statusCode, 503);
+      return true;
+    },
+  );
+});
+
+test('retrySomoimRegistration: 리스너가 failed를 주면 503이 아니라 이유를 알리는 400을 던진다', async () => {
+  const service = createMeetupService({
+    db: {}, storage: null,
+    hooks: { on() {}, async emit() { return [{ failed: true, reason: 'title too long' }]; } },
+    queries: {
+      async getMeetupById() { return { id: 'm1', hostId: 'host', somoimState: 'failed' }; },
+      async setSomoimState() { throw new Error('setSomoimState should not be called'); },
+    },
+  });
+
+  await assert.rejects(
+    () => service.retrySomoimRegistration({ meetupId: 'm1', userId: 'host' }),
+    (error) => {
+      assert.equal(error.code, 'MEETUP_SOMOIM_REJECTED');
+      assert.equal(error.statusCode, 400, '자동화가 꺼진 것과 달리 정말 등록 불가능한 내용이라 503이 아니다');
       return true;
     },
   );

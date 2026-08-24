@@ -155,7 +155,8 @@ export function createMeetupQueries(db) {
     async getMeetupById(meetupId) {
       const result = await db.query(
         `
-          SELECT id, host_id AS "hostId", scheduled_at AS "scheduledAt", status, capacity,
+          SELECT id, host_id AS "hostId", title, description, location,
+            scheduled_at AS "scheduledAt", status, capacity,
             somoim_state AS "somoimState"
           FROM meetups
           WHERE id = $1
@@ -188,6 +189,17 @@ export function createMeetupQueries(db) {
       const result = await db.query(
         `UPDATE meetups
             SET somoim_state = 'failed'
+          WHERE somoim_job_id = $1 AND somoim_state = 'pending'
+          RETURNING id, somoim_state AS "somoimState"`,
+        [jobId],
+      );
+      return result.rows[0] ?? null;
+    },
+
+    async markSomoimRegisteredByJob(jobId) {
+      const result = await db.query(
+        `UPDATE meetups
+            SET somoim_state = 'registered'
           WHERE somoim_job_id = $1 AND somoim_state = 'pending'
           RETURNING id, somoim_state AS "somoimState"`,
         [jobId],

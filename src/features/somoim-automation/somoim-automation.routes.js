@@ -36,12 +36,23 @@ export function createSomoimAutomationRouter(ctx, service = createSomoimAutomati
     catch (err) { return next(err); }
   });
   router.post('/jobs/claim', requireInternalKey, async (_req, res, next) => {
-    try { return sendOk(res, await service.claimNextJob()); }
-    catch (err) { return next(err); }
+    try {
+      const outcome = await service.claimNextJob();
+
+      // 재시도를 다 쓰고 사람에게 넘어간 job은 모임 쪽에도 실패를 알려야
+      // pending에 갇히지 않는다. fail 라우트와 같은 자리에서 emit한다.
+      for (const job of outcome.exhausted ?? []) {
+        await ctx.hooks?.emit?.('somoimRegistrationFailed', { jobId: job.id });
+      }
+      return sendOk(res, outcome);
+    } catch (err) { return next(err); }
   });
   router.post('/jobs/:id/complete', requireInternalKey, async (req, res, next) => {
-    try { return sendOk(res, await service.completeJob({ id: req.params.id, result: req.body?.result })); }
-    catch (err) { return next(err); }
+    try {
+      const job = await service.completeJob({ id: req.params.id, result: req.body?.result });
+      await ctx.hooks?.emit?.('somoimRegistrationSucceeded', { jobId: job.id });
+      return sendOk(res, job);
+    } catch (err) { return next(err); }
   });
   router.post('/jobs/:id/fail', requireInternalKey, async (req, res, next) => {
     try {
