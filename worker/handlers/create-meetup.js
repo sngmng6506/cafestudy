@@ -78,7 +78,7 @@ export function findByResourceId(nodes, idSuffix) {
 // ---- 날짜/시간 변환 (순수 함수) ----
 
 // scheduledAt(ISO, UTC)을 한국 표준시(UTC+9, DST 없음) 구성요소로 바꾼다.
-// 실행 환경(mini PC)의 로컬 타임존에 의존하지 않도록 UTC 접근자만 쓴다.
+// 실행 환경(worker 서버)의 로컬 타임존에 의존하지 않도록 UTC 접근자만 쓴다.
 // 태블릿 자체가 한국 시간대로 설정돼 있다고 가정한다.
 export function toKstParts(scheduledAt) {
   const instant = new Date(scheduledAt);
@@ -96,6 +96,19 @@ export function toKstParts(scheduledAt) {
     minute: kst.getUTCMinutes(),
     weekday: kst.getUTCDay(),
   };
+}
+
+// 서버는 모임 생성 시점에만 "30분 뒤" 최소 리드타임을 검사한다. worker가 job을
+// 집어들 때까지는 큐 대기·stale-claim 재시도(최악의 경우 900초 x 3회 = 45분)와
+// 호스트가 임의 시점에 누르는 재시도가 끼어들 수 있어, 그 사이 scheduledAt이 실제로
+// 지나가 버릴 수 있다. 지난 시각으로 화면을 채우려 들면(달력을 거꾸로 넘기는 등)
+// 결과를 예측할 수 없으니 시도 자체를 하지 않는다.
+export function assertScheduledAtIsFuture(scheduledAt, now = Date.now()) {
+  if (new Date(scheduledAt).getTime() <= now) {
+    throw new ManualReviewError(`scheduledAt has already passed: ${scheduledAt}`, {
+      stage: 'validate_payload',
+    });
+  }
 }
 
 export function to12Hour(hour24) {
@@ -509,6 +522,7 @@ export function createCreateMeetupHandler({ adb, artifactDir = './worker-artifac
     }
 
     const target = toKstParts(payload.scheduledAt);
+    assertScheduledAtIsFuture(payload.scheduledAt);
 
     await adb.shell(deviceId, ['ime', 'set', ADB_KEYBOARD_IME]);
     await launchApp(adb, deviceId, artifactDir);

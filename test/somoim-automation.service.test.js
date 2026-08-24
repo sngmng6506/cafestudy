@@ -5,6 +5,19 @@ import { createSomoimAutomationService } from '../src/features/somoim-automation
 const USER_ID = '00000000-0000-0000-0000-000000000001';
 const JOB_ID = '11111111-1111-1111-1111-111111111111';
 
+// scheduledAt must be in the future (see normalizeScheduledAt), so tests build it
+// relative to "now" instead of a fixed date. Returns both a +09:00-offset input
+// string (to exercise the KST-to-UTC conversion) and the equivalent UTC ISO string.
+function futureScheduledAt(hoursFromNow = 24) {
+  // Round to the second so stripping milliseconds for the +09:00 input below
+  // doesn't drift the parsed instant away from the expected ISO string.
+  const instant = new Date(Math.floor((Date.now() + hoursFromNow * 60 * 60 * 1000) / 1000) * 1000);
+  const kstOffsetInput = new Date(instant.getTime() + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .replace(/\.\d{3}Z$/, '+09:00');
+  return { input: kstOffsetInput, iso: instant.toISOString() };
+}
+
 function serviceWith({ allowSubmit = false, job = null, jobs = [], recovered = [], ...options } = {}) {
   const calls = {
     created: [],
@@ -65,12 +78,13 @@ function serviceWith({ allowSubmit = false, job = null, jobs = [], recovered = [
 
 test('createMeetupJob: normalizes payload as dry-run by default', async () => {
   const { service, calls } = serviceWith();
+  const scheduledAt = futureScheduledAt();
 
   const result = await service.createMeetupJob({
     requestedBy: USER_ID,
     input: {
       title: '  토요일   카페 스터디 ',
-      scheduledAt: '2026-07-25T14:00:00+09:00',
+      scheduledAt: scheduledAt.input,
       location: ' 강남역 스타벅스 ',
       capacity: '8',
       description: ' 각자 할 일 ',
@@ -85,7 +99,7 @@ test('createMeetupJob: normalizes payload as dry-run by default', async () => {
     type: 'create_meetup',
     payload: {
       title: '토요일 카페 스터디',
-      scheduledAt: '2026-07-25T05:00:00.000Z',
+      scheduledAt: scheduledAt.iso,
       location: '강남역 스타벅스',
       capacity: 8,
       description: '각자 할 일',
@@ -96,6 +110,20 @@ test('createMeetupJob: normalizes payload as dry-run by default', async () => {
   });
 });
 
+test('createMeetupJob: rejects a scheduledAt that has already passed', async () => {
+  const { service, calls } = serviceWith();
+  const past = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+  await assert.rejects(
+    () => service.createMeetupJob({
+      requestedBy: USER_ID,
+      input: { title: '스터디', scheduledAt: past, location: '강남' },
+    }),
+    /scheduledAt must be in the future/,
+  );
+  assert.deepEqual(calls.created, [], '지난 시각은 job으로 만들지 않는다');
+});
+
 test('createMeetupJob: blocks final submit unless explicitly enabled', async () => {
   const { service } = serviceWith({ allowSubmit: false });
 
@@ -104,7 +132,7 @@ test('createMeetupJob: blocks final submit unless explicitly enabled', async () 
       requestedBy: USER_ID,
       input: {
         title: '스터디',
-        scheduledAt: '2026-07-25T14:00:00+09:00',
+        scheduledAt: futureScheduledAt().input,
         location: '강남',
         submit: true,
       },
@@ -120,7 +148,7 @@ test('createMeetupJob: allows final submit only when configured', async () => {
     requestedBy: USER_ID,
     input: {
       title: '스터디',
-      scheduledAt: '2026-07-25T14:00:00+09:00',
+      scheduledAt: futureScheduledAt().input,
       location: '강남',
       submit: true,
     },
@@ -138,7 +166,7 @@ test('createMeetupJob: validates required fields and capacity', async () => {
       requestedBy: USER_ID,
       input: {
         title: '',
-        scheduledAt: '2026-07-25T14:00:00+09:00',
+        scheduledAt: futureScheduledAt().input,
         location: '강남',
       },
     }),
@@ -150,7 +178,7 @@ test('createMeetupJob: validates required fields and capacity', async () => {
       requestedBy: USER_ID,
       input: {
         title: '스터디',
-        scheduledAt: '2026-07-25T14:00:00+09:00',
+        scheduledAt: futureScheduledAt().input,
         location: '강남',
         capacity: 101,
       },

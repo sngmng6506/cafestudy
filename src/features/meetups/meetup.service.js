@@ -100,17 +100,24 @@ export function createMeetupService({ db, storage, hooks, queries = createMeetup
         throwError(400, 'MEETUP_SOMOIM_NOT_FAILED', '다시 시도할 수 있는 상태가 아니에요.');
       }
 
+      // meetupCreated가 아니라 별도 이벤트를 쓴다 — meetupCreated 리스너는 autoRegister
+      // 설정이 꺼지면 구독조차 안 되므로, 재시도를 그 위에 얹으면 allowSubmit만 켜둔
+      // 상태에서 재시도가 조용히 죽는다(somoim-automation.hooks.js 참고).
+      //
       // emit이 상태 쓰기보다 먼저 일어난다: 아래에서 경쟁에 지면(이미 다른 요청이
       // pending으로 바꿨다면) 이 job은 버려진 채로 큐에 남는다. 취소하지 않고 그대로 둔다 —
       // 하지만 무해하지 않다. 이 job은 나중에 worker에게 claim되어, 승자가 이미 만든
       // 소모임 정모와 별개로 중복 정모를 만들 수 있다. 보상 트랜잭션의 복잡도보다
       // 이 경합의 희귀함이 낫다고 판단해 감수하기로 한 비용이다(진행 계획 결정 기록 참고).
-      const results = await (hooks?.emit?.('meetupCreated', meetup) ?? Promise.resolve([]));
+      const results = await (hooks?.emit?.('meetupSomoimRetryRequested', meetup) ?? Promise.resolve([]));
       const jobId = results.find((result) => result?.jobId)?.jobId ?? null;
       if (!jobId) {
         const rejected = results.find((result) => result?.failed);
         if (rejected) {
-          throwError(400, 'MEETUP_SOMOIM_REJECTED', '지금 내용으로는 소모임에 등록할 수 없어요. 제목이나 장소 길이를 확인해주세요.');
+          // rejected.reason은 소모임 쪽 검증 메시지 그대로다(예: 제목 길이 초과,
+          // scheduledAt이 이미 지남). feature 간 직접 import 없이 문구를 공유할 방법이
+          // 없어 원문을 그대로 보여준다 — 실패한 자기 모임을 다시 시도하는 개설자만 본다.
+          throwError(400, 'MEETUP_SOMOIM_REJECTED', rejected.reason || '지금 내용으로는 소모임에 등록할 수 없어요.');
         }
         throwError(503, 'SOMOIM_AUTOMATION_UNAVAILABLE', '지금은 소모임에 등록할 수 없어요.');
       }

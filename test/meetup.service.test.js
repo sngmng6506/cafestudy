@@ -450,6 +450,33 @@ test('retrySomoimRegistration: 새 job을 만들고 pending으로 되돌린다',
   assert.deepEqual(updates, [{ meetupId: 'm1', state: 'pending', jobId: 'job-2', expectedState: 'failed' }]);
 });
 
+test('retrySomoimRegistration: meetupCreated가 아니라 별도 이벤트를 emit한다', async () => {
+  // meetupCreated를 재사용하면 autoRegister가 꺼진 환경에서 재시도가 조용히
+  // 죽는다(somoim-automation.hooks.js가 meetupCreated를 autoRegister로만 게이트하므로).
+  // 회귀 방지용 — 정확한 이벤트 이름을 못박는다.
+  const emitted = [];
+  const service = createMeetupService({
+    db: {}, storage: null,
+    hooks: {
+      on() {},
+      async emit(event, payload) {
+        emitted.push({ event, payload });
+        return [{ jobId: 'job-2' }];
+      },
+    },
+    queries: {
+      async getMeetupById() { return { id: 'm1', hostId: 'host', somoimState: 'failed' }; },
+      async setSomoimState(input) { return { somoimState: input.state }; },
+    },
+  });
+
+  await service.retrySomoimRegistration({ meetupId: 'm1', userId: 'host' });
+
+  assert.equal(emitted.length, 1);
+  assert.equal(emitted[0].event, 'meetupSomoimRetryRequested');
+  assert.equal(emitted[0].payload.id, 'm1');
+});
+
 test('retrySomoimRegistration: 동시 재시도로 경합에서 지면 409를 던진다', async () => {
   const service = createMeetupService({
     db: {}, storage: null,
@@ -506,6 +533,27 @@ test('retrySomoimRegistration: 리스너가 failed를 주면 503이 아니라 �
     (error) => {
       assert.equal(error.code, 'MEETUP_SOMOIM_REJECTED');
       assert.equal(error.statusCode, 400, '자동화가 꺼진 것과 달리 정말 등록 불가능한 내용이라 503이 아니다');
+      assert.equal(error.message, 'title too long', '실제 거부 사유를 보여줘야 한다(고정된 문구가 엉뚱한 이유를 가리키면 안 된다)');
+      return true;
+    },
+  );
+});
+
+test('retrySomoimRegistration: reason이 없으면 일반 안내 문구로 대체한다', async () => {
+  const service = createMeetupService({
+    db: {}, storage: null,
+    hooks: { on() {}, async emit() { return [{ failed: true }]; } },
+    queries: {
+      async getMeetupById() { return { id: 'm1', hostId: 'host', somoimState: 'failed' }; },
+      async setSomoimState() { throw new Error('setSomoimState should not be called'); },
+    },
+  });
+
+  await assert.rejects(
+    () => service.retrySomoimRegistration({ meetupId: 'm1', userId: 'host' }),
+    (error) => {
+      assert.equal(error.code, 'MEETUP_SOMOIM_REJECTED');
+      assert.equal(error.message, '지금 내용으로는 소모임에 등록할 수 없어요.');
       return true;
     },
   );

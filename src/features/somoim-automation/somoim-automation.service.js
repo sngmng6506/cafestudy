@@ -164,10 +164,15 @@ function normalizeOptionalText(value, maxLength) {
   if (text.length > maxLength) throwValidation(`text must be ${maxLength} characters or fewer`);
   return text;
 }
+// 모임 생성은 30분 최소 리드타임을 검사하지만(meetup.service.js), job은 그 뒤로도
+// 큐 대기·stale-claim 재시도·호스트가 임의 시점에 누르는 재시도를 거칠 수 있어
+// scheduledAt이 여기 도착할 때는 이미 지났을 수 있다. worker가 지난 시각으로 화면을
+// 채우려 드는 걸 막기 위해 여기서도 다시 검사한다.
 function normalizeScheduledAt(value) {
   if (!value) throwValidation('scheduledAt is required');
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) throwValidation('scheduledAt must be a valid date');
+  if (date.getTime() <= Date.now()) throwValidation('scheduledAt must be in the future');
   return date.toISOString();
 }
 function normalizeCapacity(value) {

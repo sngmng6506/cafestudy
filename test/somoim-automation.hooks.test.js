@@ -64,24 +64,39 @@ test('키가 없으면 어떤 이벤트도 구독하지 않는다', () => {
   assert.deepEqual(onCalls, []);
 });
 
-test('제출만 켜면 자동 등록은 구독하지 않고 취소만 구독한다', () => {
+test('제출만 켜면 자동 등록은 구독하지 않지만 재시도와 취소는 구독한다', () => {
   const { ctx, onCalls } = makeCtx({ internalApiKey: 'k', allowSubmit: true, autoRegister: false });
 
   registerMeetupCreatedListener(ctx);
 
   assert.deepEqual(
     onCalls.map((call) => call.event),
-    ['meetupCancelled'],
-    '수동 요청으로 제출을 시험하는 동안 모임 생성은 기존과 똑같아야 한다',
+    ['meetupSomoimRetryRequested', 'meetupCancelled'],
+    '자동 등록은 꺼져도 호스트가 실패한 등록을 수동으로 재시도할 수는 있어야 한다',
   );
 });
 
-test('둘 다 켜면 생성과 취소를 모두 구독한다', () => {
+test('둘 다 켜면 생성/재시도/취소를 모두 구독한다', () => {
   const { ctx, onCalls } = makeCtx({ internalApiKey: 'k', allowSubmit: true, autoRegister: true });
 
   registerMeetupCreatedListener(ctx);
 
-  assert.deepEqual(onCalls.map((call) => call.event), ['meetupCreated', 'meetupCancelled']);
+  assert.deepEqual(
+    onCalls.map((call) => call.event),
+    ['meetupCreated', 'meetupSomoimRetryRequested', 'meetupCancelled'],
+  );
+});
+
+test('자동 등록을 나중에 끄더라도 재시도는 계속 구독된다', () => {
+  // autoRegister를 켰다가 끈 것과 같은 상태(allowSubmit만 true) — 이전에 실패로
+  // 쌓인 모임의 "다시 시도"가 여기서도 계속 동작해야 한다(회귀 버그).
+  const { ctx, onCalls } = makeCtx({ internalApiKey: 'k', allowSubmit: true, autoRegister: false });
+
+  registerMeetupCreatedListener(ctx);
+
+  const retry = onCalls.find((call) => call.event === 'meetupSomoimRetryRequested');
+  assert.ok(retry, 'meetupSomoimRetryRequested를 구독해야 한다');
+  assert.equal(typeof retry.listener, 'function');
 });
 
 test('autoRegister만 켜고 제출이 꺼져 있으면 아무것도 구독하지 않는다', () => {

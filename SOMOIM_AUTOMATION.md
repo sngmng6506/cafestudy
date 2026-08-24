@@ -48,6 +48,10 @@ x-internal-key: <INTERNAL_API_KEY>
 `AUTO_REGISTER`만 켜는 조합은 의미가 없어 서버가 구독하지 않는다 — job이 `submit`을
 담지 못해 모든 모임이 `failed`로 끝나기 때문이다.
 
+호스트의 "다시 시도"(`POST /api/meetups/:id/retry-somoim`)는 `AUTO_REGISTER`와
+무관하게 `ALLOW_SUBMIT`만 있으면 항상 동작한다. 자동 등록을 잠시 끄더라도 그전에
+`failed`로 남은 모임은 여전히 수동으로 재시도할 수 있어야 하기 때문이다.
+
 ## Job 생성
 
 ```http
@@ -222,6 +226,10 @@ pending → claimed → succeeded
 - 제출 직전 화면이 payload와 다름
 - 일부 외부 동작 이후 상태를 확정할 수 없음
 - `dryRun`과 `submit` 조합이 잘못됨
+- `scheduledAt`이 이미 지남 — 서버가 job 생성 시점에 걸러내지만(`scheduledAt must
+  be in the future`), 큐 대기·stale-claim 재시도·호스트의 뒤늦은 재시도로 그 사이
+  시간이 흘러 worker가 집어들 때는 이미 지났을 수 있다. worker는 이 경우 지난
+  날짜로 화면을 채우려 들지 않고 바로 실패 처리한다
 
 아무 입력도 하지 않은 상태에서 발생한 명확한 일시적 네트워크·앱 실행 timeout은 `false`로 처리할 수 있다. 애매하면 `true`다.
 

@@ -83,8 +83,12 @@ meetups                       -- 앱 안에서 직접 만든 모임
   경우도 `/jobs/claim` 라우트가 같은 방식으로 `somoimRegistrationFailed`를
   emit해 모임이 pending에 갇히지 않게 한다.
 - `POST /api/meetups/:id/retry-somoim`은 개설자(host)만, `somoim_state='failed'`인
-  모임만 재시도할 수 있다. 모임 취소는 별도 endpoint 없이 기존
-  `DELETE /api/meetups/:id`를 그대로 쓴다.
+  모임만 재시도할 수 있다. `meetupCreated`가 아니라 `meetupSomoimRetryRequested`를
+  emit한다 — `meetupCreated` 리스너는 `SOMOIM_AUTOMATION_AUTO_REGISTER`가 꺼지면
+  구독되지 않으므로, 재시도를 거기 얹으면 자동 등록을 끈 뒤 재시도까지 막힌다.
+  재시도는 `SOMOIM_AUTOMATION_ALLOW_SUBMIT`만 있으면 `AUTO_REGISTER`와 무관하게
+  항상 동작해야 한다(somoim-automation.hooks.js 참고). 모임 취소는 별도 endpoint
+  없이 기존 `DELETE /api/meetups/:id`를 그대로 쓴다.
 - `somoim_state='pending'`인 모임을 취소하면 `meetupCancelled`를 emit해 아직 큐에
   남아 있는 job을 중단한다. 이걸 안 하면 worker가 나중에 그 job을 집어가 소모임에
   정모를 만들고, 웹에는 닫힌 모임만 남는다.

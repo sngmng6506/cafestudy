@@ -16,19 +16,27 @@
 - job 큐 API — 생성, 목록·단건 조회, claim/complete/fail, stale claim 회수
 - worker 배관 — 폴링 루프, 기기 선택, dryRun/submit 이중 안전장치, 실패 분기
 - 관리자 화면 — 모임 만들기 요청 폼과 진행 상태 목록
+- ADB handler(`worker/handlers/create-meetup.js`) — dryRun 라이브 검증 완료. 자동화
+  계정은 "[홍대] it&ai 스터디" 클럽 운영진 권한으로 고정되어 있고(다른 클럽 미지원),
+  ADBKeyBoard IME로 한글을 입력한다. `submit` 모드 코드는 있지만 두 스위치가 꺼져
+  있어 미검증 상태다.
+- 모임 생성 시 자동 등록 — 웹에서 모임을 만들면 서버가 `SOMOIM_AUTOMATION_AUTO_REGISTER`
+  스위치에 따라 자동으로 job을 만든다. 모임 카드에 등록 상태(등록됨/대기/실패)를
+  보여주고, 실패하면 호스트가 `POST /api/meetups/:id/retry-somoim`으로 다시 시도할
+  수 있다. 자세한 상태 전이는 [DEVELOPMENT.md](./DEVELOPMENT.md)의 `meetups` 섹션,
+  스위치 조합은 [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md)의 "Job이 만들어지는
+  경로"를 본다.
 
 남은 것:
 
-- ~~**ADB handler**~~ — `worker/handlers/create-meetup.js` dryRun 구현 완료. 자동화
-  계정은 "[홍대] it&ai 스터디" 클럽 운영진 권한으로 고정되어 있고(다른 클럽 미지원),
-  ADBKeyBoard IME로 한글을 입력한다. 날짜·시간은 겉보기엔 별개 필드(date_text/
-  time_text)지만 실제로는 하나의 위젯이라 날짜 확정 직후 화면이 폼으로 돌아오는지
-  시간 선택기로 바로 넘어가는지 매번 다시 읽어 분기해야 했다 — 라이브 기기로 직접
-  검증. `submit` 모드 코드는 있지만 두 스위치가 꺼져 있어 미검증 상태다.
 - **실제 제출 개방** — 지금은 dry-run만 검증됐다. 서버와 worker 스위치를 모두 켜고,
   제출 직전 화면 대조까지 확인한 뒤에 연다. 관리자 화면에도 제출 토글이 필요하다
   (서버의 `allowSubmit` 여부를 클라이언트가 알 수 있어야 한다).
 - **job type 확장** — 모임 수정, 참석자 확인. 현재 DB CHECK가 `create_meetup`만 허용한다.
+- **스크린샷을 볼 수 없는 자동 등록 job** — 자동 등록은 관리자가 직접 만든 job과
+  달리 아무도 지켜보지 않고 실행된다. `result.screenshotKey`가 아직 오브젝트
+  스토리지와 연결돼 있지 않아(아래 "자동화 결과 스크린샷 보기" 참고), 실제 제출을
+  열면 실패 원인을 화면 없이 로그만으로 진단해야 한다.
 
 ## 구현 후보
 

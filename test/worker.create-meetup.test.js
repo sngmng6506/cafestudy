@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  assertScheduledAtIsFuture,
   findByResourceId,
   formatEnglishHeader,
   formatKoreanDate,
@@ -99,4 +100,32 @@ test('monthsBetween: counts month deltas across year boundaries', () => {
   assert.equal(monthsBetween({ year: 2026, month: 8 }, { year: 2026, month: 8 }), 0);
   assert.equal(monthsBetween({ year: 2026, month: 12 }, { year: 2027, month: 2 }), 2);
   assert.equal(monthsBetween({ year: 2026, month: 9 }, { year: 2026, month: 8 }), -1);
+});
+
+test('assertScheduledAtIsFuture: allows a date after "now"', () => {
+  const now = Date.parse('2026-08-24T00:00:00.000Z');
+  assert.doesNotThrow(() => assertScheduledAtIsFuture('2026-08-24T00:00:01.000Z', now));
+});
+
+test('assertScheduledAtIsFuture: rejects a date at or before "now" as a manual-review error', () => {
+  const now = Date.parse('2026-08-24T00:00:00.000Z');
+
+  for (const scheduledAt of ['2026-08-24T00:00:00.000Z', '2026-08-23T23:59:59.000Z']) {
+    assert.throws(() => assertScheduledAtIsFuture(scheduledAt, now), (error) => {
+      assert.equal(error.needsManualReview, true);
+      assert.match(error.message, /already passed/);
+      return true;
+    });
+  }
+});
+
+test('assertScheduledAtIsFuture: this is exactly the gap a stale-claim retry loop can fall into — a meetup at the 30-minute minimum lead time can still be mid-retry (up to staleClaimSeconds x maxAttempts) once its scheduledAt arrives', () => {
+  const now = Date.now();
+  const minLeadMs = 30 * 60 * 1000;
+  const worstCaseRetryMs = 900 * 3 * 1000; // default staleClaimSeconds x default maxAttempts
+  assert.ok(worstCaseRetryMs > minLeadMs, 'retry envelope must be able to outlast the minimum lead time for this test to be meaningful');
+
+  const scheduledAt = new Date(now + minLeadMs).toISOString();
+  const afterWorstCaseRetry = now + worstCaseRetryMs;
+  assert.throws(() => assertScheduledAtIsFuture(scheduledAt, afterWorstCaseRetry));
 });
