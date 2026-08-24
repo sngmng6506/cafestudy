@@ -11,6 +11,7 @@ import {
   parseUiNodes,
   to12Hour,
   toKstParts,
+  uniqueByBounds,
 } from '../worker/handlers/create-meetup.js';
 
 // 실제 uiautomator dump에서 뽑아낸 조각들(이 세션에서 태블릿으로 직접 확인한 값).
@@ -31,6 +32,48 @@ test('parseUiNodes: decodes XML entities and computes bounds/center', () => {
 
 test('parseUiNodes: returns an empty list for a screen with no nodes', () => {
   assert.deepEqual(parseUiNodes('<hierarchy rotation="0"></hierarchy>'), []);
+});
+
+// 내모임 화면을 실제로 덤프한 조각. 가입 모임은 name_text, 추천 카드는
+// groupname_text로 id가 갈린다. 그리고 같은 창이 두 벌 들어온다.
+const MY_GROUPS_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/name_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[164,602][392,644]" /><node index="1" text="용인 독서모임" resource-id="com.friendscube.somoim:id/groupname_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[196,2159][1496,2207]" /><node index="0" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/name_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[164,602][392,644]" /><node index="1" text="내모임" resource-id="com.friendscube.somoim:id/tab_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="true" bounds="[973,2485][1027,2515]" /></hierarchy>`;
+
+test('uniqueByBounds: folds the duplicated window dump into one group', () => {
+  const joined = parseUiNodes(MY_GROUPS_XML).filter((n) => n.resourceId.endsWith('/name_text'));
+  assert.equal(joined.length, 2, 'uiautomator가 같은 창을 두 벌 내보낸다');
+
+  const unique = uniqueByBounds(joined);
+  assert.equal(unique.length, 1, '같은 위치의 노드는 같은 모임이다');
+  assert.equal(unique[0].text, '[홍대] it&ai 스터디');
+  assert.deepEqual(unique[0].center, { x: 278, y: 623 });
+});
+
+test('uniqueByBounds: keeps nodes that sit at different positions', () => {
+  const nodes = [
+    { bounds: { x1: 0, y1: 0, x2: 10, y2: 10 } },
+    { bounds: { x1: 0, y1: 20, x2: 10, y2: 30 } },
+  ];
+  assert.equal(uniqueByBounds(nodes).length, 2);
+});
+
+// 회귀 방지: 추천 카드를 가입 모임으로 착각하면 남의 모임에 정모를 만들 수 있다.
+test('가입 모임은 name_text로만 고르고 추천 카드는 섞이지 않는다', () => {
+  const nodes = parseUiNodes(MY_GROUPS_XML);
+  const joined = uniqueByBounds(nodes.filter((n) => n.resourceId.endsWith('/name_text')));
+
+  assert.deepEqual(joined.map((n) => n.text), ['[홍대] it&ai 스터디']);
+  assert.ok(
+    nodes.some((n) => n.resourceId.endsWith('/groupname_text')),
+    '화면에 추천 카드가 함께 있는 상황을 재현해야 의미가 있다',
+  );
+});
+
+test('내모임 탭은 tab_text와 정확한 이름으로 찾는다', () => {
+  const tab = parseUiNodes(MY_GROUPS_XML).find(
+    (n) => n.resourceId.endsWith('/tab_text') && n.text === '내모임',
+  );
+  assert.ok(tab);
+  assert.deepEqual(tab.center, { x: 1000, y: 2500 });
 });
 
 test('findByResourceId: matches by suffix across app and android namespaces', () => {

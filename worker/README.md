@@ -58,6 +58,27 @@ adb devices -l                       # state가 device 여야 한다
 - 충전기를 꽂아둔 채로 둔다. 빼면 화면 유지가 풀리고, 절전 중 Wi-Fi가 끊기면
   안드로이드가 무선 디버깅을 자동으로 꺼버린다. 다시 켜려면 태블릿 화면이 필요하다.
 
+### 한글 입력 (ADBKeyBoard)
+
+`adb shell input text`는 한글을 넣지 못한다. 정모 제목·장소를 채우려면
+[ADBKeyBoard](https://github.com/senzhk/ADBKeyBoard)를 설치하고 **활성 IME로
+지정해두어야** 한다. 핸들러가 실행 직전에 `ime set`을 다시 호출하지만, 설치와
+활성화가 안 돼 있으면 거기서 실패한다.
+
+```bash
+adb shell ime enable com.android.adbkeyboard/.AdbIME
+adb shell ime set com.android.adbkeyboard/.AdbIME
+adb shell settings get secure default_input_method   # 위 값이 나와야 한다
+```
+
+되돌리면 자동화가 다시 막히므로 이 기기에서는 계속 활성 IME로 둔다.
+
+### 계정 초기 설정
+
+bot 계정으로 소모임 앱에 처음 로그인하면 활동지역 설정 같은 첫 실행 화면이
+뜬다. 이 화면들은 자동화 대상이 아니므로 **사람이 한 번 통과시켜 둬야 한다.**
+`내모임` 탭에 가입한 모임이 바로 보이는 상태가 되면 준비가 끝난 것이다.
+
 ### 고정 포트로 바꾸기
 
 무선 디버깅은 켤 때마다 포트가 바뀌고 Wi-Fi가 끊기면 꺼진다. 한 번 붙은 뒤

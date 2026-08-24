@@ -8,7 +8,7 @@ import { ManualReviewError, TransientError } from '../errors.js';
 // 쓰지 않는다(사용자 확정). payload에 groupId가 없으므로 이 클럽 하나로 고정한다.
 const APP_PACKAGE = 'com.friendscube.somoim';
 const TARGET_GROUP_NAME = '[홍대] it&ai 스터디';
-const SEARCH_QUERY = '홍대 it';
+const MY_GROUPS_TAB = '내모임';
 const ADB_KEYBOARD_IME = 'com.android.adbkeyboard/.AdbIME';
 
 const EN_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -209,45 +209,66 @@ async function launchApp(adb, deviceId, artifactDir) {
   });
 }
 
-async function searchAndOpenGroup(adb, deviceId, artifactDir) {
+// uiautomator dump는 같은 창을 두 벌 내보낼 때가 있다. 화면상 같은 위치의 노드는
+// 같은 요소이므로 bounds로 접는다. 이걸 하지 않으면 모임 하나가 둘로 세어진다.
+export function uniqueByBounds(nodes) {
+  const seen = new Set();
+  return nodes.filter((node) => {
+    const key = `${node.bounds?.x1},${node.bounds?.y1},${node.bounds?.x2},${node.bounds?.y2}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// 검색으로 클럽을 찾지 않고 "내모임"에서 가입한 모임을 연다. 검색 경로는 한글
+// 입력·검색 제출·결과 정렬·이름 대조에 모두 의존하는데, 이 앱은 검색을 탭이나
+// 엔터로 제출할 수 없어 실제로 막혔다. bot 계정은 대상 클럽 하나에만 가입해
+// 있으므로 목록에서 바로 여는 편이 훨씬 짧고 안정적이다.
+//
+// 가입 모임은 `name_text`, 추천 카드는 `groupname_text`로 id가 갈려 있어서
+// 추천 카드를 잘못 여는 일은 생기지 않는다. 그리고 엉뚱한 클럽에 들어가더라도
+// 다음 단계(openCreateMeetupForm)가 클럽 이름을 검증해 막는다.
+async function openJoinedGroup(adb, deviceId, artifactDir) {
   let nodes = await readScreen(adb, deviceId, artifactDir);
-  const searchIcon = findByResourceId(nodes, 'search_btn_layout');
-  if (!searchIcon) {
-    throw new ManualReviewError('Search icon not found on the home screen', { stage: 'open_search' });
-  }
-  await tap(adb, deviceId, searchIcon.center);
-  await sleep(600);
-
-  nodes = await readScreen(adb, deviceId, artifactDir);
-  const searchField = findByResourceId(nodes, 'search_searchedit');
-  if (!searchField) {
-    throw new ManualReviewError('Search field did not open', { stage: 'open_search' });
-  }
-  await tap(adb, deviceId, searchField.center);
-  await sleep(300);
-  await typeText(adb, deviceId, SEARCH_QUERY);
-  await sleep(300);
-
-  nodes = await readScreen(adb, deviceId, artifactDir);
-  const searchButton = findByResourceId(nodes, 'search_btn_layout');
-  if (!searchButton) {
-    throw new ManualReviewError('Search execute button not found', { stage: 'search_club' });
-  }
-  await tap(adb, deviceId, searchButton.center);
-  await sleep(800);
-
-  nodes = await readScreen(adb, deviceId, artifactDir);
-  const clubNode = nodes.find(
-    (n) => n.resourceId.endsWith('/groupname_text') && n.text === TARGET_GROUP_NAME,
+  const tab = nodes.find(
+    (n) => n.resourceId.endsWith('/tab_text') && n.text === MY_GROUPS_TAB,
   );
-  if (!clubNode) {
-    throw new ManualReviewError(`Target group "${TARGET_GROUP_NAME}" not found in search results`, {
-      stage: 'search_club',
+  if (!tab) {
+    throw new ManualReviewError(`"${MY_GROUPS_TAB}" tab not found on the home screen`, {
+      stage: 'open_my_groups',
     });
   }
-  // 결과 행 전체가 탭 대상이라 카드 텍스트의 y좌표 + 화면 가로 중앙을 쓴다.
-  await tap(adb, deviceId, { x: 800, y: clubNode.center.y });
+  await tap(adb, deviceId, tab.center);
+
+  let joined = [];
+  for (let i = 0; i < 10; i += 1) {
+    await sleep(1000);
+    nodes = await readScreen(adb, deviceId, artifactDir);
+    joined = uniqueByBounds(nodes.filter((n) => n.resourceId.endsWith('/name_text')));
+    if (joined.length > 0) break;
+  }
+
+  if (joined.length === 0) {
+    throw new ManualReviewError('No joined group found on the 내모임 screen', {
+      stage: 'open_my_groups',
+    });
+  }
+
+  // 가입 모임이 하나면 모호함이 없다. 여러 개면 추측하지 않고 이름으로 고른다.
+  const target = joined.length === 1
+    ? joined[0]
+    : joined.find((n) => n.text === TARGET_GROUP_NAME);
+  if (!target) {
+    throw new ManualReviewError(
+      `Target group "${TARGET_GROUP_NAME}" not found among joined groups`,
+      { stage: 'open_my_groups', joinedGroups: joined.map((n) => n.text) },
+    );
+  }
+
+  await tap(adb, deviceId, target.center);
   await sleep(800);
+  return target.text;
 }
 
 async function openCreateMeetupForm(adb, deviceId, artifactDir) {
@@ -526,7 +547,7 @@ export function createCreateMeetupHandler({ adb, artifactDir = './worker-artifac
 
     await adb.shell(deviceId, ['ime', 'set', ADB_KEYBOARD_IME]);
     await launchApp(adb, deviceId, artifactDir);
-    await searchAndOpenGroup(adb, deviceId, artifactDir);
+    const groupName = await openJoinedGroup(adb, deviceId, artifactDir);
     await openCreateMeetupForm(adb, deviceId, artifactDir);
 
     await setDateAndTime(adb, deviceId, artifactDir, target);
@@ -536,7 +557,7 @@ export function createCreateMeetupHandler({ adb, artifactDir = './worker-artifac
 
     if (mode === 'dryRun') {
       const screenshotKey = await captureEvidence(adb, deviceId, artifactDir, 'before-submit');
-      return { stoppedAt: 'before_submit', screenshotKey };
+      return { stoppedAt: 'before_submit', screenshotKey, groupName };
     }
 
     // mode === 'submit': verifyForm이 방금 화면이 payload와 일치함을 확인했으므로
@@ -549,6 +570,6 @@ export function createCreateMeetupHandler({ adb, artifactDir = './worker-artifac
     await tap(adb, deviceId, saveButton.center);
     await sleep(1200);
     const screenshotKey = await captureEvidence(adb, deviceId, artifactDir, 'after-submit');
-    return { stoppedAt: null, submitted: true, screenshotKey };
+    return { stoppedAt: null, submitted: true, screenshotKey, groupName };
   };
 }
