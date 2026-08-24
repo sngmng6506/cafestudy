@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { registerMeetupCreatedListener } from '../src/features/somoim-automation/somoim-automation.hooks.js';
 
-function makeCtx({ internalApiKey, allowSubmit, withHooks = true } = {}) {
+function makeCtx({ internalApiKey, allowSubmit, autoRegister = false, withHooks = true } = {}) {
   const onCalls = [];
   const ctx = {
     db: {},
@@ -10,6 +10,7 @@ function makeCtx({ internalApiKey, allowSubmit, withHooks = true } = {}) {
       somoimAutomation: {
         internalApiKey,
         allowSubmit,
+        autoRegister,
         staleClaimSeconds: 900,
         maxAttempts: 3,
       },
@@ -26,7 +27,7 @@ function makeCtx({ internalApiKey, allowSubmit, withHooks = true } = {}) {
 }
 
 test('registerMeetupCreatedListener: internalApiKey가 없으면 구독하지 않는다', () => {
-  const { ctx, onCalls } = makeCtx({ internalApiKey: '', allowSubmit: true });
+  const { ctx, onCalls } = makeCtx({ internalApiKey: '', allowSubmit: true, autoRegister: true });
 
   registerMeetupCreatedListener(ctx);
 
@@ -42,7 +43,7 @@ test('registerMeetupCreatedListener: allowSubmit이 false면 구독하지 않는
 });
 
 test('registerMeetupCreatedListener: 둘 다 켜져 있으면 meetupCreated를 구독한다', () => {
-  const { ctx, onCalls } = makeCtx({ internalApiKey: 'key', allowSubmit: true });
+  const { ctx, onCalls } = makeCtx({ internalApiKey: 'key', allowSubmit: true, autoRegister: true });
 
   registerMeetupCreatedListener(ctx);
 
@@ -57,20 +58,36 @@ test('registerMeetupCreatedListener: ctx.hooks가 없어도 예외를 던지지 
   assert.doesNotThrow(() => registerMeetupCreatedListener(ctx));
 });
 
-test('모임 취소 이벤트도 같은 설정 가드 아래에서만 구독한다', () => {
-  const offCalls = [];
-  registerMeetupCreatedListener({
-    db: {},
-    config: { somoimAutomation: { internalApiKey: '', allowSubmit: true } },
-    hooks: { on: (event) => offCalls.push(event) },
-  });
-  assert.deepEqual(offCalls, [], '키가 없으면 어떤 이벤트도 구독하지 않는다');
+test('키가 없으면 어떤 이벤트도 구독하지 않는다', () => {
+  const { ctx, onCalls } = makeCtx({ internalApiKey: '', allowSubmit: true, autoRegister: true });
+  registerMeetupCreatedListener(ctx);
+  assert.deepEqual(onCalls, []);
+});
 
-  const onCalls = [];
-  registerMeetupCreatedListener({
-    db: {},
-    config: { somoimAutomation: { internalApiKey: 'k', allowSubmit: true } },
-    hooks: { on: (event) => onCalls.push(event) },
-  });
-  assert.deepEqual(onCalls, ['meetupCreated', 'meetupCancelled']);
+test('제출만 켜면 자동 등록은 구독하지 않고 취소만 구독한다', () => {
+  const { ctx, onCalls } = makeCtx({ internalApiKey: 'k', allowSubmit: true, autoRegister: false });
+
+  registerMeetupCreatedListener(ctx);
+
+  assert.deepEqual(
+    onCalls.map((call) => call.event),
+    ['meetupCancelled'],
+    '수동 요청으로 제출을 시험하는 동안 모임 생성은 기존과 똑같아야 한다',
+  );
+});
+
+test('둘 다 켜면 생성과 취소를 모두 구독한다', () => {
+  const { ctx, onCalls } = makeCtx({ internalApiKey: 'k', allowSubmit: true, autoRegister: true });
+
+  registerMeetupCreatedListener(ctx);
+
+  assert.deepEqual(onCalls.map((call) => call.event), ['meetupCreated', 'meetupCancelled']);
+});
+
+test('autoRegister만 켜고 제출이 꺼져 있으면 아무것도 구독하지 않는다', () => {
+  const { ctx, onCalls } = makeCtx({ internalApiKey: 'k', allowSubmit: false, autoRegister: true });
+
+  registerMeetupCreatedListener(ctx);
+
+  assert.deepEqual(onCalls, [], 'job이 submit을 담을 수 없어 모든 모임이 failed로 끝난다');
 });

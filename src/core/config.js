@@ -65,6 +65,10 @@ export function createConfig(env = {}) {
     somoimAutomation: {
       internalApiKey,
       allowSubmit: readBoolean(env.SOMOIM_AUTOMATION_ALLOW_SUBMIT, false),
+      // 모임을 만들 때 자동으로 job을 만들지 여부. allowSubmit과 별개로 둬서
+      // "수동 요청으로 제출만 시험"하는 단계를 만든다. allowSubmit이 꺼져 있으면
+      // 이 값이 켜져 있어도 자동 등록은 동작하지 않는다(job이 submit을 못 담는다).
+      autoRegister: readBoolean(env.SOMOIM_AUTOMATION_AUTO_REGISTER, false),
       staleClaimSeconds: readInteger(env.SOMOIM_AUTOMATION_STALE_CLAIM_SEC, 900, { min: 60 }),
       maxAttempts: readInteger(env.SOMOIM_AUTOMATION_MAX_ATTEMPTS, 3, { min: 1, max: 10 }),
     },

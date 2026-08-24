@@ -24,6 +24,7 @@ test('createConfig keeps somoim automation safe by default', () => {
   const config = createConfig({});
 
   assert.equal(config.somoimAutomation.allowSubmit, false, 'final submit must stay off unless enabled');
+  assert.equal(config.somoimAutomation.autoRegister, false, 'auto registration must stay off unless enabled');
   assert.equal(config.somoimAutomation.staleClaimSeconds, 900);
   assert.equal(config.somoimAutomation.maxAttempts, 3);
 });

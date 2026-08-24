@@ -35,9 +35,18 @@ x-internal-key: <INTERNAL_API_KEY>
 있게 하는 것이 이 자동화의 목적이다. 관리자 화면의 요청 폼은 실패한 요청을 확인하고
 수동으로 재시도하는 용도로 남는다.
 
-자동 트리거는 `INTERNAL_API_KEY`가 설정돼 있고 `SOMOIM_AUTOMATION_ALLOW_SUBMIT=true`인
-경우에만 동작한다. 둘 중 하나라도 꺼져 있으면 서버가 아예 구독하지 않아 모임 생성이
-기존과 동일하게 끝난다.
+스위치는 두 단계다. 제출을 먼저 열어 관리자 화면의 수동 요청으로 실기기를 검증한 뒤,
+자동 등록을 여는 순서를 만들기 위해 나눴다.
+
+| 스위치 | 뜻 |
+|---|---|
+| `SOMOIM_AUTOMATION_ALLOW_SUBMIT` | job이 `submit`을 담을 수 있는가. 실제 제출의 안전장치다 |
+| `SOMOIM_AUTOMATION_AUTO_REGISTER` | 모임을 만들 때 자동으로 job을 만드는가 |
+
+`INTERNAL_API_KEY`와 위 두 값이 모두 켜져야 자동 등록이 동작한다. `ALLOW_SUBMIT`만
+켜면 수동 요청으로 제출을 시험할 수 있고 모임 생성은 기존과 똑같이 끝난다.
+`AUTO_REGISTER`만 켜는 조합은 의미가 없어 서버가 구독하지 않는다 — job이 `submit`을
+담지 못해 모든 모임이 `failed`로 끝나기 때문이다.
 
 ## Job 생성
 

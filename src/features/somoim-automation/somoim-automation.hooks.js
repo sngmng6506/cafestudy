@@ -1,7 +1,11 @@
 import { createSomoimAutomationService } from './somoim-automation.service.js';
 
-// 자동 등록은 실제 제출이 목적이라, 제출 스위치가 꺼져 있으면 구독하지 않는다.
-// 구독하지 않으면 모임 생성은 지금과 똑같이 동작한다(듣는 사람이 없으면 아무 일도 없다).
+// 스위치가 두 단계다.
+//   allowSubmit  — job이 submit을 담을 수 있는가(실제 제출의 안전장치)
+//   autoRegister — 모임을 만들 때 자동으로 job을 만드는가
+// 제출을 먼저 켜서 관리자 화면의 수동 요청으로 실기기를 검증한 뒤, 자동 등록을
+// 켜는 순서를 만들기 위해 나눴다. autoRegister만 켜는 조합은 의미가 없다 —
+// job이 submit을 못 담아 모든 모임이 failed로 끝난다.
 export function registerMeetupCreatedListener(ctx) {
   const config = ctx.config?.somoimAutomation ?? {};
   if (!config.internalApiKey || !config.allowSubmit) return;
@@ -14,10 +18,12 @@ export function registerMeetupCreatedListener(ctx) {
     maxAttempts: config.maxAttempts,
   });
 
-  ctx.hooks.on('meetupCreated', (meetup) => service.createJobForMeetup(meetup));
+  if (config.autoRegister) {
+    ctx.hooks.on('meetupCreated', (meetup) => service.createJobForMeetup(meetup));
+  }
 
-  // 모임이 취소되면 아직 큐에 남아 있는 job을 중단한다. 자동화가 job을 만든 적이
-  // 없으면(같은 가드로 구독하지 않았으면) 취소할 것도 없다.
+  // 취소는 autoRegister와 무관하게 구독한다. 자동 등록을 껐더라도 그전에 만들어진
+  // pending job이 큐에 남아 있을 수 있고, 그건 여전히 멈출 수 있어야 한다.
   ctx.hooks.on('meetupCancelled', ({ jobId }) => {
     if (!jobId) return undefined;
     return service.cancelJobForMeetup(jobId);

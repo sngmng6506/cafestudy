@@ -11,9 +11,9 @@
   기능은 흐린 자물쇠로 표시되고, 누르면 왜 막혔는지 알리며 로그인 안내
 - **Home** — 달력과 예정 모임 미리보기, 소모임 정모 일정 통합 표시
 - **Meetups** — 예정 모임 목록, 모임 만들기, 장소 검색, 참여/취소.
-  `INTERNAL_API_KEY`와 자동화 스위치(`SOMOIM_AUTOMATION_ALLOW_SUBMIT`)가 모두 켜져
-  있으면 모임을 만들 때 Bot이 소모임 앱에도 정모를 자동 등록한다(등록 중에는 참여
-  불가). 둘 중 하나라도 꺼진 지금은 적용되지 않고 기존과 동일하게 동작한다
+  `INTERNAL_API_KEY`, `SOMOIM_AUTOMATION_ALLOW_SUBMIT`, `SOMOIM_AUTOMATION_AUTO_REGISTER`가
+  모두 켜져 있으면 모임을 만들 때 Bot이 소모임 앱에도 정모를 자동 등록한다(등록
+  중에는 참여 불가). 하나라도 꺼진 지금은 적용되지 않고 기존과 동일하게 동작한다
 - **Verifications** — 참석자 인증 대기 확인, 사진 촬영, 압축, 업로드, 포인트 지급
 - **Ranking** — 누적 랭킹, 월간 랭킹
 - **Members** — 소모임 멤버 목록, 검색, 아바타, 멤버 프로필 카드
