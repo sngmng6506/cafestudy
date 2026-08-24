@@ -29,6 +29,37 @@ test('parseDeviceList: returns an empty list when nothing is attached', () => {
   assert.deepEqual(parseDeviceList('List of devices attached\n\n'), []);
 });
 
+// 회귀 방지: mDNS로 붙은 기기는 시리얼에 공백이 들어 있다. 공백으로 자르면
+// state 자리에 `._tcp`가 들어가 멀쩡한 기기를 이상한 상태로 오판했다.
+test('parseDeviceList: keeps mDNS serials that contain spaces intact', () => {
+  const stdout = `List of devices attached
+adb-HA2DPWL2-4QfPSa (2)._adb-tls-connect._tcp device product:TB335FC_PRC model:TB335FC device:TB335FC transport_id:1
+`;
+  assert.deepEqual(parseDeviceList(stdout), [
+    { serial: 'adb-HA2DPWL2-4QfPSa (2)._adb-tls-connect._tcp', state: 'device' },
+  ]);
+});
+
+test('selectDevice: accepts a device reached over mDNS', () => {
+  const stdout = `List of devices attached
+adb-HA2DPWL2-4QfPSa._adb-tls-connect._tcp device product:TB335FC_PRC transport_id:1
+`;
+  assert.equal(selectDevice(parseDeviceList(stdout)), 'adb-HA2DPWL2-4QfPSa._adb-tls-connect._tcp');
+});
+
+test('parseDeviceList: reads multi-word states without eating the serial', () => {
+  const stdout = `List of devices attached
+1234567890 no permissions (user in plugdev group; are your udev rules wrong?)
+`;
+  assert.deepEqual(parseDeviceList(stdout), [
+    { serial: '1234567890', state: 'no permissions (user in plugdev group; are your udev rules wrong?)' },
+  ]);
+});
+
+test('parseDeviceList: skips lines that are not device entries', () => {
+  assert.deepEqual(parseDeviceList('adb server version (41) doesn\'t match\n'), []);
+});
+
 test('selectDevice: picks the only ready device', () => {
   assert.equal(selectDevice([{ serial: 'R52N20ABCDE', state: 'device' }]), 'R52N20ABCDE');
 });
