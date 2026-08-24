@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseDeviceList, selectDevice } from '../worker/adb.js';
+import { createAdb, parseDeviceList, parseMdnsServices, selectDevice } from '../worker/adb.js';
 
 const DEVICE_LIST = `* daemon not running; starting now at tcp:5037
 * daemon started successfully
@@ -78,4 +78,136 @@ test('selectDevice: fails when the preferred serial is missing or not ready', ()
     () => selectDevice([{ serial: 'other', state: 'offline' }], { preferredSerial: 'other' }),
     /offline/,
   );
+});
+
+const MDNS_OUTPUT = `List of discovered mdns services
+adb-TB335FC-xYzAbC	_adb-tls-pairing._tcp	192.168.200.147:33333
+adb-TB335FC-xYzAbC	_adb-tls-connect._tcp	192.168.200.147:41273
+`;
+
+test('parseMdnsServices: keeps only wireless debugging connect addresses', () => {
+  assert.deepEqual(parseMdnsServices(MDNS_OUTPUT), ['192.168.200.147:41273']);
+});
+
+test('parseMdnsServices: returns an empty list when nothing is discovered', () => {
+  assert.deepEqual(parseMdnsServices('List of discovered mdns services\n'), []);
+  assert.deepEqual(parseMdnsServices(''), []);
+});
+
+// 각 adb 호출에 무엇을 돌려줄지 정해 두는 가짜 exec. 호출 순서를 그대로 기록한다.
+function fakeAdb({ devices = [], mdns = '', onConnect = () => {}, mdnsSupported = true, ...options } = {}) {
+  const calls = [];
+  const queue = Array.isArray(devices[0]) ? [...devices] : [devices];
+
+  const adb = createAdb({
+    ...options,
+    exec: async (_path, args) => {
+      calls.push(args.join(' '));
+      if (args[0] === 'devices') {
+        const current = queue.length > 1 ? queue.shift() : queue[0];
+        const lines = current.map((device) => `${device.serial}\t${device.state}`).join('\n');
+        return { stdout: `List of devices attached\n${lines}\n` };
+      }
+      if (args[0] === 'mdns') {
+        if (!mdnsSupported) throw new Error('unknown command');
+        return { stdout: mdns };
+      }
+      if (args[0] === 'connect') {
+        return { stdout: onConnect(args[1]) ?? `connected to ${args[1]}\n` };
+      }
+      return { stdout: '' };
+    },
+  });
+
+  return { adb, calls };
+}
+
+test('resolveDevice: does not reconnect while the device is already there', async () => {
+  const { adb, calls } = fakeAdb({ devices: [{ serial: 'R52N20ABCDE', state: 'device' }] });
+
+  assert.equal(await adb.resolveDevice(), 'R52N20ABCDE');
+  assert.deepEqual(calls, ['devices -l'], '멀쩡한 연결에 adb connect를 쏘면 연결이 끊긴다');
+});
+
+test('resolveDevice: reconnects to the configured address and retries', async () => {
+  const { adb, calls } = fakeAdb({
+    connectAddress: '192.168.200.147:5555',
+    devices: [[], [{ serial: '192.168.200.147:5555', state: 'device' }]],
+  });
+
+  assert.equal(await adb.resolveDevice(), '192.168.200.147:5555');
+  assert.deepEqual(calls, ['devices -l', 'connect 192.168.200.147:5555', 'devices -l']);
+});
+
+test('resolveDevice: falls back to the mDNS address when no address is configured', async () => {
+  const { adb, calls } = fakeAdb({
+    mdns: MDNS_OUTPUT,
+    devices: [[], [{ serial: '192.168.200.147:41273', state: 'device' }]],
+  });
+
+  assert.equal(await adb.resolveDevice(), '192.168.200.147:41273');
+  assert.ok(calls.includes('connect 192.168.200.147:41273'), '포트가 바뀌어도 mDNS로 찾아 붙어야 한다');
+});
+
+test('resolveDevice: does not connect to the same address twice', async () => {
+  // 고정 주소가 mDNS 목록에도 그대로 나오는 상황. 실패해도 한 번만 시도해야 한다.
+  const { adb, calls } = fakeAdb({
+    connectAddress: '192.168.200.147:41273',
+    mdns: MDNS_OUTPUT,
+    devices: [[], []],
+    onConnect: (address) => `failed to connect to ${address}\n`,
+  });
+
+  await assert.rejects(() => adb.resolveDevice(), /No Android device/);
+  assert.deepEqual(calls.filter((call) => call.startsWith('connect')), [
+    'connect 192.168.200.147:41273',
+  ]);
+});
+
+test('resolveDevice: moves on to mDNS when the fixed address is dead', async () => {
+  const { adb, calls } = fakeAdb({
+    connectAddress: '192.168.200.147:5555',
+    mdns: MDNS_OUTPUT,
+    devices: [[], [{ serial: '192.168.200.147:41273', state: 'device' }]],
+    // adb는 연결에 실패해도 exit 0으로 끝나는 경우가 있다.
+    onConnect: (address) => `failed to connect to ${address}\n`,
+  });
+
+  assert.equal(await adb.resolveDevice(), '192.168.200.147:41273');
+  assert.deepEqual(calls.filter((call) => call.startsWith('connect')), [
+    'connect 192.168.200.147:5555',
+    'connect 192.168.200.147:41273',
+  ]);
+});
+
+test('resolveDevice: still needs manual review when reconnecting fails', async () => {
+  const { adb } = fakeAdb({
+    connectAddress: '192.168.200.147:5555',
+    devices: [[], []],
+    onConnect: () => {
+      throw new Error('failed to connect');
+    },
+  });
+
+  await assert.rejects(() => adb.resolveDevice(), (error) => {
+    assert.equal(error.needsManualReview, true);
+    assert.match(error.message, /No Android device/);
+    return true;
+  });
+});
+
+test('resolveDevice: survives an adb build without mDNS support', async () => {
+  const { adb, calls } = fakeAdb({ devices: [[], []], mdnsSupported: false });
+
+  await assert.rejects(() => adb.resolveDevice(), /No Android device/);
+  assert.deepEqual(calls, ['devices -l', 'mdns services'], '후보가 없으면 재조회하지 않는다');
+});
+
+test('resolveDevice: an unauthorized device is reported, not reconnected around', async () => {
+  const { adb } = fakeAdb({
+    connectAddress: '192.168.200.147:5555',
+    devices: [[{ serial: 'R52N20ABCDE', state: 'unauthorized' }]],
+  });
+
+  await assert.rejects(() => adb.resolveDevice(), /unauthorized/);
 });
