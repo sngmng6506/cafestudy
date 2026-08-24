@@ -608,7 +608,6 @@ Expected: FAIL — `service.createJobForMeetup is not a function`
 
 `src/features/somoim-automation/somoim-automation.service.js`의 반환 객체에 추가(`createMeetupJob` 바로 아래):
 
-```js
 `createMeetupJob`을 지역 함수로 뽑아 두 곳에서 부른다. 반환 객체 리터럴 안에서
 `this`는 호출 방식(구조 분해 등)에 따라 달라지므로 쓰지 않는다.
 
