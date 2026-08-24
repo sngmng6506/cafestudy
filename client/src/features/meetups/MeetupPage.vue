@@ -21,6 +21,7 @@ const {
   loadAll,
   loadSomoimEvents,
   toggleJoin,
+  retrySomoim,
   cancelMeetup,
 } = useUpcomingMeetups();
 
@@ -360,6 +361,7 @@ function toLocalInputValue(date) {
           :pending-id="pendingId"
           :show-readonly-dot="false"
           @toggle-join="toggleJoin"
+          @retry-somoim="retrySomoim"
           @cancel="cancelMeetup"
         />
       </ul>

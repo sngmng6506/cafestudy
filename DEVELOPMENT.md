@@ -62,12 +62,35 @@ notice_reads                  -- 사용자별 공지 읽음 상태
 meetups                       -- 앱 안에서 직접 만든 모임
 - id, host_id, title, description, location, cafe_name(legacy, nullable),
   scheduled_at, capacity, status(open/closed), source_type(app/somoim),
-  source_ref(nullable), created_at
+  source_ref(nullable), somoim_state(none/pending/registered/failed),
+  somoim_job_id(nullable), created_at
 - `status`는 DB 운영 상태, API의 `lifecycleState`는 scheduled_at으로 계산한 upcoming/done 상태다.
 - source_type='somoim'인 행은 정산 화면에서 소모임 일정을 정산 대상으로 쓰기 위해
   materialize한 앱 모임이다. source_ref는 somoim_events.id 문자열이며 unique다.
   정산 목록 조회 직전에 매핑된 소모임 참석자(face_id -> somoim_members -> users)가 있는
   일정만 upsert하고 participants에 반영한다.
+- somoim_state는 앱 모임이 소모임 앱에도 등록됐는지를 나타낸다
+  (none/pending/registered/failed). source_type='somoim'과 혼동하지 않는다 —
+  그쪽은 "소모임에서 가져온 모임"이고 이쪽은 "앱 모임을 소모임에 올렸는가"다.
+- pending과 failed인 모임에는 참가할 수 없다. failed는 개설자에게만 보인다.
+- pending → registered/failed 전이는 meetups가 직접 쓰지 않는다.
+  somoim-automation의 `/jobs/:id/complete`, `/jobs/:id/fail`이 각각
+  `somoimRegistrationSucceeded`/`somoimRegistrationFailed` 훅을 emit하면,
+  meetups의 `registerSomoimSuccessListener`/`registerSomoimFailureListener`가
+  `somoim_job_id`로 자기 행만 갱신한다(`AND somoim_state='pending'` 조건이 있어,
+  재시도로 이미 새 job에 넘어간 뒤 늦게 도착한 보고는 무시된다).
+  worker가 죽어 stale claim이 재시도 소진(`needs_manual_review`)으로 넘어간
+  경우도 `/jobs/claim` 라우트가 같은 방식으로 `somoimRegistrationFailed`를
+  emit해 모임이 pending에 갇히지 않게 한다.
+- `POST /api/meetups/:id/retry-somoim`은 개설자(host)만, `somoim_state='failed'`인
+  모임만 재시도할 수 있다. 모임 취소는 별도 endpoint 없이 기존
+  `DELETE /api/meetups/:id`를 그대로 쓴다.
+- `somoim_state='pending'`인 모임을 취소하면 `meetupCancelled`를 emit해 아직 큐에
+  남아 있는 job을 중단한다. 이걸 안 하면 worker가 나중에 그 job을 집어가 소모임에
+  정모를 만들고, 웹에는 닫힌 모임만 남는다.
+  **다만 job이 이미 claim된 뒤라면 멈출 수 없다** — worker가 실기기를 조작하는
+  중이라 중간에 끊으면 화면 상태를 알 수 없게 된다. 이 경우 소모임 정모는
+  생성되며 손으로 지워야 한다. 알려진 제약이다.
 
 participants                  -- meetup 참가 (UNIQUE meetup_id+user_id)
 - id, meetup_id, user_id, joined_at
@@ -176,6 +199,8 @@ somoim_automation_jobs        -- 소모임 앱 자동화 요청 큐 (worker가 �
 - worker가 결과를 보고하지 못하고 죽으면 job이 claimed로 남는다. 다음 claim 요청
   직전에 stale(기본 900초) claim을 회수하며, attempts를 다 쓴 job(기본 3회)은
   needs_manual_review로 넘긴다. 별도 스케줄러 없이 worker 폴링 시점에만 돈다.
+  needs_manual_review로 넘어간 job은 `/jobs/claim` 라우트가 `somoimRegistrationFailed`를
+  emit해 연결된 meetups 행도 failed로 옮긴다(위 meetups 섹션 참고).
 - 완료·실패가 보고된 job은 재실행하지 않는다. worker가 판단을 내렸다면 뒤집지 않는다.
 - payload의 dryRun/submit 조합은 서버와 worker가 각각 검증한다. 실제 제출은
   SOMOIM_AUTOMATION_ALLOW_SUBMIT(서버)과 ALLOW_SOMOIM_SUBMIT(worker)이 모두 true일 때만

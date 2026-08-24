@@ -100,6 +100,37 @@ export function createSomoimAutomationQueries(db) {
       return queryResult.rows[0] ?? null;
     },
 
+    // worker가 일시적 장애를 보고했을 때 job을 다시 pending으로 되돌린다.
+    // requeueStaleJobs와 달리 이건 worker가 살아서 실패를 직접 알린 경우다.
+    // error_message를 남겨 admin job 목록에서 지난 시도가 왜 실패했는지 볼 수 있게 한다.
+    async requeueJob(id, errorMessage = null) {
+      const result = await db.query(
+        `UPDATE somoim_automation_jobs
+            SET status = 'pending', claimed_at = NULL, error_message = $2, updated_at = now()
+          WHERE id = $1 AND status = 'claimed'
+          RETURNING id, status, attempts`,
+        [id, errorMessage],
+      );
+      return result.rows[0] ?? null;
+    },
+
+    // 모임이 취소되면 아직 아무도 안 집어간 job만 중단한다.
+    // status='pending' 조건이 핵심 — claim된 job은 worker가 기기를 조작하는 중이라
+    // 여기서 상태를 바꾸면 worker의 complete/fail 보고와 어긋난다.
+    async cancelPendingJob({ id, errorMessage }) {
+      const result = await db.query(
+        `UPDATE somoim_automation_jobs
+            SET status = 'failed',
+                error_message = $2,
+                completed_at = now(),
+                updated_at = now()
+          WHERE id = $1 AND status = 'pending'
+          RETURNING id, status`,
+        [id, errorMessage],
+      );
+      return result.rows[0] ?? null;
+    },
+
     async failJob({ id, errorMessage, needsManualReview, result }) {
       const status = needsManualReview ? 'needs_manual_review' : 'failed';
       const queryResult = await db.query(

@@ -3,6 +3,7 @@ import { createApp } from './app.js';
 import { createAuth } from './core/auth.js';
 import { createConfig } from './core/config.js';
 import { createDb } from './core/db.js';
+import { createHooks } from './core/hooks.js';
 import { createLogger } from './core/logger.js';
 import { createShutdownHandler } from './core/shutdown.js';
 import { createStorage } from './core/storage.js';
@@ -18,7 +19,8 @@ const db = createDb({
 });
 const auth = createAuth({ env: config.env, db, config: config.auth });
 const storage = createStorage(config.storage);
-const app = await createApp({ db, auth, storage, config, logger });
+const hooks = createHooks({ logger });
+const app = await createApp({ db, auth, storage, config, logger, hooks });
 
 const server = app.listen(config.port, () => {
   logger.info('server_started', { port: config.port, env: config.env });

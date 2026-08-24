@@ -13,6 +13,8 @@ export function createMeetupQueries(db) {
             m.status,
             m.capacity,
             m.created_at AS "createdAt",
+            m.somoim_state AS "somoimState",
+            m.somoim_job_id AS "somoimJobId",
             COALESCE(attendee_summary.participant_count, 0)::int AS "participantCount",
             (
               m.host_id = $1
@@ -55,6 +57,7 @@ export function createMeetupQueries(db) {
           ) attendee_summary ON true
           WHERE m.status = 'open'
             AND m.source_type = 'app'
+            AND (m.somoim_state <> 'failed' OR m.host_id = $1)
           ORDER BY m.scheduled_at ASC, m.created_at DESC
         `,
         [userId ?? null],
@@ -78,6 +81,8 @@ export function createMeetupQueries(db) {
               scheduled_at AS "scheduledAt",
               status,
               capacity,
+              somoim_state AS "somoimState",
+              somoim_job_id AS "somoimJobId",
               created_at AS "createdAt"
           `,
           [hostId, title, description, location, scheduledAt, capacity],
@@ -100,7 +105,7 @@ export function createMeetupQueries(db) {
       return db.transaction(async (client) => {
         const meetupResult = await client.query(
           `
-            SELECT id, scheduled_at AS "scheduledAt", status, capacity
+            SELECT id, scheduled_at AS "scheduledAt", status, capacity, somoim_state AS "somoimState"
             FROM meetups
             WHERE id = $1
             FOR UPDATE
@@ -110,6 +115,9 @@ export function createMeetupQueries(db) {
         const meetup = meetupResult.rows[0];
 
         if (!meetup) return { outcome: 'not_found' };
+        if (meetup.somoimState === 'pending' || meetup.somoimState === 'failed') {
+          return { outcome: 'somoim_pending' };
+        }
         if (meetup.status !== 'open' || new Date(meetup.scheduledAt).getTime() <= Date.now()) {
           return { outcome: 'closed' };
         }
@@ -147,13 +155,56 @@ export function createMeetupQueries(db) {
     async getMeetupById(meetupId) {
       const result = await db.query(
         `
-          SELECT id, host_id AS "hostId", scheduled_at AS "scheduledAt", status, capacity
+          SELECT id, host_id AS "hostId", title, description, location,
+            scheduled_at AS "scheduledAt", status, capacity,
+            somoim_state AS "somoimState", somoim_job_id AS "somoimJobId"
           FROM meetups
           WHERE id = $1
         `,
         [meetupId],
       );
       return result.rows[0];
+    },
+
+    async setSomoimState({ meetupId, state, jobId = null, expectedState }) {
+      const params = [meetupId, state, jobId];
+      let expectedClause = '';
+      if (expectedState !== undefined) {
+        params.push(expectedState);
+        expectedClause = ` AND somoim_state = $${params.length}`;
+      }
+
+      const result = await db.query(
+        `UPDATE meetups
+            SET somoim_state = $2,
+                somoim_job_id = COALESCE($3, somoim_job_id)
+          WHERE id = $1${expectedClause}
+          RETURNING id, somoim_state AS "somoimState", somoim_job_id AS "somoimJobId"`,
+        params,
+      );
+      return result.rows[0] ?? null;
+    },
+
+    async markSomoimFailedByJob(jobId) {
+      const result = await db.query(
+        `UPDATE meetups
+            SET somoim_state = 'failed'
+          WHERE somoim_job_id = $1 AND somoim_state = 'pending'
+          RETURNING id, somoim_state AS "somoimState"`,
+        [jobId],
+      );
+      return result.rows[0] ?? null;
+    },
+
+    async markSomoimRegisteredByJob(jobId) {
+      const result = await db.query(
+        `UPDATE meetups
+            SET somoim_state = 'registered'
+          WHERE somoim_job_id = $1 AND somoim_state = 'pending'
+          RETURNING id, somoim_state AS "somoimState"`,
+        [jobId],
+      );
+      return result.rows[0] ?? null;
     },
 
     async cancelMeetup(meetupId) {

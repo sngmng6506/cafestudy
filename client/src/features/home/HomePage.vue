@@ -23,6 +23,7 @@ const {
   loadAll,
   loadSomoimEvents,
   toggleJoin,
+  retrySomoim,
   cancelMeetup,
 } = useUpcomingMeetups();
 const { goToFeature } = useFeatureNav();
@@ -300,6 +301,7 @@ function calendarAttendeeStack(meetup) {
             :pending-id="pendingId"
             :show-readonly-dot="false"
             @toggle-join="toggleJoin"
+            @retry-somoim="retrySomoim"
             @cancel="cancelMeetup"
           />
         </ul>

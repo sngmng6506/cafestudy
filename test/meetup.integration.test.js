@@ -3,17 +3,20 @@ import { after, before, test } from 'node:test';
 import pg from 'pg';
 import { createDb } from '../src/core/db.js';
 import { createMeetupService } from '../src/features/meetups/meetup.service.js';
+import { createMeetupQueries } from '../src/features/meetups/meetup.queries.js';
 
 const { Pool } = pg;
 const connectionString = process.env.DATABASE_URL;
 const run = connectionString ? test : test.skip;
 let pool;
 let db;
+let queries;
 
 before(() => {
   if (!connectionString) return;
   pool = new Pool({ connectionString });
   db = createDb({ connectionString });
+  queries = createMeetupQueries(db);
 });
 
 after(async () => {
@@ -100,5 +103,80 @@ run('닫힌 모임은 예정 시간이 남아도 참가할 수 없다', async ()
     );
   } finally {
     await cleanupMeetup(meetupId, [host.id, joiner.id]);
+  }
+});
+
+run('somoim_state는 기본이 none이고 setSomoimState로 바뀐다', async () => {
+  const suffix = `${Date.now()}-${Math.random()}`;
+  const userResult = await pool.query(
+    `INSERT INTO users (nickname) VALUES ($1) RETURNING id`,
+    [`somoim-state-${suffix}`],
+  );
+  const hostId = userResult.rows[0].id;
+
+  const created = await queries.createMeetup({
+    hostId,
+    title: `somoim-state-${suffix}`,
+    description: null,
+    location: 'test cafe',
+    scheduledAt: new Date(Date.now() + 3_600_000).toISOString(),
+    capacity: 4,
+  });
+
+  try {
+    assert.equal(created.somoimState, 'none', '기본값은 자동화 대상 아님이다');
+
+    const updated = await queries.setSomoimState({
+      meetupId: created.id,
+      state: 'pending',
+      jobId: null,
+    });
+    assert.equal(updated.somoimState, 'pending');
+
+    const fetched = await queries.getMeetupById(created.id);
+    assert.equal(fetched.somoimState, 'pending');
+
+    const listed = await queries.listMeetups(hostId);
+    const row = listed.find((item) => item.id === created.id);
+    assert.equal(row.somoimState, 'pending', '목록에도 상태가 실려야 화면이 배지를 그린다');
+  } finally {
+    await pool.query('DELETE FROM participants WHERE meetup_id = $1', [created.id]);
+    await pool.query('DELETE FROM meetups WHERE id = $1', [created.id]);
+    await pool.query('DELETE FROM users WHERE id = $1', [hostId]);
+  }
+});
+
+run('failed 모임은 개설자에게만 보이고 비로그인에게는 숨는다', async () => {
+  const suffix = `${Date.now()}-${Math.random()}`;
+  const users = await pool.query(
+    `INSERT INTO users (nickname) VALUES ($1), ($2) RETURNING id`,
+    [`failed-host-${suffix}`, `failed-other-${suffix}`],
+  );
+  const [host, other] = users.rows;
+
+  const created = await queries.createMeetup({
+    hostId: host.id,
+    title: `failed-${suffix}`,
+    description: null,
+    location: 'test cafe',
+    scheduledAt: new Date(Date.now() + 3_600_000).toISOString(),
+    capacity: 4,
+  });
+
+  try {
+    await queries.setSomoimState({ meetupId: created.id, state: 'failed', jobId: null });
+
+    const asHost = await queries.listMeetups(host.id);
+    assert.ok(asHost.some((m) => m.id === created.id), '개설자에게는 보여야 다시 시도할 수 있다');
+
+    const asOther = await queries.listMeetups(other.id);
+    assert.ok(!asOther.some((m) => m.id === created.id), '다른 멤버에게는 취소된 것과 같다');
+
+    const asGuest = await queries.listMeetups(null);
+    assert.ok(!asGuest.some((m) => m.id === created.id), '비로그인에게 절대 새면 안 된다');
+  } finally {
+    await pool.query('DELETE FROM participants WHERE meetup_id = $1', [created.id]);
+    await pool.query('DELETE FROM meetups WHERE id = $1', [created.id]);
+    await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[host.id, other.id]]);
   }
 });

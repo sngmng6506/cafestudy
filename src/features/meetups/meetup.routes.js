@@ -4,7 +4,7 @@ import { createMeetupService } from './meetup.service.js';
 
 export function createMeetupRouter(ctx) {
   const router = Router();
-  const meetupService = createMeetupService(ctx);
+  const meetupService = createMeetupService({ db: ctx.db, storage: ctx.storage, hooks: ctx.hooks });
 
   router.get('/', async (req, res, next) => {
     try {
@@ -36,6 +36,17 @@ export function createMeetupRouter(ctx) {
     try {
       const result = await meetupService.cancelMeetup({ meetupId: req.params.id, userId: req.user.id });
       sendOk(res, result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/:id/retry-somoim', ctx.auth.requireUser, async (req, res, next) => {
+    try {
+      sendOk(res, await meetupService.retrySomoimRegistration({
+        meetupId: req.params.id,
+        userId: req.user.id,
+      }));
     } catch (error) {
       next(error);
     }

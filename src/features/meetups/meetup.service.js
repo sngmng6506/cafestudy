@@ -1,14 +1,12 @@
 import { createMeetupQueries } from './meetup.queries.js';
-import { throwError } from '../../shared/errors.js';
+import { throwError, throwConflict } from '../../shared/errors.js';
 import { attachBadgeImageUrls } from '../../shared/badge-image.js';
 import { MEETUP_LIMITS } from '../../../shared/domain-constraints.js';
 
 export const MIN_LEAD_MS = MEETUP_LIMITS.minLeadMs;
 export const MAX_CAPACITY = MEETUP_LIMITS.maxCapacity;
 
-export function createMeetupService({ db, storage }) {
-  const queries = createMeetupQueries(db);
-
+export function createMeetupService({ db, storage, hooks, queries = createMeetupQueries(db) }) {
   return {
     async listMeetups(userId) {
       const meetups = await queries.listMeetups(userId);
@@ -26,8 +24,28 @@ export function createMeetupService({ db, storage }) {
     async createMeetup(input) {
       validateMeetupInput(input);
       const meetup = await queries.createMeetup(input);
+
+      // 듣는 리스너가 없으면 자동 등록도 없다. 자동화가 꺼진 환경은 여기서 그대로 끝난다.
+      const results = await (hooks?.emit?.('meetupCreated', meetup) ?? Promise.resolve([]));
+      let somoimState = meetup.somoimState ?? 'none';
+      const jobId = results.find((result) => result?.jobId)?.jobId ?? null;
+      if (jobId) {
+        const updated = await queries.setSomoimState({
+          meetupId: meetup.id,
+          state: 'pending',
+          jobId,
+        });
+        somoimState = updated?.somoimState ?? 'pending';
+      } else if (results.some((result) => result?.failed)) {
+        // 리스너가 구독은 했지만(빈 배열이 아님) 입력을 거부한 경우다 — 자동화가
+        // 꺼진 것과 구분해서 failed로 남긴다(예: 제목이 소모임 쪽 길이 제한을 넘음).
+        const updated = await queries.setSomoimState({ meetupId: meetup.id, state: 'failed' });
+        somoimState = updated?.somoimState ?? 'failed';
+      }
+
       return {
         ...withLifecycleState(meetup),
+        somoimState,
         participantCount: 1,
         joined: true,
         isHost: true,
@@ -38,6 +56,9 @@ export function createMeetupService({ db, storage }) {
       const result = await queries.joinMeetup({ meetupId, userId });
       if (result.outcome === 'not_found') {
         throwError(404, 'MEETUP_NOT_FOUND', '모임을 찾을 수 없습니다.');
+      }
+      if (result.outcome === 'somoim_pending') {
+        throwError(400, 'MEETUP_SOMOIM_PENDING', '소모임에 등록하는 중이에요. 잠시 뒤에 참여할 수 있어요.');
       }
       if (result.outcome === 'closed') {
         throwError(400, 'MEETUP_CLOSED', '참여할 수 없는 모임입니다.');
@@ -58,7 +79,52 @@ export function createMeetupService({ db, storage }) {
       }
 
       await queries.cancelMeetup(meetupId);
+
+      // 아직 큐에 남아 있는 등록 job을 멈춘다. 이걸 안 하면 worker가 나중에 그 job을
+      // 집어가 소모임에 정모를 만들고, 웹에는 닫힌 모임만 남아 손으로 지워야 한다.
+      // 이미 claim된 job은 worker가 실기기를 조작하는 중이라 멈출 수 없다(자동화 쪽에서 거른다).
+      if (meetup.somoimState === 'pending' && meetup.somoimJobId) {
+        await (hooks?.emit?.('meetupCancelled', { jobId: meetup.somoimJobId }) ?? Promise.resolve([]));
+      }
+
       return { meetupId, cancelled: true };
+    },
+
+    async retrySomoimRegistration({ meetupId, userId }) {
+      const meetup = await queries.getMeetupById(meetupId);
+      if (!meetup) throwError(404, 'MEETUP_NOT_FOUND', '모임을 찾을 수 없습니다.');
+      if (meetup.hostId !== userId) {
+        throwError(403, 'NOT_MEETUP_HOST', '모임 개설자만 다시 시도할 수 있어요.');
+      }
+      if (meetup.somoimState !== 'failed') {
+        throwError(400, 'MEETUP_SOMOIM_NOT_FAILED', '다시 시도할 수 있는 상태가 아니에요.');
+      }
+
+      // emit이 상태 쓰기보다 먼저 일어난다: 아래에서 경쟁에 지면(이미 다른 요청이
+      // pending으로 바꿨다면) 이 job은 버려진 채로 큐에 남는다. 취소하지 않고 그대로 둔다 —
+      // 하지만 무해하지 않다. 이 job은 나중에 worker에게 claim되어, 승자가 이미 만든
+      // 소모임 정모와 별개로 중복 정모를 만들 수 있다. 보상 트랜잭션의 복잡도보다
+      // 이 경합의 희귀함이 낫다고 판단해 감수하기로 한 비용이다(진행 계획 결정 기록 참고).
+      const results = await (hooks?.emit?.('meetupCreated', meetup) ?? Promise.resolve([]));
+      const jobId = results.find((result) => result?.jobId)?.jobId ?? null;
+      if (!jobId) {
+        const rejected = results.find((result) => result?.failed);
+        if (rejected) {
+          throwError(400, 'MEETUP_SOMOIM_REJECTED', '지금 내용으로는 소모임에 등록할 수 없어요. 제목이나 장소 길이를 확인해주세요.');
+        }
+        throwError(503, 'SOMOIM_AUTOMATION_UNAVAILABLE', '지금은 소모임에 등록할 수 없어요.');
+      }
+
+      const updated = await queries.setSomoimState({
+        meetupId,
+        state: 'pending',
+        jobId,
+        expectedState: 'failed',
+      });
+      if (!updated) {
+        throwConflict('MEETUP_SOMOIM_NOT_FAILED', '이미 다시 시도하고 있어요.');
+      }
+      return { meetupId, somoimState: updated.somoimState ?? 'pending' };
     },
 
     async leaveMeetup({ meetupId, userId }) {

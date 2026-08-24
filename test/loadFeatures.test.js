@@ -50,3 +50,19 @@ test('registerFeatures awaits onLoad before loading the next feature', async () 
     'second:loaded',
   ]);
 });
+
+test('registerFeatures는 ctx를 그대로 feature에 전달한다', async () => {
+  const seen = [];
+  const app = { use() {} };
+  const ctx = { db: {}, hooks: { on() {}, emit: async () => [] } };
+  const feature = {
+    name: 'sample',
+    basePath: '/api/sample',
+    createRoutes: () => (_req, _res, next) => next(),
+    onLoad: (loadedCtx) => { seen.push(loadedCtx.hooks); },
+  };
+
+  await registerFeatures(app, ctx, [feature]);
+
+  assert.equal(seen[0], ctx.hooks, 'onLoad가 ctx.hooks를 받아야 구독할 수 있다');
+});

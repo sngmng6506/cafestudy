@@ -48,6 +48,23 @@ export function useMeetups() {
     }
   }
 
+  async function retrySomoim(meetup) {
+    if (isGuest.value) {
+      requireLogin('다시 시도는 로그인하면 쓸 수 있어요.');
+      return;
+    }
+    pendingId.value = meetup.id;
+    actionError.value = '';
+    try {
+      await apiFetch(`/api/meetups/${meetup.id}/retry-somoim`, { method: 'POST' });
+      await loadMeetups();
+    } catch (error) {
+      actionError.value = error.message;
+    } finally {
+      pendingId.value = '';
+    }
+  }
+
   async function cancelMeetup(meetup) {
     if (!window.confirm('이 모임을 취소할까요?\n참여자에게서 일정이 사라지고 되돌릴 수 없어요.')) return;
     pendingId.value = meetup.id;
@@ -70,6 +87,7 @@ export function useMeetups() {
     actionError,
     loadMeetups,
     toggleJoin,
+    retrySomoim,
     cancelMeetup,
   };
 }

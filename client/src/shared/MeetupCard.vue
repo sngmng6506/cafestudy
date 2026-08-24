@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, ExternalLink, MapPin, Map } from '@lucide/vue';
 import { formatDate, formatTime, naverMapUrl, googleMapUrl } from './useMeetups.js';
 import UserAvatar from './UserAvatar.vue';
 import { attendeeStack as buildStack, somoimAppLink } from './useSomoimEvents.js';
+import { canJoin, somoimBadge } from './somoim-registration.js';
 
 const props = defineProps({
   meetup: { type: Object, required: true },
@@ -12,7 +13,7 @@ const props = defineProps({
   showReadonlyDot: { type: Boolean, default: true },
 });
 
-const emit = defineEmits(['toggle-join', 'cancel']);
+const emit = defineEmits(['toggle-join', 'cancel', 'retry-somoim']);
 
 const attendeesExpanded = ref(false);
 const isFull = computed(() => props.meetup.participantCount >= props.meetup.capacity);
@@ -100,6 +101,13 @@ const somoimLink = somoimAppLink();
       >
         {{ isFull ? '마감' : '모집중' }}
       </span>
+      <span
+        v-if="somoimBadge(meetup.somoimState)"
+        class="ui-bg-subtle ui-radius-pill inline-flex h-7 items-center px-3 text-[12px] font-semibold"
+        :class="somoimBadge(meetup.somoimState).tone"
+      >
+        {{ somoimBadge(meetup.somoimState).label }}
+      </span>
     </div>
 
     <!-- 참석자 아바타 스택. 주최자는 맨 앞에 고정하고 초록 링으로 강조한다. -->
@@ -180,6 +188,27 @@ const somoimLink = somoimAppLink();
         >
           <ExternalLink :size="16" />
         </a>
+        <div
+          v-else-if="meetup.somoimState === 'failed' && meetup.isHost"
+          class="flex items-center gap-2"
+        >
+          <button
+            class="focus-ring ui-radius-control ui-border h-9 border px-3 text-[12px] font-medium"
+            type="button"
+            :disabled="pendingId === meetup.id"
+            @click="emit('retry-somoim', meetup)"
+          >
+            다시 시도
+          </button>
+          <button
+            class="focus-ring ui-radius-control ui-text-danger h-9 px-3 text-[12px] font-medium"
+            type="button"
+            :disabled="pendingId === meetup.id"
+            @click="emit('cancel', meetup)"
+          >
+            취소
+          </button>
+        </div>
         <div v-else-if="meetup.isHost" class="flex items-center gap-2">
           <span class="text-sm font-semibold text-[var(--ui-color-content-muted)]">만든 사람</span>
           <button
@@ -211,7 +240,7 @@ const somoimLink = somoimAppLink();
           v-else
           class="focus-ring h-9 shrink-0 rounded-[10px] bg-[var(--ui-color-brand)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
           type="button"
-          :disabled="pendingId === meetup.id"
+          :disabled="pendingId === meetup.id || !canJoin(meetup.somoimState)"
           @click="emit('toggle-join', meetup)"
         >
           참여하기

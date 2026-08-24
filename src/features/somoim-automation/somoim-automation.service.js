@@ -1,4 +1,4 @@
-import { throwConflict, throwNotFound, throwValidation } from '../../shared/errors.js';
+import { AppError, throwConflict, throwNotFound, throwValidation } from '../../shared/errors.js';
 import { createSomoimAutomationQueries } from './somoim-automation.queries.js';
 import { SOMOIM_AUTOMATION_LIMITS } from '../../../shared/domain-constraints.js';
 
@@ -15,6 +15,7 @@ const OFFSET_MAX = 100_000;
 const DEFAULT_STALE_CLAIM_SECONDS = 900;
 const DEFAULT_MAX_ATTEMPTS = 3;
 const STALE_CLAIM_MESSAGE = 'Worker stopped responding before reporting a result';
+const CANCELLED_MESSAGE = '모임이 취소되어 등록을 중단했어요';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_TITLE_LENGTH = SOMOIM_AUTOMATION_LIMITS.meetupTitleMaxLength;
 const MAX_LOCATION_LENGTH = SOMOIM_AUTOMATION_LIMITS.locationMaxLength;
@@ -29,12 +30,47 @@ export function createSomoimAutomationService({
   staleClaimSeconds = DEFAULT_STALE_CLAIM_SECONDS,
   maxAttempts = DEFAULT_MAX_ATTEMPTS,
 } = {}) {
+  async function createMeetupJob({ requestedBy, input }) {
+    assertUuid(requestedBy, 'requestedBy');
+    const payload = normalizeMeetupPayload(input, { allowSubmit });
+    return summarizeJob(await queries.createJob({ requestedBy, type: JOB_TYPE_CREATE_MEETUP, payload }));
+  }
+
   return {
-    async createMeetupJob({ requestedBy, input }) {
-      assertUuid(requestedBy, 'requestedBy');
-      const payload = normalizeMeetupPayload(input, { allowSubmit });
-      return summarizeJob(await queries.createJob({ requestedBy, type: JOB_TYPE_CREATE_MEETUP, payload }));
+    createMeetupJob,
+
+    // 웹 모임 생성 훅이 부른다. 개설자를 요청자로 남겨 관리자 화면에서 추적할 수 있게 한다.
+    // 입력이 소모임 쪽 제약(제목/장소 길이 등)을 넘으면 여기서 실패를 값으로 돌려준다 —
+    // emit이 예외를 삼키므로, 던지면 meetups는 이 실패를 전혀 알지 못하고 'none'으로 끝난다.
+    async createJobForMeetup(meetup) {
+      try {
+        const { jobId } = await createMeetupJob({
+          requestedBy: meetup.hostId,
+          input: {
+            title: meetup.title,
+            scheduledAt: meetup.scheduledAt,
+            location: meetup.location,
+            capacity: meetup.capacity,
+            description: meetup.description ?? '',
+            cost: '',
+            submit: true,
+          },
+        });
+        return { jobId };
+      } catch (err) {
+        if (err instanceof AppError && err.code === 'VALIDATION_ERROR') {
+          return { failed: true, reason: err.message };
+        }
+        throw err;
+      }
     },
+
+    // 모임 취소 훅이 부른다. 아직 claim되지 않은 job만 중단된다.
+    async cancelJobForMeetup(jobId) {
+      assertUuid(jobId, 'jobId');
+      return queries.cancelPendingJob({ id: jobId, errorMessage: CANCELLED_MESSAGE });
+    },
+
     async listJobs({ status, limit = 20, offset = 0 } = {}) {
       const statuses = normalizeStatuses(status);
       if (!Number.isInteger(limit) || limit < 1 || limit > PAGE_LIMIT_MAX) {
@@ -66,7 +102,11 @@ export function createSomoimAutomationService({
         maxAttempts,
         exhaustedMessage: STALE_CLAIM_MESSAGE,
       });
-      return { job: await queries.claimNextJob(), recovered: recovered.length };
+      // recovered는 SOMOIM_AUTOMATION.md가 문서화하고 worker가 읽는 필드라 개수 그대로 둔다.
+      // exhausted는 그 중 사람에게 넘어간(재시도 소진) job만 추려, 라우트가 모임 쪽에
+      // 실패를 알릴 수 있게 한다.
+      const exhausted = recovered.filter((row) => row.status === 'needs_manual_review');
+      return { job: await queries.claimNextJob(), recovered: recovered.length, exhausted };
     },
     async completeJob({ id, result }) {
       assertUuid(id, 'jobId');
@@ -76,14 +116,27 @@ export function createSomoimAutomationService({
     },
     async failJob({ id, errorMessage, needsManualReview, result }) {
       assertUuid(id, 'jobId');
+      // 재시도 여부와 무관하게 항상 요구한다 — 그래야 1~2번째 시도의 사유도
+      // requeueJob에 남아 admin job 목록에서 마지막 실패 원인을 볼 수 있다.
+      const normalizedErrorMessage = normalizeErrorMessage(errorMessage);
+      const current = await queries.getJob(id);
+      const canRetry = needsManualReview !== true
+        && (current?.attempts ?? maxAttempts) < maxAttempts;
+
+      if (canRetry) {
+        const requeued = await queries.requeueJob(id, normalizedErrorMessage);
+        if (!requeued) throwConflict('JOB_NOT_CLAIMED', 'Only claimed jobs can be failed');
+        return { ...requeued, requeued: true };
+      }
+
       const job = await queries.failJob({
         id,
-        errorMessage: normalizeErrorMessage(errorMessage),
+        errorMessage: normalizedErrorMessage,
         needsManualReview: needsManualReview === true,
         result: normalizeResult(result),
       });
       if (!job) throwConflict('JOB_NOT_CLAIMED', 'Only claimed jobs can be failed');
-      return job;
+      return { ...job, requeued: false };
     },
   };
 }
