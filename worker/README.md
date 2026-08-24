@@ -92,6 +92,16 @@ adb connect <태블릿IP>:5555
 
 이 주소를 `ADB_CONNECT_ADDRESS`에 넣어두면 worker가 알아서 다시 붙는다.
 
+**재부팅하면 `adb tcpip 5555`와 무선 디버깅이 둘 다 풀린다.** 열려 있는 adb 포트가
+하나도 남지 않으므로 태블릿 화면에서 손으로 다시 켜는 것 외에 복구 방법이 없다.
+한 번 붙었을 때 아래를 걸어두면 다음 재부팅부터는 손대지 않아도 된다(롬에 따라
+두 번째 줄은 권한이 막혀 무시된다).
+
+```bash
+adb shell settings put global adb_wifi_enabled 1
+adb shell setprop persist.adb.tcp.port 5555
+```
+
 ### 자동 재연결
 
 worker는 기기를 찾지 못하면 `ADB_CONNECT_ADDRESS`와 mDNS로 발견한 주소를
@@ -102,6 +112,24 @@ connect`를 해주지 않아도 대개 여기서 복구된다. 그래도 실패�
 mDNS 탐색은 adb가 지원할 때만 동작한다. 데비안의 `adb 34.0.4-debian`처럼
 mDNS가 빠진 빌드에서는 공식 platform-tools를 쓰거나 `ADB_CONNECT_ADDRESS`를
 지정한다.
+
+## 소모임 앱 자동화 노트
+
+실기기에서 확인한 앱 동작이다. 코드만 봐서는 알 수 없어서 남긴다.
+
+**검색으로 클럽을 찾지 않는다.** 이 앱은 검색을 프로그램적으로 제출할 방법이
+없다. 검색어는 입력창에 들어가지만 `search_btn_layout` 탭, `input keyevent 66`,
+ADBKeyBoard의 `ADB_EDITOR_CODE`(IME_ACTION_SEARCH) 셋 다 화면을 바꾸지 못했다.
+대신 `내모임` 탭에서 가입한 모임을 직접 연다. bot 계정은 대상 클럽 하나에만
+가입해 있고 다른 클럽은 다루지 않으므로 이걸로 충분하다.
+
+**가입 모임과 추천 카드는 id가 다르다.** 가입 모임은 `name_text`,
+추천·주변 모임 카드는 `groupname_text`다. `내모임` 화면에는 둘이 함께 나오므로
+`name_text`만 봐야 남의 모임을 열지 않는다.
+
+**uiautomator가 같은 창을 두 벌 덤프할 때가 있다.** bounds가 완전히 같은 노드가
+중복으로 나온다. 개수를 세기 전에 bounds로 접어야 모임 하나가 둘로 세어지지 않는다
+(`uniqueByBounds`).
 
 ## 구조
 
@@ -132,6 +160,9 @@ handlers/             # job type별 화면 자동화
 worker가 claim한 뒤 죽어서 결과를 보고하지 못하면 job은 `claimed`로 남는다. 서버가
 다음 claim 요청 때 회수하므로(기본 900초, 3회) worker를 다시 켜면 알아서 재시도된다.
 재시도를 다 쓴 job은 `needs_manual_review`로 넘어간다.
+
+실패한 job이 마지막으로 본 화면은 `worker-artifacts/ui-dump.xml`에 남는다. 어느
+화면에서 막혔는지는 이 파일이 가장 확실한 증거다.
 
 ## 테스트
 
