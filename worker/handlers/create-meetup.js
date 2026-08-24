@@ -189,6 +189,28 @@ async function captureEvidence(adb, deviceId, artifactDir, name) {
 
 // ---- 화면 이동 ----
 
+// "내 지역" 확인 화면 처리. 콜드 스타트 직후와 "내모임" 탭 진입 시 둘 다 나타날 수
+// 있다(비결정적 — 실기기에서 두 자리 다 확인함). 이미 설정된 값을 그대로 저장해서
+// 넘어간다(값을 바꾸지 않는다). 그 뒤로 "직장(활동지역) 설정 권장" 안내가 이어질
+// 수 있어 "다음에하기"로 건너뛴다. nodes에 게이트가 없으면 아무것도 하지 않는다.
+async function dismissRegionGateIfPresent(adb, deviceId, artifactDir, nodes) {
+  const saveLocationButton = findByResourceId(nodes, 'btn_save_location');
+  if (!saveLocationButton) return false;
+
+  await tap(adb, deviceId, saveLocationButton.center);
+  await sleep(800);
+
+  const afterSave = await readScreen(adb, deviceId, artifactDir);
+  const skipWorkplace = afterSave.find(
+    (n) => n.resourceId.endsWith('/button2') && n.text === '다음에하기',
+  );
+  if (skipWorkplace) {
+    await tap(adb, deviceId, skipWorkplace.center);
+    await sleep(800);
+  }
+  return true;
+}
+
 // 매번 강제 종료 후 재실행해 알 수 없는 이전 화면 상태(뒤로가기 스택, 남은 다이얼로그
 // 등)에 의존하지 않는 결정적인 시작점을 만든다. 콜드 스타트는 웜 스타트보다 훨씬
 // 느릴 수 있어(수 초) 고정 sleep 대신 홈 화면이 뜰 때까지 폴링한다.
@@ -197,10 +219,23 @@ async function launchApp(adb, deviceId, artifactDir) {
   await adb.shell(deviceId, ['monkey', '-p', APP_PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1']);
 
   const attempts = 10;
+  let dismissedRegionGate = false;
   for (let i = 0; i < attempts; i += 1) {
     await sleep(1000);
     const nodes = await readScreen(adb, deviceId, artifactDir);
     if (findByResourceId(nodes, 'search_btn_layout')) return;
+
+    if (!dismissedRegionGate && (await dismissRegionGateIfPresent(adb, deviceId, artifactDir, nodes))) {
+      dismissedRegionGate = true;
+    }
+  }
+
+  if (dismissedRegionGate) {
+    // 이미 입력을 시도했는데도 홈에 닿지 못했다 — 애매하니 사람이 봐야 한다.
+    throw new ManualReviewError(
+      'App did not reach the home screen after dismissing the region-confirmation screen',
+      { stage: 'launch' },
+    );
   }
   // 아직 아무 입력도 하지 않은 상태의 순수한 앱 실행 지연이므로 TransientError다
   // (SOMOIM_AUTOMATION.md의 needsManualReview 예외 케이스).
@@ -242,11 +277,16 @@ async function openJoinedGroup(adb, deviceId, artifactDir) {
   await tap(adb, deviceId, tab.center);
 
   let joined = [];
+  let dismissedRegionGate = false;
   for (let i = 0; i < 10; i += 1) {
     await sleep(1000);
     nodes = await readScreen(adb, deviceId, artifactDir);
     joined = uniqueByBounds(nodes.filter((n) => n.resourceId.endsWith('/name_text')));
     if (joined.length > 0) break;
+
+    if (!dismissedRegionGate && (await dismissRegionGateIfPresent(adb, deviceId, artifactDir, nodes))) {
+      dismissedRegionGate = true;
+    }
   }
 
   if (joined.length === 0) {
@@ -273,6 +313,19 @@ async function openJoinedGroup(adb, deviceId, artifactDir) {
 
 async function openCreateMeetupForm(adb, deviceId, artifactDir) {
   let nodes = await readScreen(adb, deviceId, artifactDir);
+
+  // 클럽 페이지는 이 계정이 그 클럽 안에서 마지막으로 보고 있던 탭(게시판의 특정
+  // 글 등)으로 열릴 수 있다(실기기에서 확인함) — "홈" 탭이 아니면 정모 만들기
+  // 버튼이 없다. 이미 홈이어도 다시 눌러서 해가 없으니 매번 탭한다.
+  // 탭 텍스트 자체는 clickable=false다(부모 컨테이너가 탭을 받는다) — 좌표만
+  // 맞으면 되므로 text로만 찾는다.
+  const homeTab = nodes.find((n) => n.text === '홈');
+  if (homeTab) {
+    await tap(adb, deviceId, homeTab.center);
+    await sleep(600);
+    nodes = await readScreen(adb, deviceId, artifactDir);
+  }
+
   const clubTitle = findByResourceId(nodes, 'name_text');
   if (!clubTitle || clubTitle.text !== TARGET_GROUP_NAME) {
     throw new ManualReviewError('Did not land on the target group page', { stage: 'open_group_page' });

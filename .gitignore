@@ -20,3 +20,4 @@ client/vite.config.js
 coverage/
 npm-debug.log*
 .claude/
+worker-artifacts/
