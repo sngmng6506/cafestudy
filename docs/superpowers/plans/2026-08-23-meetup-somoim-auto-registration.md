@@ -848,7 +848,8 @@ Expected: 로컬 SKIP. CI에서 FAIL을 확인한 뒤 다음 단계로 간다.
 
 - [ ] **Step 3: Write implementation**
 
-`src/features/meetups/meetup.queries.js`의 `listMeetups` 쿼리에서 `FROM meetups m` 다음의 WHERE 절에 조건을 더한다. WHERE가 없으면 `ORDER BY` 앞에 추가한다:
+`src/features/meetups/meetup.queries.js`의 `listMeetups` 쿼리에는 이미
+`WHERE m.status = 'open' AND m.source_type = 'app'` 절이 있다. 거기에 조건을 더한다:
 
 ```sql
           WHERE (m.somoim_state <> 'failed' OR m.host_id = $1)
@@ -898,7 +899,9 @@ EOF
   - `queries.requeueJob(id)` → job을 `pending`으로 되돌리고 갱신된 행 반환
   - `service.failJob({ id, errorMessage, needsManualReview, result })`가
     `{ ...job, requeued: boolean }`을 반환
-  - `somoimRegistrationFailed` 이벤트 payload: `{ meetupId }`
+  - `somoimRegistrationFailed` 이벤트 payload: `{ jobId }`
+    (`somoim-automation`은 모임 id를 알 방법이 없다. `somoim_job_id`로 자기 행을
+    찾는 것은 `meetups` 쪽이다)
   - `meetups`의 `onLoad(ctx)`가 이 이벤트를 구독해 `somoim_state='failed'`로 바꾼다
 
 - [ ] **Step 1: Write the failing test**
@@ -1449,7 +1452,7 @@ EOF
 ```bash
 git add AGENTS.md DEVELOPMENT.md SOMOIM_AUTOMATION.md README.md
 git commit -F - <<'EOF'
-docs: describe the meetup-triggered somoim registration
+docs(somoim-automation): describe the meetup-triggered somoim registration
 
 Why: 훅이라는 새 feature 간 통신 수단과 somoim_state가 생겼는데 어느 문서에도
 없었다. 자동화 트리거가 관리자 수동 요청이라고 적혀 있던 부분도 실제와 어긋났다.
@@ -1469,3 +1472,54 @@ EOF
 - [ ] `npm run build` 통과
 - [ ] 푸시 후 CI에서 통합 테스트가 skip 0으로 실행되는지 확인
 - [ ] `SOMOIM_AUTOMATION_ALLOW_SUBMIT`이 꺼진 상태에서 모임을 만들어 `somoim_state='none'`으로 남고 기존과 동일하게 참가되는지 확인
+
+---
+
+## 실행 후 기록: 이 계획의 결함
+
+실제로 실행해 보니 계획 자체에 문제가 있었다. 같은 실수를 반복하지 않도록 남긴다.
+위 본문의 명백한 오류는 고쳐 두었고, 여기에는 구조적인 것만 적는다.
+
+### 스펙의 요구사항 하나에 태스크가 없었다
+
+스펙은 `registered` 상태를 정의하고 "성공하면 웹 모임이 정상 상태가 되고 참가
+버튼이 열린다"고 명시했는데, **11개 태스크 중 그 전이를 구현하는 태스크가
+없었다.** Task 8이 실패 경로만 다뤘다.
+
+결과는 치명적이었다. worker가 소모임 등록에 성공해도 모임이 영원히 `pending`에
+남아 아무도 참가할 수 없었다. 실패 경로는 완성됐는데 성공 경로가 끊긴 상태로
+11개 태스크가 전부 "리뷰 통과"로 닫혔다 — 어느 태스크도 그 전이를 자기 책임으로
+갖지 않았기 때문에 태스크별 리뷰로는 잡을 수 없었다.
+
+계획을 쓸 때 "스펙의 각 요구사항마다 그것을 구현하는 태스크를 짚을 수 있는가"를
+점검했지만 놓쳤다. **상태 기계를 설계했다면 전이 하나하나에 태스크를 대응시켜
+표로 확인해야 한다.**
+
+### 테스트 지시가 검증하지 못하는 테스트를 만들었다
+
+브리프에 넣은 테스트 코드가 짧게 쓰려고 검증 대상을 가짜 객체로 주입하는 형태였다.
+Task 5·6이 연달아 그 이유로 되돌아왔고, 두 번 다 "구현은 맞는데 테스트가 그 구현을
+실행하지 않는다"였다.
+
+더 나빴던 것은 그 습관이 만든 이음매다. 브랜치 전체 리뷰가 찾은 Critical 두 개가
+정확히 거기 숨어 있었다.
+
+- 재시도가 100% 실패했다. `getMeetupById`가 `title`/`location`을 반환하지 않아
+  리스너가 예외를 던졌고, 훅이 그것을 삼켜 개설자는 원인과 무관한 503을 받았다.
+  Task 9는 `hooks.emit`을, Task 5는 `getMeetupById`를 각각 가짜로 대체해서
+  둘을 잇는 실제 경로가 어떤 테스트에서도 실행되지 않았다.
+- `meetup.hooks.js`와 `markSomoimFailedByJob`에 테스트가 없어 "모임이 상태를
+  바꾼다"는 사용자 가시 동작 전체가 자동 검증 밖이었다.
+
+**태스크를 쪼개 각각 리뷰하면, 태스크 사이의 계약은 아무도 검증하지 않는다.**
+계획에 태스크별 단위 테스트만 넣지 말고, 흐름 하나를 끝에서 끝까지 걷는 테스트를
+명시적인 태스크로 둬야 한다.
+
+### 브리프의 사실을 확인하지 않고 썼다
+
+`listMeetups`에 `WHERE`가 없다고 적었지만 있었고(구현자가 발견해 기존 절에
+조건을 더했다), 커밋 메시지 예시를 `docs:`로 적어 저장소 자신의
+`<type>(<scope>):` 규칙을 어겼다(리뷰가 잡아 amend로 고쳤다).
+
+구현자는 브리프를 요구사항으로 받고 그대로 따른다. **브리프에 코드를 인용할 때는
+파일을 열어 확인하고 쓴다.**
