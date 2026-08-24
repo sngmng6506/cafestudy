@@ -5,16 +5,25 @@ import { ManualReviewError } from './errors.js';
 const execFileAsync = promisify(execFile);
 const DEFAULT_TIMEOUT_MS = 15_000;
 
+// 시리얼을 공백으로 자를 수 없다. mDNS로 붙은 기기는 시리얼 자체에 공백이 있다.
+//   adb-HA2DPWL2-4QfPSa (2)._adb-tls-connect._tcp device product:TB335FC_PRC ...
+// 그래서 state를 알려진 값으로 고정하고, 그 앞을 통째로 시리얼로 읽는다.
+// 뒤쪽 `key:value`는 `-l`이 붙이는 부가 정보라 버린다.
+const DEVICE_LINE = new RegExp(
+  '^(?<serial>.+?)\\s+'
+    + '(?<state>device|offline|unauthorized|authorizing|connecting|bootloader'
+    + '|recovery|rescue|sideload|host|no permissions.*?)'
+    + '(?:\\s+\\w+:\\S+)*$',
+);
+
 export function parseDeviceList(stdout = '') {
   return stdout
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith('*') && !line.startsWith('List of devices'))
-    .map((line) => {
-      const [serial, state = ''] = line.split(/\s+/);
-      return { serial, state };
-    })
-    .filter((device) => device.serial && device.state);
+    .map((line) => DEVICE_LINE.exec(line)?.groups)
+    .filter((device) => device?.serial && device.state)
+    .map(({ serial, state }) => ({ serial, state }));
 }
 
 // `adb mdns services`의 출력에서 무선 디버깅 주소만 골라낸다. 무선 디버깅은
