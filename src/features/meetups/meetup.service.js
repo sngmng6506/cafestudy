@@ -1,5 +1,5 @@
 import { createMeetupQueries } from './meetup.queries.js';
-import { throwError } from '../../shared/errors.js';
+import { throwError, throwConflict } from '../../shared/errors.js';
 import { attachBadgeImageUrls } from '../../shared/badge-image.js';
 import { MEETUP_LIMITS } from '../../../shared/domain-constraints.js';
 
@@ -88,14 +88,26 @@ export function createMeetupService({ db, storage, hooks, queries = createMeetup
         throwError(400, 'MEETUP_SOMOIM_NOT_FAILED', '다시 시도할 수 있는 상태가 아니에요.');
       }
 
+      // emit이 상태 쓰기보다 먼저 일어난다: 아래에서 경쟁에 지면(이미 다른 요청이
+      // pending으로 바꿨다면) 이 job은 버려진 채로 큐에 남는다. 의도적으로 그대로 둔다 —
+      // 모임은 이미 pending이고, 남은 job은 처리되어도 상태를 다시 덮어쓰지 않으므로
+      // 무해하다. 취소하려고 별도 보상 로직을 두는 것은 이 경합의 희귀함에 비해 과하다.
       const results = await (hooks?.emit?.('meetupCreated', meetup) ?? Promise.resolve([]));
       const jobId = results.find((result) => result?.jobId)?.jobId ?? null;
       if (!jobId) {
         throwError(503, 'SOMOIM_AUTOMATION_UNAVAILABLE', '지금은 소모임에 등록할 수 없어요.');
       }
 
-      const updated = await queries.setSomoimState({ meetupId, state: 'pending', jobId });
-      return { meetupId, somoimState: updated?.somoimState ?? 'pending' };
+      const updated = await queries.setSomoimState({
+        meetupId,
+        state: 'pending',
+        jobId,
+        expectedState: 'failed',
+      });
+      if (!updated) {
+        throwConflict('MEETUP_SOMOIM_NOT_FAILED', '이미 다시 시도하고 있어요.');
+      }
+      return { meetupId, somoimState: updated.somoimState ?? 'pending' };
     },
 
     async leaveMeetup({ meetupId, userId }) {

@@ -79,6 +79,47 @@ test('listMeetups excludes Somoim-materialized meetups from the general meetup A
   assert.match(capturedSql, /m\.source_type = 'app'/);
 });
 
+test('setSomoimState: expectedState 없이 호출하면 조건 없이 UPDATE한다 (기존 동작)', async () => {
+  let capturedSql = '';
+  let capturedParams = [];
+  const queries = createMeetupQueries({
+    query: async (sql, params) => {
+      capturedSql = sql;
+      capturedParams = params;
+      return { rows: [{ id: 'm1', somoimState: 'pending', somoimJobId: 'job-1' }] };
+    },
+  });
+
+  const result = await queries.setSomoimState({ meetupId: 'm1', state: 'pending', jobId: 'job-1' });
+
+  assert.doesNotMatch(capturedSql, /somoim_state = \$4/);
+  assert.deepEqual(capturedParams, ['m1', 'pending', 'job-1']);
+  assert.equal(result.somoimState, 'pending');
+});
+
+test('setSomoimState: expectedState가 있으면 조건부 UPDATE SQL과 파라미터를 넣는다', async () => {
+  let capturedSql = '';
+  let capturedParams = [];
+  const queries = createMeetupQueries({
+    query: async (sql, params) => {
+      capturedSql = sql;
+      capturedParams = params;
+      return { rows: [] };
+    },
+  });
+
+  const result = await queries.setSomoimState({
+    meetupId: 'm1',
+    state: 'pending',
+    jobId: 'job-1',
+    expectedState: 'failed',
+  });
+
+  assert.match(capturedSql, /AND somoim_state = \$4/);
+  assert.deepEqual(capturedParams, ['m1', 'pending', 'job-1', 'failed']);
+  assert.equal(result, null, '조건에 안 맞으면 행이 없어 null을 반환한다');
+});
+
 function participationDb({ meetup, count = 0, alreadyJoined = false }) {
   const directQuery = async (sql) => {
     if (sql.includes('FROM meetups')) return { rows: meetup ? [meetup] : [] };
@@ -332,7 +373,28 @@ test('retrySomoimRegistration: 새 job을 만들고 pending으로 되돌린다',
   const result = await service.retrySomoimRegistration({ meetupId: 'm1', userId: 'host' });
 
   assert.equal(result.somoimState, 'pending');
-  assert.deepEqual(updates, [{ meetupId: 'm1', state: 'pending', jobId: 'job-2' }]);
+  assert.deepEqual(updates, [{ meetupId: 'm1', state: 'pending', jobId: 'job-2', expectedState: 'failed' }]);
+});
+
+test('retrySomoimRegistration: 동시 재시도로 경합에서 지면 409를 던진다', async () => {
+  const service = createMeetupService({
+    db: {}, storage: null,
+    hooks: { on() {}, async emit() { return [{ jobId: 'job-2' }]; } },
+    queries: {
+      async getMeetupById() { return { id: 'm1', hostId: 'host', somoimState: 'failed' }; },
+      // 다른 요청이 이미 상태를 바꿔서 조건부 UPDATE가 행을 찾지 못한 경우를 흉내낸다.
+      async setSomoimState() { return null; },
+    },
+  });
+
+  await assert.rejects(
+    () => service.retrySomoimRegistration({ meetupId: 'm1', userId: 'host' }),
+    (error) => {
+      assert.equal(error.code, 'MEETUP_SOMOIM_NOT_FAILED');
+      assert.equal(error.statusCode, 409);
+      return true;
+    },
+  );
 });
 
 test('retrySomoimRegistration: 자동화가 꺼져있으면 503으로 거부한다', async () => {
