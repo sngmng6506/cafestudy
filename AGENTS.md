@@ -43,6 +43,9 @@ Decision: <판단이 개입된 경우만>
 - 비동기 `onLoad(ctx)`는 초기화가 끝날 때까지 반환하지 않는다.
 - 환경 의존 설정은 composition root의 `createConfig()`에서 만들고 `ctx.config`로 주입한다.
 - 의존성은 `ctx = { db, auth, storage, config }`로 주입한다. feature 간 직접 import 금지.
+- feature끼리 알려야 할 일이 있으면 `ctx.hooks`를 쓴다. `onLoad(ctx)`에서
+  `ctx.hooks.on(event, listener)`으로 구독하고, 이벤트를 내는 쪽은 누가 듣는지 모른다.
+  `emit`은 리스너 반환값을 배열로 돌려주므로, 각 feature가 자기 테이블만 갱신한다.
 - 프론트·백엔드 공통 제한값은 `shared/domain-constraints.js`에 둔다.
 - `app.js`에 feature 라우트를 직접 추가하지 않는다.
 

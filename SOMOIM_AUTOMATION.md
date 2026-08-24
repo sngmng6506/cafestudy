@@ -29,6 +29,16 @@ worker endpoint는 내부 키를 사용한다.
 x-internal-key: <INTERNAL_API_KEY>
 ```
 
+## Job이 만들어지는 경로
+
+웹에서 모임을 만들면 서버가 자동으로 job을 만든다. 운영진이 아닌 멤버도 모임을 열 수
+있게 하는 것이 이 자동화의 목적이다. 관리자 화면의 요청 폼은 실패한 요청을 확인하고
+수동으로 재시도하는 용도로 남는다.
+
+자동 트리거는 `INTERNAL_API_KEY`가 설정돼 있고 `SOMOIM_AUTOMATION_ALLOW_SUBMIT=true`인
+경우에만 동작한다. 둘 중 하나라도 꺼져 있으면 서버가 아예 구독하지 않아 모임 생성이
+기존과 동일하게 끝난다.
+
 ## Job 생성
 
 ```http

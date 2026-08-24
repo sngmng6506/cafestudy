@@ -62,12 +62,20 @@ notice_reads                  -- 사용자별 공지 읽음 상태
 meetups                       -- 앱 안에서 직접 만든 모임
 - id, host_id, title, description, location, cafe_name(legacy, nullable),
   scheduled_at, capacity, status(open/closed), source_type(app/somoim),
-  source_ref(nullable), created_at
+  source_ref(nullable), somoim_state(none/pending/registered/failed),
+  somoim_job_id(nullable), created_at
 - `status`는 DB 운영 상태, API의 `lifecycleState`는 scheduled_at으로 계산한 upcoming/done 상태다.
 - source_type='somoim'인 행은 정산 화면에서 소모임 일정을 정산 대상으로 쓰기 위해
   materialize한 앱 모임이다. source_ref는 somoim_events.id 문자열이며 unique다.
   정산 목록 조회 직전에 매핑된 소모임 참석자(face_id -> somoim_members -> users)가 있는
   일정만 upsert하고 participants에 반영한다.
+- somoim_state는 앱 모임이 소모임 앱에도 등록됐는지를 나타낸다
+  (none/pending/registered/failed). source_type='somoim'과 혼동하지 않는다 —
+  그쪽은 "소모임에서 가져온 모임"이고 이쪽은 "앱 모임을 소모임에 올렸는가"다.
+- pending과 failed인 모임에는 참가할 수 없다. failed는 개설자에게만 보인다.
+- `POST /api/meetups/:id/retry-somoim`은 개설자(host)만, `somoim_state='failed'`인
+  모임만 재시도할 수 있다. 모임 취소는 별도 endpoint 없이 기존
+  `DELETE /api/meetups/:id`를 그대로 쓴다.
 
 participants                  -- meetup 참가 (UNIQUE meetup_id+user_id)
 - id, meetup_id, user_id, joined_at
