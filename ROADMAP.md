@@ -16,10 +16,11 @@
 - job 큐 API — 생성, 목록·단건 조회, claim/complete/fail, stale claim 회수
 - worker 배관 — 폴링 루프, 기기 선택, dryRun/submit 이중 안전장치, 실패 분기
 - 관리자 화면 — 모임 만들기 요청 폼과 진행 상태 목록
-- ADB handler(`worker/handlers/create-meetup.js`) — dryRun 라이브 검증 완료. 자동화
-  계정은 "[홍대] it&ai 스터디" 클럽 운영진 권한으로 고정되어 있고(다른 클럽 미지원),
-  ADBKeyBoard IME로 한글을 입력한다. `submit` 모드 코드는 있지만 두 스위치가 꺼져
-  있어 미검증 상태다.
+- ADB handler(`worker/handlers/create-meetup.js`) — 자동화 계정은 "[홍대] it&ai 스터디"
+  클럽 하나로 고정되어 있고(다른 클럽은 다루지 않는다), ADBKeyBoard IME로 한글을
+  입력한다. 클럽을 검색으로 찾던 경로는 앱이 검색 제출을 받지 않아 실기기에서 막혔고,
+  `내모임` 탭에서 가입한 모임을 직접 여는 방식으로 바꿨다. 앱 동작 제약은
+  [worker/README.md](./worker/README.md)의 "소모임 앱 자동화 노트"에 있다.
 - 모임 생성 시 자동 등록 — 웹에서 모임을 만들면 서버가 `SOMOIM_AUTOMATION_AUTO_REGISTER`
   스위치에 따라 자동으로 job을 만든다. 모임 카드에 등록 상태(등록됨/대기/실패)를
   보여주고, 실패하면 호스트가 `POST /api/meetups/:id/retry-somoim`으로 다시 시도할
@@ -29,9 +30,12 @@
 
 남은 것:
 
-- **실제 제출 개방** — 지금은 dry-run만 검증됐다. 서버와 worker 스위치를 모두 켜고,
-  제출 직전 화면 대조까지 확인한 뒤에 연다. 관리자 화면에도 제출 토글이 필요하다
-  (서버의 `allowSubmit` 여부를 클라이언트가 알 수 있어야 한다).
+- **실기기 검증** — 서버·worker 스위치는 모두 켜져 있고, 웹에서 모임을 만들면 job이
+  만들어져 worker가 claim하는 것까지 프로덕션에서 확인했다. 하지만 정모가 실제로
+  만들어지는 것과 "제출 직전 화면 대조" 조건은 아직 확인하지 못했다. 태블릿을
+  재부팅하면 adb 연결이 끊기고 화면에서 손으로 복구해야 하는 것이 걸림돌이다.
+- **관리자 화면 제출 토글** — 서버의 `allowSubmit` 여부를 클라이언트가 알 수 있어야
+  한다. 지금은 환경변수로만 켜고 끈다.
 - **job type 확장** — 모임 수정, 참석자 확인. 현재 DB CHECK가 `create_meetup`만 허용한다.
 - **스크린샷을 볼 수 없는 자동 등록 job** — 자동 등록은 관리자가 직접 만든 job과
   달리 아무도 지켜보지 않고 실행된다. `result.screenshotKey`가 아직 오브젝트
