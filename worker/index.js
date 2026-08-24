@@ -9,7 +9,11 @@ const client = createApiClient({
   baseUrl: config.serverUrl,
   internalKey: config.internalApiKey,
 });
-const adb = createAdb({ adbPath: config.adbPath, serial: config.adbSerial });
+const adb = createAdb({
+  adbPath: config.adbPath,
+  serial: config.adbSerial,
+  connectAddress: config.adbConnectAddress,
+});
 const handlers = {
   create_meetup: createCreateMeetupHandler({ adb, artifactDir: config.artifactDir }),
 };
@@ -61,6 +65,16 @@ async function main() {
     allowSubmit: config.allowSubmit,
     pollIntervalMs: config.pollIntervalMs,
   });
+
+  // 시작할 때 기기 상태를 한 번 확인한다. 없으면 재연결까지 시도하므로,
+  // 태블릿이 절전에서 깬 뒤 worker만 다시 켜도 대개 여기서 붙는다.
+  try {
+    log('device_ready', { deviceId: await adb.resolveDevice() });
+  } catch (error) {
+    // 기기가 없어도 시작은 한다. job은 claim 시점에 다시 확인하고,
+    // 그때까지 기기가 돌아오면 정상 처리된다.
+    log('device_unavailable', { message: error?.message ?? 'unknown error' });
+  }
 
   while (running) {
     try {

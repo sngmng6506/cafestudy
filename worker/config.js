@@ -16,6 +16,9 @@ export function createWorkerConfig(env = process.env) {
     pollIntervalMs: readPositiveInt(env.POLL_INTERVAL_MS, DEFAULT_POLL_INTERVAL_MS),
     adbPath: (env.ADB_PATH ?? 'adb').trim() || 'adb',
     adbSerial: (env.ADB_SERIAL ?? '').trim(),
+    // 기기가 사라졌을 때 다시 붙일 주소. `adb tcpip 5555`로 고정한 경우에 쓴다.
+    // 비워 두면 mDNS 탐색만으로 재연결을 시도한다.
+    adbConnectAddress: (env.ADB_CONNECT_ADDRESS ?? '').trim(),
     artifactDir: (env.ARTIFACT_DIR ?? './worker-artifacts').trim() || './worker-artifacts',
   };
 }

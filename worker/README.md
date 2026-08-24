@@ -36,6 +36,7 @@ node worker/index.js
 | `POLL_INTERVAL_MS` | | `5000` | 큐가 비었을 때 대기 시간 |
 | `ADB_PATH` | | `adb` | adb 실행 파일 경로 |
 | `ADB_SERIAL` | | (자동) | 기기를 명시 지정. 비우면 연결된 기기가 정확히 한 대일 때만 진행한다 |
+| `ADB_CONNECT_ADDRESS` | | — | 기기가 사라졌을 때 다시 붙을 주소(`IP:포트`). 비워도 mDNS로 찾는다 |
 | `ARTIFACT_DIR` | | `./worker-artifacts` | 스크린샷·UI dump 저장 위치 |
 
 `INTERNAL_API_KEY`는 헤더로만 쓰고 로그·에러 메시지에 남기지 않는다.
@@ -54,6 +55,32 @@ adb devices -l                       # state가 device 여야 한다
 - 공유기에서 태블릿 IP를 고정 할당(DHCP 예약)해둔다. IP가 바뀌면 연결이 끊긴다.
 - 화면 잠금을 끄고 `adb shell settings put global stay_on_while_plugged_in 3`을 적용한다.
   잠금 화면은 계약상 무조건 `needsManualReview` 사유다.
+- 충전기를 꽂아둔 채로 둔다. 빼면 화면 유지가 풀리고, 절전 중 Wi-Fi가 끊기면
+  안드로이드가 무선 디버깅을 자동으로 꺼버린다. 다시 켜려면 태블릿 화면이 필요하다.
+
+### 고정 포트로 바꾸기
+
+무선 디버깅은 켤 때마다 포트가 바뀌고 Wi-Fi가 끊기면 꺼진다. 한 번 붙은 뒤
+아래를 실행해두면 포트가 `5555`로 고정되고 Wi-Fi가 끊겼다 붙어도 유지된다
+(재부팅하면 풀린다). 케이블 없이 기존 무선 연결로도 실행할 수 있다.
+
+```bash
+adb tcpip 5555                    # adbd가 재시작되며 현재 연결이 한 번 끊긴다
+adb connect <태블릿IP>:5555
+```
+
+이 주소를 `ADB_CONNECT_ADDRESS`에 넣어두면 worker가 알아서 다시 붙는다.
+
+### 자동 재연결
+
+worker는 기기를 찾지 못하면 `ADB_CONNECT_ADDRESS`와 mDNS로 발견한 주소를
+차례로 시도한 뒤 한 번 더 확인한다. 태블릿이 절전에서 깬 뒤 사람이 `adb
+connect`를 해주지 않아도 대개 여기서 복구된다. 그래도 실패하면 job은 계약대로
+`needsManualReview`로 넘어간다.
+
+mDNS 탐색은 adb가 지원할 때만 동작한다. 데비안의 `adb 34.0.4-debian`처럼
+mDNS가 빠진 빌드에서는 공식 platform-tools를 쓰거나 `ADB_CONNECT_ADDRESS`를
+지정한다.
 
 ## 구조
 
@@ -62,7 +89,7 @@ index.js              # claim → runJob → complete/fail 루프, 종료 시그
 config.js             # 환경변수 → worker 설정
 api-client.js         # 서버 job endpoint 호출 (x-internal-key)
 job-runner.js         # job 하나 실행. dryRun/submit 안전장치와 실패 분기
-adb.js                # 기기 목록 파싱·선택, shell/screenshot/uiautomator 래퍼
+adb.js                # 기기 목록 파싱·선택, 자동 재연결, shell/screenshot/uiautomator 래퍼
 errors.js             # ManualReviewError / TransientError
 handlers/             # job type별 화면 자동화
 ```
