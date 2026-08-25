@@ -12,7 +12,8 @@ GitHub가 source of truth이며 로컬 환경 없이 작업하는 기여자도 �
 - [README.md](./README.md) — 시작하기, 기능, 스크립트
 - [DEVELOPMENT.md](./DEVELOPMENT.md) — 데이터 모델, 도메인 불변식, 트랜잭션, 설계 한계
 - [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md) — 소모임 자동화 API와 worker 계약
-- [worker/README.md](./worker/README.md) — worker 실행과 ADB 준비
+- [worker/README.md](./worker/README.md) — worker 실행과 앱 자동화 노트
+  (태블릿 셋업 절차는 [worker/TABLET_SETUP.md](./worker/TABLET_SETUP.md))
 - [DESIGN_GUIDE.md](./DESIGN_GUIDE.md) — UI 토큰, 컴포넌트, 접근성
 - [WRITING_GUIDE.md](./WRITING_GUIDE.md) — 사용자 문구와 UX 용어
 - [ROADMAP.md](./ROADMAP.md) — 미구현 아이디어

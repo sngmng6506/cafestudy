@@ -60,8 +60,6 @@ Cookie: cafestudy_session=<session-token>
 Content-Type: application/json
 ```
 
-요청 payload:
-
 ```json
 {
   "title": "토요일 카페 스터디",
@@ -74,30 +72,14 @@ Content-Type: application/json
 }
 ```
 
-서버는 job을 `pending`으로 저장하며 worker payload에 다음 값을 포함한다.
+서버는 job을 `pending`으로 저장한다. worker payload는 위와 같되 `scheduledAt`이
+UTC ISO로 정규화되고 `dryRun`이 `submit`의 반대값으로 채워진다.
 
-```json
-{
-  "title": "토요일 카페 스터디",
-  "scheduledAt": "2026-07-25T05:00:00.000Z",
-  "location": "강남역 스타벅스",
-  "capacity": 8,
-  "description": "각자 할 일 가져와서 2시간 집중",
-  "cost": "각자 음료",
-  "dryRun": true,
-  "submit": false
-}
-```
-
-검증 제한값은 `shared/domain-constraints.js`가 source of truth다.
-
-- `title`: 필수, 최대 80자
-- `scheduledAt`: 필수, 유효한 날짜·시간
-- `location`: 필수, 최대 120자
-- `capacity`: 정수 1~100, 기본 8
-- `description`: 선택, 최대 1000자
-- `cost`: 선택, 최대 80자
+- 필수: `title`, `scheduledAt`, `location`. 선택: `capacity`, `description`, `cost`.
+- 길이·범위 제한은 `shared/domain-constraints.js`의 `SOMOIM_AUTOMATION_LIMITS`가
+  source of truth다. 여기에 옮겨 적지 않는다.
 - 문자열은 앞뒤 공백을 제거하고 연속 공백을 정규화한다.
+- `scheduledAt`은 미래여야 한다. 이미 지난 시각은 거부한다.
 - `submit: true`는 서버에 `SOMOIM_AUTOMATION_ALLOW_SUBMIT=true`가 없으면 거부한다.
 
 ## Job 조회
@@ -118,11 +100,12 @@ GET /api/somoim-automation/jobs/:id
 
 ## Worker endpoint
 
+모두 `x-internal-key` 헤더가 필요하고, 본문이 있으면 JSON이다.
+
 ### Claim
 
 ```http
 POST /api/somoim-automation/jobs/claim
-x-internal-key: <INTERNAL_API_KEY>
 ```
 
 가장 오래된 `pending` job 하나를 원자적으로 `claimed`로 바꾸고 반환한다. job이 없으면 `job: null`을 반환한다. claim 시 `attempts`가 1 증가한다.
@@ -137,8 +120,6 @@ claim 직전에 stale claim을 회수한다. `SOMOIM_AUTOMATION_STALE_CLAIM_SEC`
 
 ```http
 POST /api/somoim-automation/jobs/:id/complete
-x-internal-key: <INTERNAL_API_KEY>
-Content-Type: application/json
 ```
 
 ```json
@@ -162,34 +143,24 @@ Content-Type: application/json
 
 ```http
 POST /api/somoim-automation/jobs/:id/submit-attempt
-x-internal-key: <INTERNAL_API_KEY>
 ```
 
 worker가 **되돌릴 수 없는 제출 버튼을 누르기 직전에** 부른다. 서버는 `claimed` job에
-`submit_attempted_at`을 찍는다.
+`submit_attempted_at`을 찍는다. 정모 생성은 취소할 수 없고 job에 멱등성 키가 없어,
+표시 없이 보고가 끊기면 stale 회수가 job을 재실행해 정모를 하나 더 만든다.
 
-정모 생성은 취소할 수 없다. 버튼을 누른 뒤 결과 보고가 끊기면(프로세스 종료뿐 아니라
-`complete` 호출 한 번의 네트워크 순단으로도 충분하다) job은 `claimed`로 남고, stale
-회수가 `pending`으로 되돌려 처음부터 다시 실행한다 — 소모임에 정모가 하나 더 생긴다.
-job에는 멱등성 키가 없어 worker 쪽에서 "이미 만들었는지" 확인할 방법이 없으므로,
-누르기 전에 의도를 먼저 남긴다.
-
-- 이 호출이 실패하면 worker는 **제출하지 않고 물러난다.** 아직 아무것도 만들지 않은
-  상태라 그대로 재시도해도 안전하다.
-- 이 표시가 있는 job은 절대 자동 재시도하지 않는다. stale 회수도, worker가
+- 이 호출이 실패하면 worker는 제출하지 않고 물러난다(아직 아무것도 만들지 않았으므로
+  재시도해도 안전하다).
+- 표시가 있는 job은 자동 재시도하지 않는다. stale 회수도, worker가
   `needsManualReview: false`로 보고한 실패도 모두 `needs_manual_review`로 간다.
-- 그 job에 연결된 모임은 `pending`에 남는다. `failed`로 내리면 개설자에게 "다시 시도"가
-  열리는데, 정모가 이미 있을 수 있어 누르면 중복이 된다. 사람이 소모임 앱을 열어
-  실제로 생성됐는지 확인하고 정리해야 한다 — `pending`에 갇히는 쪽이 실제 멤버들에게
-  보이는 중복 정모보다 낫다.
-- `dryRun` job은 이 endpoint를 부르지 않으므로 기존대로 자유롭게 재시도된다.
+- 연결된 모임은 `pending`에 남긴다. `failed`로 내리면 개설자의 "다시 시도"가 중복을
+  만든다. 사람이 소모임 앱에서 실제 생성 여부를 확인하고 정리한다.
+- `dryRun` job은 이 endpoint를 부르지 않으므로 기존대로 재시도된다.
 
 ### Fail
 
 ```http
 POST /api/somoim-automation/jobs/:id/fail
-x-internal-key: <INTERNAL_API_KEY>
-Content-Type: application/json
 ```
 
 ```json

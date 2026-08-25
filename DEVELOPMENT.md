@@ -79,26 +79,18 @@ meetups                       -- 앱 안에서 직접 만든 모임
   meetups의 `registerSomoimSuccessListener`/`registerSomoimFailureListener`가
   `somoim_job_id`로 자기 행만 갱신한다(`AND somoim_state='pending'` 조건이 있어,
   재시도로 이미 새 job에 넘어간 뒤 늦게 도착한 보고는 무시된다).
-  worker가 죽어 stale claim이 재시도 소진(`needs_manual_review`)으로 넘어간
-  경우도 `/jobs/claim` 라우트가 같은 방식으로 `somoimRegistrationFailed`를
-  emit해 모임이 pending에 갇히지 않게 한다.
-  **예외는 `submit_attempted_at`이 찍힌 job이다** — 이때는 실패를 알리지 않아
-  모임을 의도적으로 pending에 남긴다. failed가 되면 개설자에게 "다시 시도"가
-  열리는데 정모가 이미 있을 수 있어 중복이 된다. pending에 갇히는 쪽이 실제
-  멤버들에게 보이는 중복 정모보다 낫다고 판단했다.
+  stale claim이 재시도 소진으로 넘어간 경우도 `/jobs/claim` 라우트가 같은 방식으로
+  emit해 모임이 pending에 갇히지 않게 한다. 예외는 `submit_attempted_at`이 찍힌
+  job으로, 이때는 알리지 않고 pending에 남긴다(SOMOIM_AUTOMATION.md "Submit attempt").
 - `POST /api/meetups/:id/retry-somoim`은 개설자(host)만, `somoim_state='failed'`인
   모임만 재시도할 수 있다. `meetupCreated`가 아니라 `meetupSomoimRetryRequested`를
   emit한다 — `meetupCreated` 리스너는 `SOMOIM_AUTOMATION_AUTO_REGISTER`가 꺼지면
   구독되지 않으므로, 재시도를 거기 얹으면 자동 등록을 끈 뒤 재시도까지 막힌다.
-  재시도는 `SOMOIM_AUTOMATION_ALLOW_SUBMIT`만 있으면 `AUTO_REGISTER`와 무관하게
-  항상 동작해야 한다(somoim-automation.hooks.js 참고). 모임 취소는 별도 endpoint
-  없이 기존 `DELETE /api/meetups/:id`를 그대로 쓴다.
+  모임 취소는 별도 endpoint 없이 기존 `DELETE /api/meetups/:id`를 그대로 쓴다.
 - `somoim_state='pending'`인 모임을 취소하면 `meetupCancelled`를 emit해 아직 큐에
-  남아 있는 job을 중단한다. 이걸 안 하면 worker가 나중에 그 job을 집어가 소모임에
-  정모를 만들고, 웹에는 닫힌 모임만 남는다.
-  **다만 job이 이미 claim된 뒤라면 멈출 수 없다** — worker가 실기기를 조작하는
-  중이라 중간에 끊으면 화면 상태를 알 수 없게 된다. 이 경우 소모임 정모는
-  생성되며 손으로 지워야 한다. 알려진 제약이다.
+  남아 있는 job을 중단한다. 안 하면 worker가 나중에 그 job을 집어가 소모임에 정모를
+  만들고 웹에는 닫힌 모임만 남는다. **이미 claim된 job은 멈출 수 없다** — 그때는
+  정모가 생성되며 손으로 지워야 한다. 알려진 제약이다.
 
 participants                  -- meetup 참가 (UNIQUE meetup_id+user_id)
 - id, meetup_id, user_id, joined_at
@@ -203,13 +195,9 @@ somoim_automation_jobs        -- 소모임 앱 자동화 요청 큐 (worker가 �
   status(pending/claimed/succeeded/failed/needs_manual_review), attempts,
   claimed_at, completed_at, error_message, result(jsonb), submit_attempted_at,
   created_at, updated_at
-- submit_attempted_at은 worker가 되돌릴 수 없는 제출 버튼을 누르기 직전에 찍는다.
-  정모 생성은 취소할 수 없고 job에 멱등성 키가 없어서, 이 표시가 없으면 보고가
-  끊겼을 때(complete 호출 한 번의 네트워크 순단으로도 충분하다) stale 회수가
-  job을 재실행해 정모를 하나 더 만든다. 이 표시가 있는 job은 재시도 여유와
-  무관하게 needs_manual_review로 가고, 연결된 모임은 pending에 남는다 —
-  failed로 내리면 개설자가 "다시 시도"를 눌러 중복을 만들 수 있기 때문이다.
-  사람이 소모임 앱에서 실제 생성 여부를 확인하고 정리한다.
+- submit_attempted_at은 되돌릴 수 없는 제출 직전에 찍는 표시다. 이 job은 자동
+  재시도하지 않는다 — 중복 정모를 막는 장치이며 규칙은 SOMOIM_AUTOMATION.md의
+  "Submit attempt"가 갖는다.
 - claim은 FOR UPDATE SKIP LOCKED로 가장 오래된 pending 한 건만 가져간다.
   complete/fail은 status='claimed' 조건부 UPDATE라 이미 끝난 job은 다시 바뀌지 않는다.
 - worker가 결과를 보고하지 못하고 죽으면 job이 claimed로 남는다. 다음 claim 요청

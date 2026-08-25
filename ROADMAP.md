@@ -16,22 +16,14 @@
 - job 큐 API — 생성, 목록·단건 조회, claim/complete/fail, stale claim 회수
 - worker 배관 — 폴링 루프, 기기 선택, dryRun/submit 이중 안전장치, 실패 분기
 - 관리자 화면 — 모임 만들기 요청 폼과 진행 상태 목록
-- ADB handler(`worker/handlers/create-meetup.js`) — 자동화 계정은 "[홍대] it&ai 스터디"
-  클럽 하나로 고정되어 있고(다른 클럽은 다루지 않는다), ADBKeyBoard IME로 한글을
-  입력한다. 클럽을 검색으로 찾던 경로는 앱이 검색 제출을 받지 않아 실기기에서 막혔고,
-  `내모임` 탭에서 가입한 모임을 직접 여는 방식으로 바꿨다. 이 경로로 실기기
-  end-to-end 검증을 마쳤다. 앱 동작 제약은
-  [worker/README.md](./worker/README.md)의 "소모임 앱 자동화 노트"에 있다.
-- 모임 생성 시 자동 등록 — 웹에서 모임을 만들면 서버가 `SOMOIM_AUTOMATION_AUTO_REGISTER`
-  스위치에 따라 자동으로 job을 만든다. 모임 카드에 등록 상태(등록됨/대기/실패)를
-  보여주고, 실패하면 호스트가 `POST /api/meetups/:id/retry-somoim`으로 다시 시도할
-  수 있다. 자세한 상태 전이는 [DEVELOPMENT.md](./DEVELOPMENT.md)의 `meetups` 섹션,
-  스위치 조합은 [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md)의 "Job이 만들어지는
-  경로"를 본다.
-- 되돌릴 수 없는 제출의 안전장치 — 제출 직전 `submit-attempt` 기록, 제출 후 폼을
-  떠났는지 확인, 기기 타임존 검증, worker 중복 실행 방지 락. 설계 리스크 리뷰에서
-  나온 것들이며 실제 제출을 열기 전에 필요한 부분이다. 규칙은
-  [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md)의 "Submit attempt"에 있다.
+- ADB handler(`worker/handlers/create-meetup.js`) — `내모임` 탭 경로로 실기기
+  end-to-end 검증을 마쳤다. 앱 동작 제약은 [worker/README.md](./worker/README.md)의
+  "소모임 앱 자동화 노트"에 있다.
+- 모임 생성 시 자동 등록 — 모임 카드에 등록 상태를 보여주고 실패 시 호스트가
+  재시도할 수 있다. 상태 전이는 [DEVELOPMENT.md](./DEVELOPMENT.md)의 `meetups`,
+  스위치 조합은 [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md)를 본다.
+- 되돌릴 수 없는 제출의 안전장치 — `submit-attempt` 기록, 제출 후 폼 이탈 확인,
+  기기 타임존 검증, worker 중복 실행 방지 락.
 
 남은 것:
 
@@ -40,10 +32,8 @@
 - **관리자 화면 제출 토글** — 서버의 `allowSubmit` 여부를 클라이언트가 알 수 있어야
   한다. 지금은 환경변수로만 켜고 끈다.
 - **job type 확장** — 모임 수정, 참석자 확인. 현재 DB CHECK가 `create_meetup`만 허용한다.
-- **스크린샷을 볼 수 없는 자동 등록 job** — 자동 등록은 관리자가 직접 만든 job과
-  달리 아무도 지켜보지 않고 실행된다. `result.screenshotKey`가 아직 오브젝트
-  스토리지와 연결돼 있지 않아(아래 "자동화 결과 스크린샷 보기" 참고), 실제 제출을
-  열면 실패 원인을 화면 없이 로그만으로 진단해야 한다.
+- **스크린샷을 볼 수 없는 자동 등록 job** — 자동 등록은 아무도 지켜보지 않고
+  실행되는데 스크린샷이 서버에 없어(아래 항목 참고) 로그만으로 진단해야 한다.
 
 ## 구현 후보
 
