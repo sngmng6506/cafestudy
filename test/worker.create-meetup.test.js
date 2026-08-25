@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   assertScheduledAtIsFuture,
   buildScreenshotKey,
+  evaluateSubmitOutcome,
   findByResourceId,
   isCreateFormPresent,
   formatEnglishHeader,
@@ -190,6 +191,37 @@ test('isCreateFormPresent: 클럽 페이지의 "정모 만들기" 버튼은 폼�
 
 test('isCreateFormPresent: 빈 화면은 폼이 아니다', () => {
   assert.equal(isCreateFormPresent([]), false);
+});
+
+// 실기기 submit에서 실제로 나온 화면. 정모 만들기를 누르자 앱이 사진 선택기를
+// 띄웠고, uiautomator는 맨 위 창만 덤프하므로 폼 노드가 통째로 사라졌다.
+// "폼이 없으면 성공"으로 읽던 판정이 이걸 성공으로 보고했고, 정모는 만들어지지
+// 않았는데 succeeded가 됐다.
+const PHOTO_PICKER_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="This app can only access the photos you select" resource-id="com.android.providers.media.module:id/privacy_text" class="android.widget.TextView" package="com.android.providers.media.module" bounds="[550,1082][1049,1111]" /><node index="1" text="Recent" resource-id="com.android.providers.media.module:id/date_header_title" class="android.widget.TextView" package="com.android.providers.media.module" bounds="[0,1271][1600,1383]" /></hierarchy>`;
+
+const CLUB_HOME_AFTER_SUBMIT_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/name_text" class="android.widget.TextView" package="com.friendscube.somoim" bounds="[40,1099][1288,1155]" /><node index="1" text="정모 만들기" resource-id="com.friendscube.somoim:id/button2" class="android.widget.Button" package="com.friendscube.somoim" bounds="[1064,2414][1568,2506]" /></hierarchy>`;
+
+test('evaluateSubmitOutcome: 사진 선택기가 폼을 덮은 것을 성공으로 읽지 않는다', () => {
+  const outcome = evaluateSubmitOutcome(parseUiNodes(PHOTO_PICKER_XML));
+
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.reason, 'foreign_window');
+  assert.equal(outcome.packageName, 'com.android.providers.media.module');
+});
+
+test('evaluateSubmitOutcome: 폼이 그대로면 실패다', () => {
+  const outcome = evaluateSubmitOutcome(parseUiNodes(CREATE_FORM_XML));
+
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.reason, 'form_still_present');
+});
+
+test('evaluateSubmitOutcome: 빈 덤프는 확인 불가라 실패다', () => {
+  assert.deepEqual(evaluateSubmitOutcome([]), { ok: false, reason: 'empty_screen' });
+});
+
+test('evaluateSubmitOutcome: 소모임 화면으로 돌아왔고 폼이 없으면 성공이다', () => {
+  assert.deepEqual(evaluateSubmitOutcome(parseUiNodes(CLUB_HOME_AFTER_SUBMIT_XML)), { ok: true });
 });
 
 test('buildScreenshotKey: 계약이 정한 스토리지 키 모양을 만든다', () => {

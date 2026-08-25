@@ -641,6 +641,25 @@ export function isCreateFormPresent(nodes) {
     || nodes.some((n) => n.resourceId.endsWith('/save_button') && n.text === '정모 만들기');
 }
 
+// 제출 후 화면을 판정한다.
+//
+// "폼이 안 보이면 성공"으로 읽으면 안 된다. uiautomator는 맨 위 창만 덤프하므로,
+// 사진 선택기 같은 다른 앱 창이 폼을 덮으면 폼 노드가 통째로 사라진다. 실기기에서
+// 정확히 이 일이 벌어져 만들어지지도 않은 정모를 succeeded로 보고했다.
+// 그래서 "소모임 앱 화면인데 폼이 없다"는 두 조건을 모두 요구한다.
+export function evaluateSubmitOutcome(nodes) {
+  if (nodes.length === 0) return { ok: false, reason: 'empty_screen' };
+
+  const foreign = nodes.find((n) => n.packageName && n.packageName !== APP_PACKAGE);
+  if (foreign) {
+    // 사진 선택기가 뜨면 앱이 정모 사진을 요구한 것이다. 다른 창도 마찬가지로
+    // 결과를 확인할 수 없는 상태이므로 성공으로 치지 않는다.
+    return { ok: false, reason: 'foreign_window', packageName: foreign.packageName };
+  }
+  if (isCreateFormPresent(nodes)) return { ok: false, reason: 'form_still_present' };
+  return { ok: true };
+}
+
 export function createCreateMeetupHandler({
   adb,
   artifactDir = './worker-artifacts',
@@ -702,19 +721,19 @@ export function createCreateMeetupHandler({
 
     await tap(adb, deviceId, saveButton.center);
 
-    // 버튼을 눌렀다는 사실을 성공으로 삼지 않는다. 앱이 폼을 떠났는지 확인한다 —
-    // 폼이 그대로면 앱이 제출을 받지 않은 것이다.
-    let leftForm = false;
-    for (let i = 0; i < 8 && !leftForm; i += 1) {
+    // 버튼을 눌렀다는 사실을 성공으로 삼지 않는다. 소모임 앱 화면으로 돌아왔고
+    // 폼이 사라졌을 때만 제출된 것으로 본다.
+    let outcome = { ok: false, reason: 'not_checked' };
+    for (let i = 0; i < 8 && !outcome.ok; i += 1) {
       await sleep(1000);
-      leftForm = !isCreateFormPresent(await readScreen(adb, deviceId, jobArtifactDir));
+      outcome = evaluateSubmitOutcome(await readScreen(adb, deviceId, jobArtifactDir));
     }
 
     const evidence = await captureEvidence(adb, deviceId, jobArtifactDir, jobId, 'after-submit');
-    if (!leftForm) {
+    if (!outcome.ok) {
       throw new ManualReviewError(
-        'Tapped 정모 만들기 but the form is still on screen — the app did not accept the submit',
-        { stage: 'submit', ...evidence },
+        `Tapped 정모 만들기 but could not confirm the submit (${outcome.reason})`,
+        { stage: 'submit', ...outcome, ...evidence },
       );
     }
 
