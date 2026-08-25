@@ -191,12 +191,18 @@ async function readScreen(adb, deviceId, artifactDir) {
 // (SOMOIM_AUTOMATION.md)이 정한 오브젝트 스토리지 키 모양이고, screenshotPath는
 // 지금 실제로 파일이 있는 worker 로컬 경로다. 스토리지를 붙이면 키는 그대로 두고
 // 업로드만 추가하면 된다.
+export function buildScreenshotKey(jobId, name) {
+  // job id 없이는 키를 만들 수 없다. `undefined`를 문자열에 박으면 job끼리 같은
+  // 키를 쓰게 되므로, 키가 없다는 사실을 그대로 null로 돌려준다.
+  return jobId ? `somoim-automation/${jobId}/${name}.png` : null;
+}
+
 async function captureEvidence(adb, deviceId, artifactDir, jobId, name) {
   await mkdir(artifactDir, { recursive: true });
   const screenshotPath = path.join(artifactDir, `${name}.png`);
   await adb.captureScreenshot(deviceId, screenshotPath);
   return {
-    screenshotKey: `somoim-automation/${jobId}/${name}.png`,
+    screenshotKey: buildScreenshotKey(jobId, name),
     screenshotPath,
   };
 }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   assertScheduledAtIsFuture,
+  buildScreenshotKey,
   findByResourceId,
   isCreateFormPresent,
   formatEnglishHeader,
@@ -189,6 +190,21 @@ test('isCreateFormPresent: 클럽 페이지의 "정모 만들기" 버튼은 폼�
 
 test('isCreateFormPresent: 빈 화면은 폼이 아니다', () => {
   assert.equal(isCreateFormPresent([]), false);
+});
+
+test('buildScreenshotKey: 계약이 정한 스토리지 키 모양을 만든다', () => {
+  assert.equal(
+    buildScreenshotKey('11111111-1111-1111-1111-111111111111', 'before-submit'),
+    'somoim-automation/11111111-1111-1111-1111-111111111111/before-submit.png',
+  );
+});
+
+// 회귀 방지: job id 없이 키를 만들면 "somoim-automation/undefined/..."가 되어
+// 서로 다른 job이 같은 키를 덮어쓴다. 실기기 dryRun에서 실제로 찍혀 나왔다.
+test('buildScreenshotKey: job id가 없으면 키를 지어내지 않는다', () => {
+  for (const missing of [undefined, null, '']) {
+    assert.equal(buildScreenshotKey(missing, 'before-submit'), null);
+  }
 });
 
 test('assertScheduledAtIsFuture: allows a date after "now"', () => {
