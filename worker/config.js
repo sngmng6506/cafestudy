@@ -23,6 +23,9 @@ export function createWorkerConfig(env = process.env) {
     // 클럽 이름은 화면에서 정확히 일치 비교한다. 클럽장이 이름을 바꾸면 코드 수정
     // 없이 여기서 맞춰줄 수 있어야 한다. 비우면 handler의 기본값을 쓴다.
     targetGroupName: (env.SOMOIM_TARGET_GROUP_NAME ?? '').trim(),
+    // 정모 사진으로 쓸 이미지. 앱이 사진 없이는 제출을 받지 않는다.
+    // 비우면 worker가 단색 16:9 플레이스홀더를 만들어 쓴다.
+    meetupPhotoPath: (env.MEETUP_PHOTO_PATH ?? '').trim(),
     // worker 두 개가 같은 태블릿을 동시에 조작하는 것을 막는 락 파일.
     lockFile: (env.WORKER_LOCK_FILE ?? '').trim(),
   };

@@ -133,6 +133,11 @@ export function createAdb({
       return run(['-s', deviceId, 'shell', ...args]);
     },
 
+    async push(deviceId, localPath, remotePath) {
+      await run(['-s', deviceId, 'push', localPath, remotePath]);
+      return remotePath;
+    },
+
     // 화면 상태를 결과에 남기기 위한 스크린샷. 실패해도 job 자체를 죽이지 않는다.
     async captureScreenshot(deviceId, localPath) {
       const remotePath = '/sdcard/cafestudy-automation.png';

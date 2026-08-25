@@ -20,6 +20,7 @@ const handlers = {
     adb,
     artifactDir: config.artifactDir,
     ...(config.targetGroupName ? { targetGroupName: config.targetGroupName } : {}),
+    photoPath: config.meetupPhotoPath,
   }),
 };
 

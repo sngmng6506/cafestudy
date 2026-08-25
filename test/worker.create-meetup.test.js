@@ -199,7 +199,13 @@ test('isCreateFormPresent: 빈 화면은 폼이 아니다', () => {
 // 않았는데 succeeded가 됐다.
 const PHOTO_PICKER_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="This app can only access the photos you select" resource-id="com.android.providers.media.module:id/privacy_text" class="android.widget.TextView" package="com.android.providers.media.module" bounds="[550,1082][1049,1111]" /><node index="1" text="Recent" resource-id="com.android.providers.media.module:id/date_header_title" class="android.widget.TextView" package="com.android.providers.media.module" bounds="[0,1271][1600,1383]" /></hierarchy>`;
 
-const CLUB_HOME_AFTER_SUBMIT_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/name_text" class="android.widget.TextView" package="com.friendscube.somoim" bounds="[40,1099][1288,1155]" /><node index="1" text="정모 만들기" resource-id="com.friendscube.somoim:id/button2" class="android.widget.Button" package="com.friendscube.somoim" bounds="[1064,2414][1568,2506]" /></hierarchy>`;
+// 실기기 submit에서 나온 두 번째 오탐. 제출 중에는 앱이 자기 패키지로 로딩
+// 다이얼로그를 띄운다. 이것도 폼을 덮어 폼 노드를 지운다 — 아직 만들어지는 중인데
+// 성공으로 보고했다.
+const SUBMIT_LOADING_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="잠시만 기다려주세요." resource-id="" class="android.widget.TextView" package="com.friendscube.somoim" bounds="[356,1000][690,1040]" /></hierarchy>`;
+
+// 실제로 생성에 성공했을 때의 화면. 앱이 만들어진 정모 게시글로 이동한다.
+const CREATED_EVENT_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="카페 스터디 테스트" resource-id="com.friendscube.somoim:id/title_text" class="android.widget.TextView" package="com.friendscube.somoim" bounds="[40,330][1560,380]" /><node index="1" text="9.5(토) 19:00 ∙ 홍대입구역 2번 출구 ∙ 무료" resource-id="com.friendscube.somoim:id/event_info" class="android.widget.TextView" package="com.friendscube.somoim" bounds="[40,1291][1560,1338]" /></hierarchy>`;
 
 test('evaluateSubmitOutcome: 사진 선택기가 폼을 덮은 것을 성공으로 읽지 않는다', () => {
   const outcome = evaluateSubmitOutcome(parseUiNodes(PHOTO_PICKER_XML));
@@ -207,6 +213,14 @@ test('evaluateSubmitOutcome: 사진 선택기가 폼을 덮은 것을 성공으�
   assert.equal(outcome.ok, false);
   assert.equal(outcome.reason, 'foreign_window');
   assert.equal(outcome.packageName, 'com.android.providers.media.module');
+});
+
+test('evaluateSubmitOutcome: 제출 중 로딩 다이얼로그를 성공으로 읽지 않는다', () => {
+  // 같은 패키지라 foreign_window로는 안 걸린다. 정모 게시글이 없으니 실패여야 한다.
+  const outcome = evaluateSubmitOutcome(parseUiNodes(SUBMIT_LOADING_XML));
+
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.reason, 'no_event_post');
 });
 
 test('evaluateSubmitOutcome: 폼이 그대로면 실패다', () => {
@@ -220,8 +234,21 @@ test('evaluateSubmitOutcome: 빈 덤프는 확인 불가라 실패다', () => {
   assert.deepEqual(evaluateSubmitOutcome([]), { ok: false, reason: 'empty_screen' });
 });
 
-test('evaluateSubmitOutcome: 소모임 화면으로 돌아왔고 폼이 없으면 성공이다', () => {
-  assert.deepEqual(evaluateSubmitOutcome(parseUiNodes(CLUB_HOME_AFTER_SUBMIT_XML)), { ok: true });
+test('evaluateSubmitOutcome: 만들어진 정모 게시글이 보이면 성공이다', () => {
+  const outcome = evaluateSubmitOutcome(parseUiNodes(CREATED_EVENT_XML), {
+    title: '카페 스터디 테스트',
+  });
+
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.eventInfo, '9.5(토) 19:00 ∙ 홍대입구역 2번 출구 ∙ 무료');
+});
+
+test('evaluateSubmitOutcome: 남의 정모 게시글이면 제목이 달라 실패다', () => {
+  const outcome = evaluateSubmitOutcome(parseUiNodes(CREATED_EVENT_XML), { title: '다른 정모' });
+
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.reason, 'title_mismatch');
+  assert.equal(outcome.actual, '카페 스터디 테스트');
 });
 
 test('buildScreenshotKey: 계약이 정한 스토리지 키 모양을 만든다', () => {

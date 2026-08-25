@@ -1,6 +1,7 @@
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ManualReviewError, TransientError } from '../errors.js';
+import { createSolidPng } from '../placeholder-image.js';
 
 // 소모임 앱(com.friendscube.somoim) 자동화 상수.
 //
@@ -17,6 +18,10 @@ const ADB_KEYBOARD_IME = 'com.android.adbkeyboard/.AdbIME';
 // 화면에 찍힌 값은 맞는데 실제 정모 시각이 어긋나고, verifyForm은 같은 문자열끼리
 // 비교하므로 이 어긋남을 잡지 못한다 — 조용히 틀리는 것보다 실패가 낫다.
 const REQUIRED_TIMEZONE = 'Asia/Seoul';
+// 앱이 정모 사진 없이는 제출을 받지 않는다(실기기 확인). 기기로 밀어 넣을 위치와,
+// 폼이 아직 사진을 받지 않았을 때 띄우는 안내 문구다.
+const REMOTE_PHOTO_PATH = '/sdcard/Pictures/cafestudy-meetup.png';
+const PHOTO_PLACEHOLDER_TEXT = '정모사진을 등록해주세요.';
 
 const EN_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const EN_MONTHS = [
@@ -565,6 +570,72 @@ async function setDateAndTime(adb, deviceId, artifactDir, target) {
   }
 }
 
+// 폼이 사진을 받았는지. 안내 문구가 사라지면 받은 것이다.
+export function isPhotoAttached(nodes) {
+  return !nodes.some((n) => n.text === PHOTO_PLACEHOLDER_TEXT);
+}
+
+// 정모 사진 첨부. 앱이 사진 없이는 제출을 받지 않아서 필요한 단계다.
+//
+// 기기로 이미지를 밀어 넣고 → 폼의 사진 영역을 눌러 시스템 선택기를 열고 →
+// 가장 최근 사진(방금 넣은 것)을 고르고 → 앱 내부 크롭 화면을 통과한다.
+// 화면마다 다시 읽어 확인하며, 확인되지 않으면 추측하지 않고 실패시킨다.
+async function attachMeetupPhoto(adb, deviceId, artifactDir, photoPath) {
+  const localPath = photoPath || path.join(artifactDir, 'meetup-photo.png');
+  if (!photoPath) {
+    await mkdir(artifactDir, { recursive: true });
+    await writeFile(localPath, createSolidPng());
+  }
+  await adb.push(deviceId, localPath, REMOTE_PHOTO_PATH);
+  // 미디어 DB에 올려야 선택기 목록에 보인다.
+  await adb.shell(deviceId, [
+    `am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file://${REMOTE_PHOTO_PATH}`,
+  ]);
+  await sleep(800);
+
+  let nodes = await readScreen(adb, deviceId, artifactDir);
+  const pictureArea = findByResourceId(nodes, 'picture_layout2');
+  if (!pictureArea) {
+    throw new ManualReviewError('정모사진 영역을 찾을 수 없음', { stage: 'attach_photo' });
+  }
+  await tap(adb, deviceId, pictureArea.center);
+
+  // 시스템 사진 선택기가 뜰 때까지 기다린다. 앱과 다른 패키지라 그걸로 판정한다.
+  let picked = null;
+  for (let i = 0; i < 10 && !picked; i += 1) {
+    await sleep(1000);
+    nodes = await readScreen(adb, deviceId, artifactDir);
+    // 방금 push한 사진이 가장 최근이라 목록 첫 항목이다.
+    picked = nodes.find(
+      (n) => n.packageName !== APP_PACKAGE && n.contentDesc.startsWith('Photo taken on'),
+    );
+  }
+  if (!picked) {
+    throw new ManualReviewError('사진 선택기에서 사진을 찾을 수 없음', { stage: 'attach_photo' });
+  }
+  await tap(adb, deviceId, picked.center);
+
+  // 앱 내부 크롭 화면(Edit Photo)이 이어진다. 그대로 Crop을 눌러 통과한다.
+  let cropButton = null;
+  for (let i = 0; i < 10 && !cropButton; i += 1) {
+    await sleep(1000);
+    nodes = await readScreen(adb, deviceId, artifactDir);
+    cropButton = findByResourceId(nodes, 'menu_crop');
+  }
+  if (!cropButton) {
+    throw new ManualReviewError('사진 크롭 화면을 찾을 수 없음', { stage: 'attach_photo' });
+  }
+  await tap(adb, deviceId, cropButton.center);
+
+  // 폼으로 돌아와 사진이 실제로 붙었는지 확인한다.
+  for (let i = 0; i < 10; i += 1) {
+    await sleep(1000);
+    nodes = await readScreen(adb, deviceId, artifactDir);
+    if (findByResourceId(nodes, 'save_button') && isPhotoAttached(nodes)) return;
+  }
+  throw new ManualReviewError('사진을 붙였는지 확인할 수 없음', { stage: 'attach_photo' });
+}
+
 async function fillTextFields(adb, deviceId, artifactDir, payload) {
   let nodes = await readScreen(adb, deviceId, artifactDir);
   const nameField = findByResourceId(nodes, 'name_edit');
@@ -643,27 +714,41 @@ export function isCreateFormPresent(nodes) {
 
 // 제출 후 화면을 판정한다.
 //
-// "폼이 안 보이면 성공"으로 읽으면 안 된다. uiautomator는 맨 위 창만 덤프하므로,
-// 사진 선택기 같은 다른 앱 창이 폼을 덮으면 폼 노드가 통째로 사라진다. 실기기에서
-// 정확히 이 일이 벌어져 만들어지지도 않은 정모를 succeeded로 보고했다.
-// 그래서 "소모임 앱 화면인데 폼이 없다"는 두 조건을 모두 요구한다.
-export function evaluateSubmitOutcome(nodes) {
+// "폼이 안 보이면 성공"으로 읽으면 안 된다. uiautomator는 맨 위 창만 덤프하므로
+// 폼을 덮는 창이 있으면 폼 노드가 통째로 사라진다. 실기기에서 두 번 당했다 —
+// 사진 선택기(다른 패키지)가 덮었을 때, 그리고 앱 자신의 "잠시만 기다려주세요."
+// 로딩 다이얼로그가 덮었을 때. 둘 다 만들어지지 않은/아직 만들어지는 중인 정모를
+// succeeded로 보고했다.
+//
+// 그래서 부재가 아니라 존재로 판정한다: 생성된 정모 게시글이 보이고 그 제목이
+// payload와 같을 때만 성공이다.
+export function evaluateSubmitOutcome(nodes, { title } = {}) {
   if (nodes.length === 0) return { ok: false, reason: 'empty_screen' };
 
   const foreign = nodes.find((n) => n.packageName && n.packageName !== APP_PACKAGE);
   if (foreign) {
-    // 사진 선택기가 뜨면 앱이 정모 사진을 요구한 것이다. 다른 창도 마찬가지로
-    // 결과를 확인할 수 없는 상태이므로 성공으로 치지 않는다.
     return { ok: false, reason: 'foreign_window', packageName: foreign.packageName };
   }
   if (isCreateFormPresent(nodes)) return { ok: false, reason: 'form_still_present' };
-  return { ok: true };
+
+  // 생성 성공 시 앱은 만들어진 정모 게시글로 이동한다. event_info 한 줄에
+  // 일시·장소·비용이 함께 들어 있어 이게 곧 결과 확인이다.
+  const eventInfo = findByResourceId(nodes, 'event_info');
+  if (!eventInfo) return { ok: false, reason: 'no_event_post' };
+
+  const postTitle = findByResourceId(nodes, 'title_text');
+  if (title && postTitle?.text !== title) {
+    return { ok: false, reason: 'title_mismatch', expected: title, actual: postTitle?.text ?? null };
+  }
+  return { ok: true, eventInfo: eventInfo.text };
 }
 
 export function createCreateMeetupHandler({
   adb,
   artifactDir = './worker-artifacts',
   targetGroupName = DEFAULT_TARGET_GROUP_NAME,
+  // 정모 사진으로 쓸 로컬 이미지. 비우면 단색 16:9 플레이스홀더를 만들어 쓴다.
+  photoPath = '',
 } = {}) {
   return async function createMeetup({ payload, deviceId, mode, jobId, onBeforeSubmit }) {
     if (mode !== 'dryRun' && mode !== 'submit') {
@@ -688,6 +773,12 @@ export function createCreateMeetupHandler({
 
     await setDateAndTime(adb, deviceId, jobArtifactDir, target);
     await fillTextFields(adb, deviceId, jobArtifactDir, payload);
+
+    // 사진은 submit에서만 붙인다. dryRun은 제출하지 않으므로 필요 없고, 붙이려면
+    // 기기에 파일을 밀어 넣고 선택기·크롭을 거쳐야 해서 화면을 더 건드리게 된다.
+    if (mode === 'submit') {
+      await attachMeetupPhoto(adb, deviceId, jobArtifactDir, photoPath);
+    }
 
     await verifyForm(adb, deviceId, jobArtifactDir, payload, target);
 
@@ -721,12 +812,14 @@ export function createCreateMeetupHandler({
 
     await tap(adb, deviceId, saveButton.center);
 
-    // 버튼을 눌렀다는 사실을 성공으로 삼지 않는다. 소모임 앱 화면으로 돌아왔고
-    // 폼이 사라졌을 때만 제출된 것으로 본다.
+    // 버튼을 눌렀다는 사실을 성공으로 삼지 않는다. 만들어진 정모 게시글이 보일
+    // 때까지 기다린다. 제출 중에는 앱이 로딩 다이얼로그를 띄우므로 넉넉히 본다.
     let outcome = { ok: false, reason: 'not_checked' };
-    for (let i = 0; i < 8 && !outcome.ok; i += 1) {
+    for (let i = 0; i < 20 && !outcome.ok; i += 1) {
       await sleep(1000);
-      outcome = evaluateSubmitOutcome(await readScreen(adb, deviceId, jobArtifactDir));
+      outcome = evaluateSubmitOutcome(await readScreen(adb, deviceId, jobArtifactDir), {
+        title: payload.title,
+      });
     }
 
     const evidence = await captureEvidence(adb, deviceId, jobArtifactDir, jobId, 'after-submit');
@@ -737,6 +830,6 @@ export function createCreateMeetupHandler({
       );
     }
 
-    return { stoppedAt: null, submitted: true, groupName, ...evidence };
+    return { stoppedAt: null, submitted: true, groupName, eventInfo: outcome.eventInfo, ...evidence };
   };
 }

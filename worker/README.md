@@ -34,6 +34,7 @@ node worker/index.js
 | `ADB_CONNECT_ADDRESS` | | — | 기기가 사라졌을 때 다시 붙을 주소(`IP:포트`). 비워도 mDNS로 찾는다 |
 | `ARTIFACT_DIR` | | `./worker-artifacts` | 스크린샷·UI dump 저장 위치. job id별 하위 폴더에 남는다 |
 | `SOMOIM_TARGET_GROUP_NAME` | | `[홍대] it&ai 스터디` | 정모를 만들 클럽 이름. 클럽장이 이름을 바꾸면 여기서 맞춘다 |
+| `MEETUP_PHOTO_PATH` | | (자동 생성) | 정모 사진으로 쓸 로컬 이미지. 비우면 단색 16:9 플레이스홀더를 만든다 |
 | `WORKER_LOCK_FILE` | | (OS 임시폴더) | worker 중복 실행을 막는 락 파일 경로 |
 
 `INTERNAL_API_KEY`는 헤더로만 쓰고 로그·에러 메시지에 남기지 않는다.
@@ -72,12 +73,17 @@ ADBKeyBoard의 `ADB_EDITOR_CODE`(IME_ACTION_SEARCH) 셋 다 화면을 바꾸지 
 `save_button` resource-id로 구분한다. 섞으면 성공한 제출을 실패로 보고한다.
 
 **정모 사진 없이는 제출되지 않는다.** 폼을 다 채우고 `정모 만들기`를 눌러도 정모가
-만들어지지 않고 사진 선택기(`com.android.providers.media.module`)가 뜬다. 실기기
-submit에서 확인했다. 지금 handler는 사진을 넣지 못하므로 여기서 멈춘다.
+만들어지지 않고 사진 선택기가 뜬다. 그래서 submit에서는 `attachMeetupPhoto`가 먼저
+사진을 붙인다 — 이미지를 기기로 push하고, 폼의 사진 영역을 눌러 선택기를 열고,
+가장 최근 사진(방금 push한 것)을 고르고, 앱 내부 크롭 화면을 통과한다. 쓸 이미지는
+`MEETUP_PHOTO_PATH`로 지정하고, 비우면 단색 16:9 플레이스홀더를 만들어 쓴다.
 
-**폼이 안 보인다고 제출된 것이 아니다.** uiautomator는 맨 위 창만 덤프하므로 위
-사진 선택기가 폼을 덮으면 폼 노드가 통째로 사라진다. 그래서 성공 판정은 "소모임 앱
-화면인데 폼이 없다" 두 조건을 모두 본다(`evaluateSubmitOutcome`).
+**폼이 안 보인다고 제출된 것이 아니다.** uiautomator는 맨 위 창만 덤프하므로 폼을
+덮는 창이 있으면 폼 노드가 통째로 사라진다. 실기기에서 두 번 당했다 — 사진
+선택기(다른 패키지)가 덮었을 때, 그리고 앱 자신의 `잠시만 기다려주세요.` 로딩
+다이얼로그가 덮었을 때. 그래서 성공 판정은 부재가 아니라 존재로 한다:
+**만들어진 정모 게시글(`event_info`)이 보이고 제목이 payload와 같을 때만** 성공이다
+(`evaluateSubmitOutcome`).
 
 **uiautomator는 화면이 정착하기 전에 노드를 통째로 빠뜨린다.** 홈 화면이 다 로드된
 덤프에 하단 탭 바가 하나도 없어서 job이 실패한 적이 있다. 한 번 읽고 판단하지 말고
@@ -95,6 +101,7 @@ api-client.js         # 서버 job endpoint 호출 (x-internal-key)
 job-runner.js         # job 하나 실행. dryRun/submit 안전장치와 실패 분기
 adb.js                # 기기 목록 파싱·선택, 자동 재연결, shell/screenshot/uiautomator 래퍼
 lock.js               # worker 중복 실행 방지(락 파일 + PID 확인)
+placeholder-image.js  # 정모 사진용 단색 PNG 생성(의존성 없이)
 errors.js             # ManualReviewError / TransientError
 handlers/             # job type별 화면 자동화
 ```
