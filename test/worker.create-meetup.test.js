@@ -251,6 +251,17 @@ test('evaluateSubmitOutcome: 남의 정모 게시글이면 제목이 달라 실�
   assert.equal(outcome.actual, '카페 스터디 테스트');
 });
 
+// 가로 모드 실기기에서 드러난 세 가지. 모두 "탭이 먹혔다고 가정"해서 생긴 문제라
+// 좌표를 덤프에서 읽는 것만으로는 부족했다. 여기서는 그 사실을 문서처럼 고정해 둔다.
+test('가로 모드에서도 좌표는 덤프에서 읽으므로 방향 자체는 문제가 아니다', () => {
+  // rotation="3"(가로) 덤프도 같은 파서로 읽히고 center가 그대로 계산된다.
+  const landscape = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="3"><node index="0" text="OK" resource-id="android:id/button1" class="android.widget.Button" package="com.friendscube.somoim" bounds="[1676,895][1804,1003]" /></hierarchy>`;
+  const [ok] = parseUiNodes(landscape);
+
+  assert.equal(ok.text, 'OK');
+  assert.deepEqual(ok.center, { x: 1740, y: 949 });
+});
+
 test('buildScreenshotKey: 계약이 정한 스토리지 키 모양을 만든다', () => {
   assert.equal(
     buildScreenshotKey('11111111-1111-1111-1111-111111111111', 'before-submit'),

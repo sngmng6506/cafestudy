@@ -184,6 +184,17 @@ async function clearFocusedField(adb, deviceId) {
   await adb.shell(deviceId, ['am broadcast -a ADB_CLEAR_TEXT']);
 }
 
+// 키보드를 내린다. IME 창은 uiautomator 덤프에 안 잡히면서 그 아래 버튼의 탭을
+// 삼킨다 — 시간 선택기의 OK가 이것 때문에 눌리지 않았다(실기기에서 확인).
+// 떠 있을 때만 BACK을 보낸다. 안 떠 있는데 보내면 화면이 뒤로 가버린다.
+async function hideKeyboardIfShown(adb, deviceId) {
+  const shown = /mInputShown=true/.test(await adb.shell(deviceId, ['dumpsys', 'input_method']));
+  if (!shown) return false;
+  await adb.shell(deviceId, ['input', 'keyevent', 'KEYCODE_BACK']);
+  await sleep(500);
+  return true;
+}
+
 async function readScreen(adb, deviceId, artifactDir) {
   await mkdir(artifactDir, { recursive: true });
   const dumpPath = path.join(artifactDir, 'ui-dump.xml');
@@ -375,12 +386,15 @@ async function openCreateMeetupForm(adb, deviceId, artifactDir, targetGroupName)
     nodes = await readScreen(adb, deviceId, artifactDir);
   }
 
-  const clubTitle = findByResourceId(nodes, 'name_text');
-  if (!clubTitle || clubTitle.text !== targetGroupName) {
+  // 클럽 이름은 툴바 제목과 본문(name_text) 두 군데에 나오는데, 가로 모드에서는
+  // 본문 쪽이 화면 밖으로 밀려 덤프에 없다. 화면 방향에 의존하지 않도록 위치를
+  // 따지지 않고 이름이 어디든 있으면 그 클럽으로 본다.
+  if (!nodes.some((n) => n.text === targetGroupName)) {
     throw new ManualReviewError('Did not land on the target group page', {
       stage: 'open_group_page',
       expected: targetGroupName,
-      actual: clubTitle?.text ?? null,
+      // 어느 화면에 있었는지 알 수 있게 눈에 보이는 문구 몇 개를 남긴다.
+      onScreen: nodes.filter((n) => n.text).slice(0, 8).map((n) => n.text),
     });
   }
 
@@ -519,34 +533,64 @@ async function setDateAndTime(adb, deviceId, artifactDir, target) {
   await typeText(adb, deviceId, String(hour12));
   await sleep(200);
 
-  await tap(adb, deviceId, minuteField.center);
+  // 분 칸으로는 탭이 아니라 TAB 키로 옮긴다. 분 칸을 탭해도 포커스가 시 칸에
+  // 그대로 남는 기기가 있어(가로 모드에서 확인), 그러면 분 값이 시 값을 덮어써
+  // 00:00이 된다. TAB은 레이아웃과 무관하게 다음 입력칸으로 넘어간다.
+  await adb.shell(deviceId, ['input', 'keyevent', 'KEYCODE_TAB']);
+  await sleep(300);
   await clearFocusedField(adb, deviceId);
   await typeText(adb, deviceId, String(target.minute).padStart(2, '0'));
-  await sleep(200);
+  await sleep(300);
 
-  await tap(adb, deviceId, ampmSpinner.center);
-  await sleep(500);
-
-  // 드롭다운 팝업 애니메이션이 아직 자리 잡는 중이면 첫 탭이 씹힐 수 있고, 씹힌
-  // 뒤 같은 좌표를 재탭하면 그 사이 스피너가 닫혔다 다시 열려 옵션 위치가 바뀔 수
-  // 있다(라이브 기기에서 둘 다 확인함). 그래서 매 시도마다 화면을 새로 읽어
-  // 드롭다운이 열려 있는지/닫혔는지부터 다시 판단한다.
-  let timeOkButton;
-  for (let attempt = 0; attempt < 4 && !timeOkButton; attempt += 1) {
-    nodes = await readScreen(adb, deviceId, artifactDir);
-    timeOkButton = nodes.find((n) => n.resourceId.endsWith('/button1') && n.text === 'OK');
-    if (timeOkButton) break;
-
-    const periodOption = nodes.find((n) => n.resourceId.endsWith('/text1') && n.text === period);
-    if (periodOption) {
-      await tap(adb, deviceId, periodOption.center);
-    } else {
-      const spinner = findByResourceId(nodes, 'am_pm_spinner');
-      if (!spinner) throw new ManualReviewError('AM/PM spinner not found', { stage: 'set_time' });
-      await tap(adb, deviceId, spinner.center);
-    }
-    await sleep(500);
+  // 입력이 실제로 들어갔는지 여기서 확인한다. 안 하면 나중에 폼에서
+  // "시각이 다르다"로만 드러나 원인을 알기 어렵다.
+  nodes = await readScreen(adb, deviceId, artifactDir);
+  const typedHour = findByResourceId(nodes, 'input_hour')?.text;
+  const typedMinute = findByResourceId(nodes, 'input_minute')?.text;
+  if (Number(typedHour) !== hour12 || Number(typedMinute) !== target.minute) {
+    throw new ManualReviewError('Typed time did not land in the picker fields', {
+      stage: 'set_time',
+      expected: { hour: hour12, minute: target.minute },
+      actual: { hour: typedHour ?? null, minute: typedMinute ?? null },
+    });
   }
+
+  // 입력이 끝났으니 키보드를 내린다. 떠 있으면 아래의 AM/PM 스피너와 OK 탭을
+  // 가로채 간다.
+  await hideKeyboardIfShown(adb, deviceId);
+  nodes = await readScreen(adb, deviceId, artifactDir);
+
+  // AM/PM은 이미 원하는 값이면 건드리지 않는다. 스피너를 열면 드롭다운이 다이얼로그를
+  // 덮어 뒤따르는 OK 탭이 드롭다운을 닫는 데 쓰여 버린다(실기기에서 겪음).
+  if (findByResourceId(nodes, 'text1')?.text !== period) {
+    await tap(adb, deviceId, ampmSpinner.center);
+    await sleep(600);
+
+    // 드롭다운이 뜨면 그 안의 항목을 고른다. 애니메이션 중이면 아직 없을 수 있어
+    // 매번 화면을 다시 읽는다.
+    let chosen = false;
+    for (let attempt = 0; attempt < 4 && !chosen; attempt += 1) {
+      nodes = await readScreen(adb, deviceId, artifactDir);
+      const option = nodes.find((n) => n.resourceId.endsWith('/text1') && n.text === period);
+      if (option) {
+        await tap(adb, deviceId, option.center);
+        await sleep(600);
+        nodes = await readScreen(adb, deviceId, artifactDir);
+        chosen = findByResourceId(nodes, 'text1')?.text === period;
+      } else {
+        await sleep(500);
+      }
+    }
+    if (!chosen) {
+      throw new ManualReviewError(`Could not set the time picker to ${period}`, {
+        stage: 'set_time',
+        actual: findByResourceId(nodes, 'text1')?.text ?? null,
+      });
+    }
+  }
+
+  nodes = await readScreen(adb, deviceId, artifactDir);
+  const timeOkButton = nodes.find((n) => n.resourceId.endsWith('/button1') && n.text === 'OK');
   if (!timeOkButton) throw new ManualReviewError('Time picker OK button not found', { stage: 'set_time' });
   await tap(adb, deviceId, timeOkButton.center);
   await sleep(500);
@@ -593,6 +637,9 @@ async function attachMeetupPhoto(adb, deviceId, artifactDir, photoPath) {
   ]);
   await sleep(800);
 
+  // 앞선 텍스트 입력으로 키보드가 떠 있으면 사진 영역 탭이 삼켜진다.
+  await hideKeyboardIfShown(adb, deviceId);
+
   let nodes = await readScreen(adb, deviceId, artifactDir);
   const pictureArea = findByResourceId(nodes, 'picture_layout2');
   if (!pictureArea) {
@@ -636,43 +683,38 @@ async function attachMeetupPhoto(adb, deviceId, artifactDir, photoPath) {
   throw new ManualReviewError('사진을 붙였는지 확인할 수 없음', { stage: 'attach_photo' });
 }
 
-async function fillTextFields(adb, deviceId, artifactDir, payload) {
-  let nodes = await readScreen(adb, deviceId, artifactDir);
-  const nameField = findByResourceId(nodes, 'name_edit');
-  const locationField = findByResourceId(nodes, 'location_edit');
-  const maxCountField = findByResourceId(nodes, 'max_count_edit');
-  if (!nameField || !locationField || !maxCountField) {
-    throw new ManualReviewError('정모 개설 form fields not found', { stage: 'fill_form' });
+// 입력칸 하나를 채운다.
+//
+// 매번 키보드를 내리고 화면을 다시 읽는다. 키보드가 떠 있으면 그 아래 칸은 탭이
+// 삼켜져 포커스가 앞 칸에 머무르고, 키보드가 오르내리면서 남은 칸의 좌표도 바뀐다
+// (가로 모드에서 제목만 들어가고 나머지가 통째로 비어 나왔다).
+async function fillField(adb, deviceId, artifactDir, fieldId, value) {
+  await hideKeyboardIfShown(adb, deviceId);
+  const nodes = await readScreen(adb, deviceId, artifactDir);
+  const field = findByResourceId(nodes, fieldId);
+  if (!field) {
+    throw new ManualReviewError(`${fieldId} field not found`, { stage: 'fill_form' });
   }
 
-  await tap(adb, deviceId, nameField.center);
+  await tap(adb, deviceId, field.center);
+  await sleep(300);
   await clearFocusedField(adb, deviceId);
-  await typeText(adb, deviceId, payload.title);
-  await sleep(200);
+  await typeText(adb, deviceId, value);
+  await sleep(300);
+}
 
-  await tap(adb, deviceId, locationField.center);
-  await clearFocusedField(adb, deviceId);
-  await typeText(adb, deviceId, payload.location);
-  await sleep(200);
+async function fillTextFields(adb, deviceId, artifactDir, payload) {
+  await fillField(adb, deviceId, artifactDir, 'name_edit', payload.title);
+  await fillField(adb, deviceId, artifactDir, 'location_edit', payload.location);
 
   // "새 게시글 자동 생성" 모드인 이 화면엔 description을 넣을 자리가 없다(정모
   // 안내문은 제목/일시/장소/비용으로 자동 생성된다). "기존 게시글 연동" 모드로
   // 바꾸지 않는 한 채울 수 없는, 확인된 앱 제약이라 description은 그냥 건너뛴다.
 
   if (payload.cost) {
-    nodes = await readScreen(adb, deviceId, artifactDir);
-    const costField = findByResourceId(nodes, 'expense_edit');
-    if (!costField) throw new ManualReviewError('expense_edit field not found', { stage: 'fill_form' });
-    await tap(adb, deviceId, costField.center);
-    await clearFocusedField(adb, deviceId);
-    await typeText(adb, deviceId, payload.cost);
-    await sleep(200);
+    await fillField(adb, deviceId, artifactDir, 'expense_edit', payload.cost);
   }
-
-  await tap(adb, deviceId, maxCountField.center);
-  await clearFocusedField(adb, deviceId);
-  await typeText(adb, deviceId, String(payload.capacity));
-  await sleep(200);
+  await fillField(adb, deviceId, artifactDir, 'max_count_edit', String(payload.capacity));
 }
 
 function buildExpectedFieldValues(payload, target) {
@@ -779,6 +821,10 @@ export function createCreateMeetupHandler({
     if (mode === 'submit') {
       await attachMeetupPhoto(adb, deviceId, jobArtifactDir, photoPath);
     }
+
+    // 텍스트 입력 뒤에는 키보드가 떠 있다. 사진 영역이나 저장 버튼을 가릴 수 있어
+    // 확인·제출 전에 내린다.
+    await hideKeyboardIfShown(adb, deviceId);
 
     await verifyForm(adb, deviceId, jobArtifactDir, payload, target);
 
