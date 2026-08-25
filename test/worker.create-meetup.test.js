@@ -36,7 +36,7 @@ test('parseUiNodes: returns an empty list for a screen with no nodes', () => {
 
 // 내모임 화면을 실제로 덤프한 조각. 가입 모임은 name_text, 추천 카드는
 // groupname_text로 id가 갈린다. 그리고 같은 창이 두 벌 들어온다.
-const MY_GROUPS_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/name_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[164,602][392,644]" /><node index="1" text="용인 독서모임" resource-id="com.friendscube.somoim:id/groupname_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[196,2159][1496,2207]" /><node index="0" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/name_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[164,602][392,644]" /><node index="1" text="내모임" resource-id="com.friendscube.somoim:id/tab_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="true" bounds="[973,2485][1027,2515]" /></hierarchy>`;
+const MY_GROUPS_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="9" text="가입한 모임" resource-id="com.friendscube.somoim:id/text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[116,500][400,545]" /><node index="0" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/name_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[164,602][392,644]" /><node index="1" text="용인 독서모임" resource-id="com.friendscube.somoim:id/groupname_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[196,2159][1496,2207]" /><node index="0" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/name_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[164,602][392,644]" /><node index="1" text="내모임" resource-id="com.friendscube.somoim:id/tab_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="true" bounds="[973,2485][1027,2515]" /></hierarchy>`;
 
 test('uniqueByBounds: folds the duplicated window dump into one group', () => {
   const joined = parseUiNodes(MY_GROUPS_XML).filter((n) => n.resourceId.endsWith('/name_text'));
@@ -65,6 +65,31 @@ test('가입 모임은 name_text로만 고르고 추천 카드는 섞이지 않�
   assert.ok(
     nodes.some((n) => n.resourceId.endsWith('/groupname_text')),
     '화면에 추천 카드가 함께 있는 상황을 재현해야 의미가 있다',
+  );
+});
+
+// 회귀 방지: 홈 화면에서도 name_text가 쓰인다. 정모 이름이다. "가입한 모임"
+// 헤더를 확인하지 않고 name_text를 세면 남의 정모를 가입 모임으로 착각한다.
+const HOME_SCREEN_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="활동이 활발한 모임" resource-id="com.friendscube.somoim:id/text" class="android.widget.TextView" bounds="[100,400][500,440]" /><node index="1" text="&#127939;용인런(87~99)" resource-id="com.friendscube.somoim:id/groupname_text" class="android.widget.TextView" bounds="[196,900][1496,948]" /><node index="2" text="2회차 정모" resource-id="com.friendscube.somoim:id/name_text" class="android.widget.TextView" bounds="[196,960][1496,1008]" /><node index="3" text="용인시 ∙ 오늘 20:00 ∙ 9명 참석중" resource-id="com.friendscube.somoim:id/location_text" class="android.widget.TextView" bounds="[196,1020][1496,1060]" /></hierarchy>`;
+
+test('홈 화면의 name_text는 정모 이름이지 가입 모임이 아니다', () => {
+  const nodes = parseUiNodes(HOME_SCREEN_XML);
+
+  assert.ok(
+    nodes.some((n) => n.resourceId.endsWith('/name_text')),
+    '홈 화면에도 name_text가 있다는 것이 이 테스트의 전제다',
+  );
+  assert.equal(
+    nodes.some((n) => n.text === '가입한 모임'),
+    false,
+    '"가입한 모임" 헤더가 없으므로 내모임 화면이 아니다 — 여기서 세면 안 된다',
+  );
+});
+
+test('내모임 화면은 "가입한 모임" 헤더로 구분한다', () => {
+  assert.equal(
+    parseUiNodes(MY_GROUPS_XML).some((n) => n.text === '가입한 모임'),
+    true,
   );
 });
 
