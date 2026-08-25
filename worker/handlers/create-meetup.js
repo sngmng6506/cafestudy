@@ -9,6 +9,7 @@ import { ManualReviewError, TransientError } from '../errors.js';
 const APP_PACKAGE = 'com.friendscube.somoim';
 const TARGET_GROUP_NAME = '[홍대] it&ai 스터디';
 const MY_GROUPS_TAB = '내모임';
+const JOINED_SECTION_TITLE = '가입한 모임';
 const ADB_KEYBOARD_IME = 'com.android.adbkeyboard/.AdbIME';
 
 const EN_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -261,14 +262,22 @@ export function uniqueByBounds(nodes) {
 // 엔터로 제출할 수 없어 실제로 막혔다. bot 계정은 대상 클럽 하나에만 가입해
 // 있으므로 목록에서 바로 여는 편이 훨씬 짧고 안정적이다.
 //
-// 가입 모임은 `name_text`, 추천 카드는 `groupname_text`로 id가 갈려 있어서
-// 추천 카드를 잘못 여는 일은 생기지 않는다. 그리고 엉뚱한 클럽에 들어가더라도
-// 다음 단계(openCreateMeetupForm)가 클럽 이름을 검증해 막는다.
+// 가입 모임은 `name_text`, 추천 카드는 `groupname_text`로 id가 갈려 있다. 다만
+// `name_text`는 홈 화면에서 정모 이름으로도 쓰이므로, 내모임 화면에 도착한 것을
+// 확인한 뒤에 세어야 한다. 그리고 엉뚱한 클럽에 들어가더라도 다음 단계
+// (openCreateMeetupForm)가 클럽 이름을 검증해 막는다.
 async function openJoinedGroup(adb, deviceId, artifactDir) {
-  let nodes = await readScreen(adb, deviceId, artifactDir);
-  const tab = nodes.find(
-    (n) => n.resourceId.endsWith('/tab_text') && n.text === MY_GROUPS_TAB,
-  );
+  let nodes = [];
+  let tab;
+  // uiautomator는 화면이 정착하기 전에 노드를 통째로 빠뜨린다. 실제로 홈 화면이
+  // 다 로드된 덤프에 하단 탭 바가 하나도 없어서 job이 실패한 적이 있다.
+  // 여기서 한 번만 읽고 포기하면 그 순간을 그대로 실패로 만든다.
+  for (let i = 0; i < 10; i += 1) {
+    nodes = await readScreen(adb, deviceId, artifactDir);
+    tab = nodes.find((n) => n.resourceId.endsWith('/tab_text') && n.text === MY_GROUPS_TAB);
+    if (tab) break;
+    await sleep(1000);
+  }
   if (!tab) {
     throw new ManualReviewError(`"${MY_GROUPS_TAB}" tab not found on the home screen`, {
       stage: 'open_my_groups',
@@ -281,8 +290,12 @@ async function openJoinedGroup(adb, deviceId, artifactDir) {
   for (let i = 0; i < 10; i += 1) {
     await sleep(1000);
     nodes = await readScreen(adb, deviceId, artifactDir);
-    joined = uniqueByBounds(nodes.filter((n) => n.resourceId.endsWith('/name_text')));
-    if (joined.length > 0) break;
+    // "가입한 모임" 헤더가 보여야 내모임 화면이다. 이 확인 없이 name_text를 세면
+    // 아직 홈에 있을 때 남의 정모 이름을 가입 모임으로 착각한다.
+    if (nodes.some((n) => n.text === JOINED_SECTION_TITLE)) {
+      joined = uniqueByBounds(nodes.filter((n) => n.resourceId.endsWith('/name_text')));
+      if (joined.length > 0) break;
+    }
 
     if (!dismissedRegionGate && (await dismissRegionGateIfPresent(adb, deviceId, artifactDir, nodes))) {
       dismissedRegionGate = true;
