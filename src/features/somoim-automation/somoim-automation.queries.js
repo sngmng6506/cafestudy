@@ -18,9 +18,23 @@ export function createSomoimAutomationQueries(db) {
         `SELECT id, requested_by AS "requestedBy", type, payload, status, attempts,
                 claimed_at AS "claimedAt", completed_at AS "completedAt",
                 error_message AS "errorMessage", result,
+                submit_attempted_at AS "submitAttemptedAt",
                 created_at AS "createdAt", updated_at AS "updatedAt"
            FROM somoim_automation_jobs
           WHERE id = $1`,
+        [id],
+      );
+      return result.rows[0] ?? null;
+    },
+
+    // worker가 되돌릴 수 없는 제출을 하기 직전에 부른다. 이 표시가 남은 job은
+    // 다시 실행하지 않는다 — 앱에 정모가 이미 생겼을 수 있기 때문이다.
+    async markSubmitAttempted(id) {
+      const result = await db.query(
+        `UPDATE somoim_automation_jobs
+            SET submit_attempted_at = now(), updated_at = now()
+          WHERE id = $1 AND status = 'claimed'
+          RETURNING id, submit_attempted_at AS "submitAttemptedAt"`,
         [id],
       );
       return result.rows[0] ?? null;
@@ -31,6 +45,7 @@ export function createSomoimAutomationQueries(db) {
         `SELECT id, requested_by AS "requestedBy", type, payload, status, attempts,
                 claimed_at AS "claimedAt", completed_at AS "completedAt",
                 error_message AS "errorMessage", result,
+                submit_attempted_at AS "submitAttemptedAt",
                 created_at AS "createdAt", updated_at AS "updatedAt"
            FROM somoim_automation_jobs
           WHERE ($1::text[] IS NULL OR status = ANY($1))
@@ -43,18 +58,38 @@ export function createSomoimAutomationQueries(db) {
 
     // worker가 claim한 뒤 결과를 보고하지 못하고 죽으면 job이 claimed로 남는다.
     // 재시도 여유가 있으면 pending으로 되돌리고, 다 썼으면 사람에게 넘긴다.
-    async requeueStaleJobs({ staleAfterSeconds, maxAttempts, exhaustedMessage }) {
+    //
+    // 단 submit_attempted_at이 찍힌 job은 재시도 여유와 무관하게 사람에게 넘긴다.
+    // 제출 버튼을 이미 눌렀을 수 있어 다시 돌리면 정모가 하나 더 생긴다.
+    async requeueStaleJobs({
+      staleAfterSeconds,
+      maxAttempts,
+      exhaustedMessage,
+      submitAttemptedMessage,
+    }) {
       const result = await db.query(
         `UPDATE somoim_automation_jobs
-            SET status = CASE WHEN attempts >= $2 THEN 'needs_manual_review' ELSE 'pending' END,
-                claimed_at = CASE WHEN attempts >= $2 THEN claimed_at ELSE NULL END,
-                error_message = CASE WHEN attempts >= $2 THEN $3 ELSE error_message END,
-                completed_at = CASE WHEN attempts >= $2 THEN now() ELSE completed_at END,
+            SET status = CASE
+                  WHEN submit_attempted_at IS NOT NULL THEN 'needs_manual_review'
+                  WHEN attempts >= $2 THEN 'needs_manual_review'
+                  ELSE 'pending' END,
+                claimed_at = CASE
+                  WHEN submit_attempted_at IS NOT NULL THEN claimed_at
+                  WHEN attempts >= $2 THEN claimed_at
+                  ELSE NULL END,
+                error_message = CASE
+                  WHEN submit_attempted_at IS NOT NULL THEN $4
+                  WHEN attempts >= $2 THEN $3
+                  ELSE error_message END,
+                completed_at = CASE
+                  WHEN submit_attempted_at IS NOT NULL THEN now()
+                  WHEN attempts >= $2 THEN now()
+                  ELSE completed_at END,
                 updated_at = now()
           WHERE status = 'claimed'
             AND claimed_at < now() - make_interval(secs => $1)
-          RETURNING id, status`,
-        [staleAfterSeconds, maxAttempts, exhaustedMessage],
+          RETURNING id, status, submit_attempted_at AS "submitAttemptedAt"`,
+        [staleAfterSeconds, maxAttempts, exhaustedMessage, submitAttemptedMessage],
       );
       return result.rows;
     },
@@ -144,6 +179,7 @@ export function createSomoimAutomationQueries(db) {
           RETURNING id, requested_by AS "requestedBy", type, payload, status, attempts,
                     claimed_at AS "claimedAt", completed_at AS "completedAt",
                     error_message AS "errorMessage", result,
+                    submit_attempted_at AS "submitAttemptedAt",
                     created_at AS "createdAt", updated_at AS "updatedAt"`,
         [id, status, errorMessage, result],
       );

@@ -26,6 +26,7 @@ function serviceWith({ allowSubmit = false, job = null, jobs = [], recovered = [
     listed: [],
     requeued: [],
     jobRequeues: [],
+    submitAttempts: [],
     order: [],
   };
   const queries = {
@@ -67,6 +68,10 @@ function serviceWith({ allowSubmit = false, job = null, jobs = [], recovered = [
     async requeueJob(id, errorMessage) {
       calls.jobRequeues.push({ id, errorMessage });
       return { ...job, status: 'pending' };
+    },
+    async markSubmitAttempted(id) {
+      calls.submitAttempts.push(id);
+      return job ? { id, submitAttemptedAt: '2026-08-25T00:00:00.000Z' } : null;
     },
   };
 
@@ -274,6 +279,8 @@ test('claimNextJob: recovers stale claims before handing out the next job', asyn
     staleAfterSeconds: 900,
     maxAttempts: 3,
     exhaustedMessage: 'Worker stopped responding before reporting a result',
+    submitAttemptedMessage:
+      'Worker attempted the final submit but never reported the result — check the somoim app for a created event before retrying',
   });
 });
 
@@ -452,4 +459,131 @@ test('cancelJobForMeetup: 이미 claim된 job이면 아무것도 바꾸지 않�
 test('cancelJobForMeetup: jobId 형식을 검증한다', async () => {
   const service = createSomoimAutomationService({ db: {} });
   await assert.rejects(() => service.cancelJobForMeetup('not-a-uuid'), /jobId must be a valid UUID/);
+});
+
+// --- 되돌릴 수 없는 제출과 중복 정모 방지 ---
+//
+// 정모 생성은 취소할 수 없는 외부 동작이다. worker가 버튼을 누른 뒤 보고가 끊기면
+// (네트워크 순단만으로도 충분하다) job은 claimed로 남고, 예전에는 stale 회수가
+// 그대로 pending으로 되돌려 처음부터 다시 실행했다 — 정모가 하나 더 생겼다.
+
+test('markSubmitAttempted: claim된 job에만 표시할 수 있다', async () => {
+  const claimed = { id: JOB_ID, status: 'claimed', attempts: 1 };
+  const { service, calls } = serviceWith({ job: claimed });
+
+  const marked = await service.markSubmitAttempted(JOB_ID);
+
+  assert.deepEqual(calls.submitAttempts, [JOB_ID]);
+  assert.ok(marked.submitAttemptedAt);
+});
+
+test('markSubmitAttempted: claim되지 않은 job은 거부한다', async () => {
+  const { service } = serviceWith({ job: null });
+
+  await assert.rejects(
+    () => service.markSubmitAttempted(JOB_ID),
+    /Only claimed jobs can attempt a submit/,
+  );
+});
+
+test('markSubmitAttempted: jobId 형식을 검증한다', async () => {
+  const { service, calls } = serviceWith();
+  await assert.rejects(() => service.markSubmitAttempted('nope'), /jobId must be a valid UUID/);
+  assert.deepEqual(calls.submitAttempts, []);
+});
+
+test('claimNextJob: 제출을 시도한 job은 회수되어도 모임에 실패를 알리지 않는다', async () => {
+  // 모임을 failed로 내리면 개설자에게 "다시 시도"가 열려 중복 정모를 만들 수 있다.
+  const recovered = [
+    { id: 'job-1', status: 'needs_manual_review', submitAttemptedAt: null },
+    { id: 'job-2', status: 'needs_manual_review', submitAttemptedAt: '2026-08-25T00:00:00.000Z' },
+  ];
+  const { service } = serviceWith({ job: null, recovered });
+
+  const outcome = await service.claimNextJob();
+
+  assert.equal(outcome.recovered, 2, 'recovered는 계약대로 회수한 전체 개수다');
+  assert.deepEqual(
+    outcome.exhausted.map((row) => row.id),
+    ['job-1'],
+    '제출을 시도한 job은 사람이 확인할 때까지 모임을 pending에 둔다',
+  );
+});
+
+test('failJob: 제출을 시도한 job은 일시적 실패로 보고돼도 재시도하지 않는다', async () => {
+  const claimed = {
+    id: JOB_ID,
+    status: 'claimed',
+    attempts: 1,
+    payload: {},
+    submitAttemptedAt: '2026-08-25T00:00:00.000Z',
+  };
+  const { service, calls } = serviceWith({ job: claimed, maxAttempts: 3 });
+
+  const outcome = await service.failJob({
+    id: JOB_ID,
+    errorMessage: 'adb connection dropped',
+    needsManualReview: false,
+  });
+
+  assert.equal(outcome.requeued, false, '재시도하면 정모가 하나 더 생길 수 있다');
+  assert.deepEqual(calls.jobRequeues, []);
+  assert.equal(calls.failed.length, 1);
+  assert.equal(
+    calls.failed[0].needsManualReview,
+    true,
+    'worker가 false로 보고해도 사람 확인 대상이다 — failed면 개설자가 다시 시도할 수 있다',
+  );
+});
+
+test('requeueStaleJobs SQL: 제출을 시도한 job은 attempts와 무관하게 사람에게 넘긴다', async () => {
+  const statements = [];
+  const db = {
+    async query(sql, params) {
+      statements.push({ sql, params });
+      return { rows: [] };
+    },
+  };
+
+  await createSomoimAutomationService({ db }).claimNextJob();
+
+  const requeue = statements.find((s) => s.sql.includes('make_interval'));
+  assert.ok(requeue, 'stale 회수 쿼리가 실행되어야 한다');
+  assert.match(
+    requeue.sql,
+    /WHEN submit_attempted_at IS NOT NULL THEN 'needs_manual_review'/,
+    '제출을 시도한 job을 pending으로 되돌리면 정모가 중복 생성된다',
+  );
+  assert.match(requeue.sql, /RETURNING id, status, submit_attempted_at/);
+});
+
+test('markSubmitAttempted SQL: claim된 job만 표시하고 시각을 남긴다', async () => {
+  const statements = [];
+  const db = {
+    async query(sql, params) {
+      statements.push({ sql, params });
+      return { rows: [{ id: JOB_ID, submitAttemptedAt: '2026-08-25T00:00:00.000Z' }] };
+    },
+  };
+
+  await createSomoimAutomationService({ db }).markSubmitAttempted(JOB_ID);
+
+  assert.equal(statements.length, 1);
+  assert.match(statements[0].sql, /SET submit_attempted_at = now\(\)/);
+  assert.match(statements[0].sql, /WHERE id = \$1 AND status = 'claimed'/);
+  assert.deepEqual(statements[0].params, [JOB_ID]);
+});
+
+test('failJob: 제출을 시도하지 않은 job은 기존대로 재시도한다', async () => {
+  const claimed = { id: JOB_ID, status: 'claimed', attempts: 1, payload: {}, submitAttemptedAt: null };
+  const { service, calls } = serviceWith({ job: claimed, maxAttempts: 3 });
+
+  const outcome = await service.failJob({
+    id: JOB_ID,
+    errorMessage: 'app launch timed out',
+    needsManualReview: false,
+  });
+
+  assert.equal(outcome.requeued, true);
+  assert.deepEqual(calls.jobRequeues, [{ id: JOB_ID, errorMessage: 'app launch timed out' }]);
 });

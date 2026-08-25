@@ -20,6 +20,11 @@ export function createWorkerConfig(env = process.env) {
     // 비워 두면 mDNS 탐색만으로 재연결을 시도한다.
     adbConnectAddress: (env.ADB_CONNECT_ADDRESS ?? '').trim(),
     artifactDir: (env.ARTIFACT_DIR ?? './worker-artifacts').trim() || './worker-artifacts',
+    // 클럽 이름은 화면에서 정확히 일치 비교한다. 클럽장이 이름을 바꾸면 코드 수정
+    // 없이 여기서 맞춰줄 수 있어야 한다. 비우면 handler의 기본값을 쓴다.
+    targetGroupName: (env.SOMOIM_TARGET_GROUP_NAME ?? '').trim(),
+    // worker 두 개가 같은 태블릿을 동시에 조작하는 것을 막는 락 파일.
+    lockFile: (env.WORKER_LOCK_FILE ?? '').trim(),
   };
 }
 

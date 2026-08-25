@@ -28,9 +28,15 @@
   수 있다. 자세한 상태 전이는 [DEVELOPMENT.md](./DEVELOPMENT.md)의 `meetups` 섹션,
   스위치 조합은 [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md)의 "Job이 만들어지는
   경로"를 본다.
+- 되돌릴 수 없는 제출의 안전장치 — 제출 직전 `submit-attempt` 기록, 제출 후 폼을
+  떠났는지 확인, 기기 타임존 검증, worker 중복 실행 방지 락. 설계 리스크 리뷰에서
+  나온 것들이며 실제 제출을 열기 전에 필요한 부분이다. 규칙은
+  [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md)의 "Submit attempt"에 있다.
 
 남은 것:
 
+- **제출 경로 실기기 검증** — 위 안전장치들은 단위 테스트로만 확인했다. `submit`
+  모드로 태블릿에서 끝까지 돌려본 적이 아직 없다.
 - **관리자 화면 제출 토글** — 서버의 `allowSubmit` 여부를 클라이언트가 알 수 있어야
   한다. 지금은 환경변수로만 켜고 끈다.
 - **job type 확장** — 모임 수정, 참석자 확인. 현재 DB CHECK가 `create_meetup`만 허용한다.
@@ -43,6 +49,7 @@
 
 ### 자동화 결과 스크린샷 보기
 
-worker가 남기는 스크린샷을 관리자 화면에서 볼 수 있게 한다. 지금은 `result.screenshotKey`에
-경로 문자열만 담기고 서버가 오브젝트 스토리지와 연결하지 않는다. 업로드 경로와 정리(GC)
-정책을 정해야 한다.
+worker가 남기는 스크린샷을 관리자 화면에서 볼 수 있게 한다. `result.screenshotKey`는
+이미 스토리지 키 모양(`somoim-automation/<job-id>/<이름>.png`)이고 실제 파일은 worker
+로컬의 `result.screenshotPath`에 있다. 업로드와 정리(GC) 정책만 정하면 키는 그대로
+쓸 수 있다.

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   assertScheduledAtIsFuture,
   findByResourceId,
+  isCreateFormPresent,
   formatEnglishHeader,
   formatKoreanDate,
   formatKoreanTime,
@@ -168,6 +169,26 @@ test('monthsBetween: counts month deltas across year boundaries', () => {
   assert.equal(monthsBetween({ year: 2026, month: 8 }, { year: 2026, month: 8 }), 0);
   assert.equal(monthsBetween({ year: 2026, month: 12 }, { year: 2027, month: 2 }), 2);
   assert.equal(monthsBetween({ year: 2026, month: 9 }, { year: 2026, month: 8 }), -1);
+});
+
+// 제출 성공 판정. 예전에는 버튼을 눌렀다는 사실만으로 succeeded를 보고했다 —
+// 앱이 폼을 그대로 두고 거부해도 모임이 "등록됨"으로 표시됐다.
+const CREATE_FORM_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="정모 개설" resource-id="" class="android.widget.TextView" bounds="[136,107][280,160]" /><node index="1" text="정모 만들기" resource-id="com.friendscube.somoim:id/save_button" class="android.widget.Button" bounds="[40,1888][1560,1984]" /></hierarchy>`;
+
+const CLUB_PAGE_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/name_text" class="android.widget.TextView" bounds="[40,1099][1288,1155]" /><node index="1" text="정모 만들기" resource-id="com.friendscube.somoim:id/button2" class="android.widget.Button" bounds="[1064,2414][1568,2506]" /></hierarchy>`;
+
+test('isCreateFormPresent: 폼이 그대로면 앱이 제출을 받지 않은 것이다', () => {
+  assert.equal(isCreateFormPresent(parseUiNodes(CREATE_FORM_XML)), true);
+});
+
+test('isCreateFormPresent: 클럽 페이지의 "정모 만들기" 버튼은 폼이 아니다', () => {
+  // 클럽 홈에도 같은 문구의 버튼이 있다. resource-id가 save_button이 아니므로
+  // 폼으로 착각하면 안 된다 — 착각하면 성공한 제출을 실패로 보고한다.
+  assert.equal(isCreateFormPresent(parseUiNodes(CLUB_PAGE_XML)), false);
+});
+
+test('isCreateFormPresent: 빈 화면은 폼이 아니다', () => {
+  assert.equal(isCreateFormPresent([]), false);
 });
 
 test('assertScheduledAtIsFuture: allows a date after "now"', () => {

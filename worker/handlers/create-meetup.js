@@ -6,11 +6,17 @@ import { ManualReviewError, TransientError } from '../errors.js';
 //
 // 이 bot 계정은 "[홍대] it&ai 스터디" 클럽 운영진 권한만 가지고 있고, 다른 클럽은
 // 쓰지 않는다(사용자 확정). payload에 groupId가 없으므로 이 클럽 하나로 고정한다.
+// 클럽 이름은 화면에서 정확히 일치 비교하므로, 클럽장이 이름을 바꾸면 모든 job이
+// 실패한다. 코드 수정 없이 복구할 수 있도록 설정(SOMOIM_TARGET_GROUP_NAME)으로 뺐다.
 const APP_PACKAGE = 'com.friendscube.somoim';
-const TARGET_GROUP_NAME = '[홍대] it&ai 스터디';
+export const DEFAULT_TARGET_GROUP_NAME = '[홍대] it&ai 스터디';
 const MY_GROUPS_TAB = '내모임';
 const JOINED_SECTION_TITLE = '가입한 모임';
 const ADB_KEYBOARD_IME = 'com.android.adbkeyboard/.AdbIME';
+// 앱은 기기의 벽시계 기준으로 정모 시각을 해석한다. 기기 타임존이 KST가 아니면
+// 화면에 찍힌 값은 맞는데 실제 정모 시각이 어긋나고, verifyForm은 같은 문자열끼리
+// 비교하므로 이 어긋남을 잡지 못한다 — 조용히 틀리는 것보다 실패가 낫다.
+const REQUIRED_TIMEZONE = 'Asia/Seoul';
 
 const EN_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const EN_MONTHS = [
@@ -181,11 +187,30 @@ async function readScreen(adb, deviceId, artifactDir) {
   return parseUiNodes(xml);
 }
 
-async function captureEvidence(adb, deviceId, artifactDir, name) {
+// 스크린샷은 job별 디렉터리에 남긴다. 반환하는 screenshotKey는 계약
+// (SOMOIM_AUTOMATION.md)이 정한 오브젝트 스토리지 키 모양이고, screenshotPath는
+// 지금 실제로 파일이 있는 worker 로컬 경로다. 스토리지를 붙이면 키는 그대로 두고
+// 업로드만 추가하면 된다.
+async function captureEvidence(adb, deviceId, artifactDir, jobId, name) {
   await mkdir(artifactDir, { recursive: true });
-  const screenshotPath = path.join(artifactDir, `create-meetup-${Date.now()}-${name}.png`);
+  const screenshotPath = path.join(artifactDir, `${name}.png`);
   await adb.captureScreenshot(deviceId, screenshotPath);
-  return screenshotPath;
+  return {
+    screenshotKey: `somoim-automation/${jobId}/${name}.png`,
+    screenshotPath,
+  };
+}
+
+// 기기 타임존이 KST가 아니면 정모가 조용히 다른 절대시각에 만들어진다.
+// getprop이 비어 오면(롬 차이) 확인할 수 없는 상태이므로 역시 사람에게 넘긴다.
+async function assertDeviceTimezone(adb, deviceId) {
+  const timezone = (await adb.shell(deviceId, ['getprop', 'persist.sys.timezone'])).trim();
+  if (timezone !== REQUIRED_TIMEZONE) {
+    throw new ManualReviewError(
+      `Device timezone must be ${REQUIRED_TIMEZONE} but is "${timezone || 'unknown'}"`,
+      { stage: 'validate_device', expected: REQUIRED_TIMEZONE, actual: timezone || null },
+    );
+  }
 }
 
 // ---- 화면 이동 ----
@@ -266,7 +291,7 @@ export function uniqueByBounds(nodes) {
 // `name_text`는 홈 화면에서 정모 이름으로도 쓰이므로, 내모임 화면에 도착한 것을
 // 확인한 뒤에 세어야 한다. 그리고 엉뚱한 클럽에 들어가더라도 다음 단계
 // (openCreateMeetupForm)가 클럽 이름을 검증해 막는다.
-async function openJoinedGroup(adb, deviceId, artifactDir) {
+async function openJoinedGroup(adb, deviceId, artifactDir, targetGroupName) {
   let nodes = [];
   let tab;
   // uiautomator는 화면이 정착하기 전에 노드를 통째로 빠뜨린다. 실제로 홈 화면이
@@ -311,10 +336,10 @@ async function openJoinedGroup(adb, deviceId, artifactDir) {
   // 가입 모임이 하나면 모호함이 없다. 여러 개면 추측하지 않고 이름으로 고른다.
   const target = joined.length === 1
     ? joined[0]
-    : joined.find((n) => n.text === TARGET_GROUP_NAME);
+    : joined.find((n) => n.text === targetGroupName);
   if (!target) {
     throw new ManualReviewError(
-      `Target group "${TARGET_GROUP_NAME}" not found among joined groups`,
+      `Target group "${targetGroupName}" not found among joined groups`,
       { stage: 'open_my_groups', joinedGroups: joined.map((n) => n.text) },
     );
   }
@@ -324,7 +349,7 @@ async function openJoinedGroup(adb, deviceId, artifactDir) {
   return target.text;
 }
 
-async function openCreateMeetupForm(adb, deviceId, artifactDir) {
+async function openCreateMeetupForm(adb, deviceId, artifactDir, targetGroupName) {
   let nodes = await readScreen(adb, deviceId, artifactDir);
 
   // 클럽 페이지는 이 계정이 그 클럽 안에서 마지막으로 보고 있던 탭(게시판의 특정
@@ -340,8 +365,12 @@ async function openCreateMeetupForm(adb, deviceId, artifactDir) {
   }
 
   const clubTitle = findByResourceId(nodes, 'name_text');
-  if (!clubTitle || clubTitle.text !== TARGET_GROUP_NAME) {
-    throw new ManualReviewError('Did not land on the target group page', { stage: 'open_group_page' });
+  if (!clubTitle || clubTitle.text !== targetGroupName) {
+    throw new ManualReviewError('Did not land on the target group page', {
+      stage: 'open_group_page',
+      expected: targetGroupName,
+      actual: clubTitle?.text ?? null,
+    });
   }
 
   const createButton = nodes.find(
@@ -599,8 +628,19 @@ async function verifyForm(adb, deviceId, artifactDir, payload, target) {
   }
 }
 
-export function createCreateMeetupHandler({ adb, artifactDir = './worker-artifacts' } = {}) {
-  return async function createMeetup({ payload, deviceId, mode }) {
+// 정모 개설 폼이 아직 화면에 있는지. 저장을 눌렀는데 폼이 그대로면 앱이 제출을
+// 받지 않은 것이다(검증 실패, 네트워크 오류 등).
+export function isCreateFormPresent(nodes) {
+  return nodes.some((n) => n.text === '정모 개설')
+    || nodes.some((n) => n.resourceId.endsWith('/save_button') && n.text === '정모 만들기');
+}
+
+export function createCreateMeetupHandler({
+  adb,
+  artifactDir = './worker-artifacts',
+  targetGroupName = DEFAULT_TARGET_GROUP_NAME,
+} = {}) {
+  return async function createMeetup({ payload, deviceId, mode, jobId, onBeforeSubmit }) {
     if (mode !== 'dryRun' && mode !== 'submit') {
       throw new ManualReviewError(`Unknown mode "${mode}"`, { stage: 'validate_mode' });
     }
@@ -611,31 +651,67 @@ export function createCreateMeetupHandler({ adb, artifactDir = './worker-artifac
     const target = toKstParts(payload.scheduledAt);
     assertScheduledAtIsFuture(payload.scheduledAt);
 
+    // job마다 따로 남긴다. 예전처럼 한 파일을 계속 덮어쓰면 다음 job이 시작되는
+    // 순간 실패 증거가 사라져서, 실패한 job의 마지막 화면을 볼 수 없다.
+    const jobArtifactDir = jobId ? path.join(artifactDir, String(jobId)) : artifactDir;
+
+    await assertDeviceTimezone(adb, deviceId);
     await adb.shell(deviceId, ['ime', 'set', ADB_KEYBOARD_IME]);
-    await launchApp(adb, deviceId, artifactDir);
-    const groupName = await openJoinedGroup(adb, deviceId, artifactDir);
-    await openCreateMeetupForm(adb, deviceId, artifactDir);
+    await launchApp(adb, deviceId, jobArtifactDir);
+    const groupName = await openJoinedGroup(adb, deviceId, jobArtifactDir, targetGroupName);
+    await openCreateMeetupForm(adb, deviceId, jobArtifactDir, targetGroupName);
 
-    await setDateAndTime(adb, deviceId, artifactDir, target);
-    await fillTextFields(adb, deviceId, artifactDir, payload);
+    await setDateAndTime(adb, deviceId, jobArtifactDir, target);
+    await fillTextFields(adb, deviceId, jobArtifactDir, payload);
 
-    await verifyForm(adb, deviceId, artifactDir, payload, target);
+    await verifyForm(adb, deviceId, jobArtifactDir, payload, target);
 
     if (mode === 'dryRun') {
-      const screenshotKey = await captureEvidence(adb, deviceId, artifactDir, 'before-submit');
-      return { stoppedAt: 'before_submit', screenshotKey, groupName };
+      const evidence = await captureEvidence(adb, deviceId, jobArtifactDir, jobId, 'before-submit');
+      return { stoppedAt: 'before_submit', groupName, ...evidence };
     }
 
     // mode === 'submit': verifyForm이 방금 화면이 payload와 일치함을 확인했으므로
     // SOMOIM_AUTOMATION.md의 "제출 직전 화면이 payload와 일치" 조건을 만족한다.
-    const nodes = await readScreen(adb, deviceId, artifactDir);
+    const nodes = await readScreen(adb, deviceId, jobArtifactDir);
     const saveButton = nodes.find((n) => n.resourceId.endsWith('/save_button') && n.text === '정모 만들기');
     if (!saveButton) {
       throw new ManualReviewError('정모 만들기 저장 버튼을 찾을 수 없음', { stage: 'submit' });
     }
+
+    // 누르기 전에 서버에 "제출을 시도한다"고 남긴다. 이 표시가 있어야 보고가 끊겼을 때
+    // 서버가 이 job을 자동 재시도하지 않는다(재시도하면 정모가 하나 더 생긴다).
+    // 표시에 실패하면 누르지 않고 물러난다 — 아직 아무것도 만들지 않았으므로
+    // 그대로 재시도해도 안전한 상태다.
+    if (onBeforeSubmit) {
+      try {
+        await onBeforeSubmit();
+      } catch (error) {
+        throw new TransientError(
+          `Could not record the submit attempt, so the submit was skipped: ${error?.message ?? 'unknown error'}`,
+          { stage: 'submit' },
+        );
+      }
+    }
+
     await tap(adb, deviceId, saveButton.center);
-    await sleep(1200);
-    const screenshotKey = await captureEvidence(adb, deviceId, artifactDir, 'after-submit');
-    return { stoppedAt: null, submitted: true, screenshotKey, groupName };
+
+    // 버튼을 눌렀다는 사실을 성공으로 삼지 않는다. 앱이 폼을 떠났는지 확인한다 —
+    // 폼이 그대로면 앱이 제출을 받지 않은 것이다.
+    let leftForm = false;
+    for (let i = 0; i < 8 && !leftForm; i += 1) {
+      await sleep(1000);
+      leftForm = !isCreateFormPresent(await readScreen(adb, deviceId, jobArtifactDir));
+    }
+
+    const evidence = await captureEvidence(adb, deviceId, jobArtifactDir, jobId, 'after-submit');
+    if (!leftForm) {
+      throw new ManualReviewError(
+        'Tapped 정모 만들기 but the form is still on screen — the app did not accept the submit',
+        { stage: 'submit', ...evidence },
+      );
+    }
+
+    return { stoppedAt: null, submitted: true, groupName, ...evidence };
   };
 }

@@ -155,3 +155,40 @@ test('runJob: tolerates a handler that returns nothing', async () => {
   assert.equal(outcome.outcome, 'complete');
   assert.deepEqual(outcome.result, { mode: 'dryRun', deviceId: DEVICE_ID });
 });
+
+test('runJob: hands the job id to the handler so artifacts can be kept per job', async () => {
+  const seen = [];
+  await runJob({
+    job: dryRunJob(),
+    handlers: { create_meetup: async (input) => { seen.push(input); } },
+    resolveDevice: async () => DEVICE_ID,
+  });
+
+  assert.equal(seen[0].jobId, '11111111-1111-1111-1111-111111111111');
+});
+
+test('runJob: binds onBeforeSubmit to this job so the handler cannot mark the wrong one', async () => {
+  const marked = [];
+  let captured;
+  await runJob({
+    job: dryRunJob({ dryRun: false, submit: true }),
+    allowSubmit: true,
+    handlers: { create_meetup: async (input) => { captured = input; } },
+    resolveDevice: async () => DEVICE_ID,
+    onBeforeSubmit: (id) => { marked.push(id); },
+  });
+
+  await captured.onBeforeSubmit();
+  assert.deepEqual(marked, ['11111111-1111-1111-1111-111111111111']);
+});
+
+test('runJob: leaves onBeforeSubmit undefined when the caller does not supply one', async () => {
+  let captured;
+  await runJob({
+    job: dryRunJob(),
+    handlers: { create_meetup: async (input) => { captured = input; } },
+    resolveDevice: async () => DEVICE_ID,
+  });
+
+  assert.equal(captured.onBeforeSubmit, undefined);
+});

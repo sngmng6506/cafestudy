@@ -47,6 +47,12 @@ export function createSomoimAutomationRouter(ctx, service = createSomoimAutomati
       return sendOk(res, outcome);
     } catch (err) { return next(err); }
   });
+  // worker가 되돌릴 수 없는 제출 직전에 부른다. 이 호출이 성공해야 worker가 버튼을
+  // 누른다 — 실패하면 표시가 없어 중복을 막을 수 없으므로 제출하지 않고 물러난다.
+  router.post('/jobs/:id/submit-attempt', requireInternalKey, async (req, res, next) => {
+    try { return sendOk(res, await service.markSubmitAttempted(req.params.id)); }
+    catch (err) { return next(err); }
+  });
   router.post('/jobs/:id/complete', requireInternalKey, async (req, res, next) => {
     try {
       const job = await service.completeJob({ id: req.params.id, result: req.body?.result });
@@ -63,8 +69,10 @@ export function createSomoimAutomationRouter(ctx, service = createSomoimAutomati
         result: req.body?.result,
       });
 
-      // 재시도 여지가 없을 때만 모임 쪽에 실패를 알린다.
-      if (!job.requeued) {
+      // 재시도 여지가 없을 때만 모임 쪽에 실패를 알린다. 단 제출을 시도한 job은
+      // 알리지 않는다 — 모임이 failed가 되면 개설자가 "다시 시도"를 눌러 중복
+      // 정모를 만들 수 있다. 그 job은 needs_manual_review로 남아 사람이 정리한다.
+      if (!job.requeued && !job.submitAttemptedAt) {
         await ctx.hooks?.emit?.('somoimRegistrationFailed', { jobId: job.id });
       }
       return sendOk(res, job);

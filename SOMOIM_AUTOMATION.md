@@ -154,6 +154,36 @@ Content-Type: application/json
 
 `claimed` job만 완료할 수 있으며 `result`는 객체여야 한다. dry-run은 최종 제출 전에 멈춘 사실을 결과에 남긴다.
 
+`screenshotKey`는 오브젝트 스토리지 키 모양(`somoim-automation/<job-id>/<이름>.png`)이며
+아직 스토리지에 올라가지 않는다. 실제 파일이 있는 worker 로컬 경로는 같은 결과의
+`screenshotPath`에 따로 담는다. 스토리지를 붙일 때 키는 그대로 두고 업로드만 더하면 된다.
+
+### Submit attempt
+
+```http
+POST /api/somoim-automation/jobs/:id/submit-attempt
+x-internal-key: <INTERNAL_API_KEY>
+```
+
+worker가 **되돌릴 수 없는 제출 버튼을 누르기 직전에** 부른다. 서버는 `claimed` job에
+`submit_attempted_at`을 찍는다.
+
+정모 생성은 취소할 수 없다. 버튼을 누른 뒤 결과 보고가 끊기면(프로세스 종료뿐 아니라
+`complete` 호출 한 번의 네트워크 순단으로도 충분하다) job은 `claimed`로 남고, stale
+회수가 `pending`으로 되돌려 처음부터 다시 실행한다 — 소모임에 정모가 하나 더 생긴다.
+job에는 멱등성 키가 없어 worker 쪽에서 "이미 만들었는지" 확인할 방법이 없으므로,
+누르기 전에 의도를 먼저 남긴다.
+
+- 이 호출이 실패하면 worker는 **제출하지 않고 물러난다.** 아직 아무것도 만들지 않은
+  상태라 그대로 재시도해도 안전하다.
+- 이 표시가 있는 job은 절대 자동 재시도하지 않는다. stale 회수도, worker가
+  `needsManualReview: false`로 보고한 실패도 모두 `needs_manual_review`로 간다.
+- 그 job에 연결된 모임은 `pending`에 남는다. `failed`로 내리면 개설자에게 "다시 시도"가
+  열리는데, 정모가 이미 있을 수 있어 누르면 중복이 된다. 사람이 소모임 앱을 열어
+  실제로 생성됐는지 확인하고 정리해야 한다 — `pending`에 갇히는 쪽이 실제 멤버들에게
+  보이는 중복 정모보다 낫다.
+- `dryRun` job은 이 endpoint를 부르지 않으므로 기존대로 자유롭게 재시도된다.
+
 ### Fail
 
 ```http
@@ -194,6 +224,8 @@ pending → claimed → succeeded
   `모임이 취소되어 등록을 중단했어요`를 남긴다. 이미 claim된 job은 건드리지
   않는다 — worker가 기기를 조작하는 중이라 상태를 바꾸면 complete/fail 보고와
   어긋난다. 그때는 정모가 생성되며 사람이 정리해야 한다.
+- `submit_attempted_at`이 찍힌 job은 재시도 여유가 남아 있어도 `pending`으로
+  돌아가지 않고 `needs_manual_review`로 간다(위 "Submit attempt" 참고).
 
 ## dryRun과 submit
 
@@ -212,8 +244,17 @@ pending → claimed → succeeded
 2. 서버에 `SOMOIM_AUTOMATION_ALLOW_SUBMIT=true`가 설정되어 있다.
 3. worker 로컬 설정에 `ALLOW_SOMOIM_SUBMIT=true`가 설정되어 있다.
 4. 제출 직전 화면의 제목·일시·장소·정원 등 핵심 값이 payload와 일치한다.
+5. 기기 타임존이 `Asia/Seoul`이다. 앱은 기기 벽시계로 정모 시각을 해석하므로,
+   타임존이 다르면 화면 값은 맞는데 실제 정모 시각이 어긋난다. 4번 대조는 같은
+   문자열끼리 비교하므로 이 어긋남을 잡지 못한다.
+6. `submit-attempt` 기록에 성공했다.
 
 조건 하나라도 확인할 수 없으면 제출하지 않는다.
+
+제출한 뒤에는 **버튼을 눌렀다는 사실을 성공으로 삼지 않는다.** 정모 개설 폼이
+화면에서 사라졌는지 확인하고, 폼이 그대로면 앱이 제출을 거부한 것이므로
+`needsManualReview: true`로 실패 처리한다. 앱에 정모 목록을 프로그램적으로 대조할
+화면이 없어, "폼을 떠났다"가 지금 확인할 수 있는 가장 강한 신호다.
 
 ## needsManualReview 기준
 
@@ -230,6 +271,10 @@ pending → claimed → succeeded
   be in the future`), 큐 대기·stale-claim 재시도·호스트의 뒤늦은 재시도로 그 사이
   시간이 흘러 worker가 집어들 때는 이미 지났을 수 있다. worker는 이 경우 지난
   날짜로 화면을 채우려 들지 않고 바로 실패 처리한다
+- 기기 타임존이 `Asia/Seoul`이 아니거나 읽을 수 없음
+- 제출 버튼을 눌렀는데 정모 개설 폼이 화면에 그대로 남아 있음(앱이 제출을 거부)
+- 제출을 시도한(`submit_attempted_at`) job의 결과 보고가 끊김 — 정모가 생성됐는지
+  사람이 소모임 앱에서 확인해야 한다
 
 아무 입력도 하지 않은 상태에서 발생한 명확한 일시적 네트워크·앱 실행 timeout은 `false`로 처리할 수 있다. 애매하면 `true`다.
 
@@ -240,5 +285,11 @@ pending → claimed → succeeded
 3. job type에 맞는 handler를 실행한다.
 4. 폼을 채운 뒤 화면 값이 payload와 일치하는지 검증한다.
 5. dry-run이면 제출 전 멈추고 complete한다.
-6. submit이면 모든 이중 안전장치를 확인한 뒤에만 제출한다.
-7. 불확실한 상태는 `needsManualReview: true`로 fail한다.
+6. submit이면 모든 이중 안전장치를 확인하고, `submit-attempt`를 기록한 뒤에만 제출한다.
+7. 제출 후 폼을 떠났는지 확인한다. 떠나지 못했으면 fail한다.
+8. 불확실한 상태는 `needsManualReview: true`로 fail한다.
+
+worker 프로세스는 **한 번에 하나만** 떠야 한다. job claim은 job 단위 원자성만
+보장하므로, worker가 둘이면 서로 다른 job을 각각 claim해 같은 태블릿 한 대를 동시에
+조작한다. worker는 시작할 때 락 파일을 잡고, 이미 살아 있는 worker가 있으면 즉시
+종료한다([worker/README.md](./worker/README.md) 참고).

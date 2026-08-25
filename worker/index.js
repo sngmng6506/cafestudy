@@ -3,6 +3,7 @@ import { createApiClient } from './api-client.js';
 import { createWorkerConfig } from './config.js';
 import { createCreateMeetupHandler } from './handlers/create-meetup.js';
 import { runJob } from './job-runner.js';
+import { DEFAULT_LOCK_FILE, acquireWorkerLock } from './lock.js';
 
 const config = createWorkerConfig(process.env);
 const client = createApiClient({
@@ -15,7 +16,11 @@ const adb = createAdb({
   connectAddress: config.adbConnectAddress,
 });
 const handlers = {
-  create_meetup: createCreateMeetupHandler({ adb, artifactDir: config.artifactDir }),
+  create_meetup: createCreateMeetupHandler({
+    adb,
+    artifactDir: config.artifactDir,
+    ...(config.targetGroupName ? { targetGroupName: config.targetGroupName } : {}),
+  }),
 };
 
 let running = true;
@@ -38,6 +43,7 @@ async function tick() {
     handlers,
     allowSubmit: config.allowSubmit,
     resolveDevice: () => adb.resolveDevice(),
+    onBeforeSubmit: (id) => client.markSubmitAttempted(id),
   });
 
   if (outcome.outcome === 'complete') {
@@ -60,10 +66,15 @@ async function tick() {
 }
 
 async function main() {
+  const lockFile = config.lockFile || DEFAULT_LOCK_FILE;
+  // 기기는 한 대뿐이라 소비자도 한 명이어야 한다. 두 번째 worker는 여기서 멈춘다.
+  const releaseLock = await acquireWorkerLock({ lockFile });
+
   log('worker_started', {
     serverUrl: config.serverUrl,
     allowSubmit: config.allowSubmit,
     pollIntervalMs: config.pollIntervalMs,
+    lockFile,
   });
 
   // 시작할 때 기기 상태를 한 번 확인한다. 없으면 재연결까지 시도하므로,
@@ -89,6 +100,7 @@ async function main() {
     }
   }
 
+  await releaseLock();
   log('worker_stopped');
 }
 
@@ -99,4 +111,11 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   });
 }
 
-await main();
+try {
+  await main();
+} catch (error) {
+  // 락을 못 잡은 경우가 여기로 온다. 두 번째 worker가 조용히 큐를 나눠 갖는 것보다
+  // 시끄럽게 죽는 편이 낫다.
+  log('worker_start_failed', { message: error?.message ?? 'unknown error' });
+  process.exitCode = 1;
+}

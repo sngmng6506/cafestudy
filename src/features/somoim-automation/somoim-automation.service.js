@@ -15,6 +15,10 @@ const OFFSET_MAX = 100_000;
 const DEFAULT_STALE_CLAIM_SECONDS = 900;
 const DEFAULT_MAX_ATTEMPTS = 3;
 const STALE_CLAIM_MESSAGE = 'Worker stopped responding before reporting a result';
+// 제출을 시도한 뒤 보고가 끊긴 job. 자동 재시도는 정모를 하나 더 만들 수 있어
+// 금지하고, 사람이 소모임 앱을 열어 실제로 생성됐는지 확인해야 한다.
+const SUBMIT_ATTEMPTED_MESSAGE =
+  'Worker attempted the final submit but never reported the result — check the somoim app for a created event before retrying';
 const CANCELLED_MESSAGE = '모임이 취소되어 등록을 중단했어요';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_TITLE_LENGTH = SOMOIM_AUTOMATION_LIMITS.meetupTitleMaxLength;
@@ -101,12 +105,29 @@ export function createSomoimAutomationService({
         staleAfterSeconds: staleClaimSeconds,
         maxAttempts,
         exhaustedMessage: STALE_CLAIM_MESSAGE,
+        submitAttemptedMessage: SUBMIT_ATTEMPTED_MESSAGE,
       });
       // recovered는 SOMOIM_AUTOMATION.md가 문서화하고 worker가 읽는 필드라 개수 그대로 둔다.
       // exhausted는 그 중 사람에게 넘어간(재시도 소진) job만 추려, 라우트가 모임 쪽에
       // 실패를 알릴 수 있게 한다.
-      const exhausted = recovered.filter((row) => row.status === 'needs_manual_review');
+      //
+      // 제출을 시도한 job은 여기서 제외한다. 모임을 failed로 내리면 개설자에게
+      // "다시 시도" 버튼이 열리는데, 정모가 이미 만들어졌을 수 있어 누르면 중복이
+      // 된다. 모임은 pending에 남겨 두고 사람이 job 목록을 보고 정리한다 —
+      // pending에 갇히는 쪽이 실제 멤버들에게 보이는 중복 정모보다 낫다.
+      const exhausted = recovered.filter(
+        (row) => row.status === 'needs_manual_review' && !row.submitAttemptedAt,
+      );
       return { job: await queries.claimNextJob(), recovered: recovered.length, exhausted };
+    },
+
+    // worker가 되돌릴 수 없는 제출을 하기 직전에 부른다. 이 호출이 실패하면 worker는
+    // 제출하지 않고 물러난다 — 표시를 남기지 못한 채 누르면 중복을 막을 수 없다.
+    async markSubmitAttempted(id) {
+      assertUuid(id, 'jobId');
+      const job = await queries.markSubmitAttempted(id);
+      if (!job) throwConflict('JOB_NOT_CLAIMED', 'Only claimed jobs can attempt a submit');
+      return job;
     },
     async completeJob({ id, result }) {
       assertUuid(id, 'jobId');
@@ -120,7 +141,10 @@ export function createSomoimAutomationService({
       // requeueJob에 남아 admin job 목록에서 마지막 실패 원인을 볼 수 있다.
       const normalizedErrorMessage = normalizeErrorMessage(errorMessage);
       const current = await queries.getJob(id);
+      // 제출을 시도한 job은 worker가 "일시적 실패"라고 보고해도 다시 돌리지 않는다.
+      // 앱에 정모가 이미 생겼는지 알 수 없으므로 재실행은 중복 위험이다.
       const canRetry = needsManualReview !== true
+        && !current?.submitAttemptedAt
         && (current?.attempts ?? maxAttempts) < maxAttempts;
 
       if (canRetry) {
@@ -129,10 +153,12 @@ export function createSomoimAutomationService({
         return { ...requeued, requeued: true };
       }
 
+      // 제출을 시도했다면 worker의 판단과 무관하게 사람 확인 대상이다. failed로
+      // 두면 개설자에게 "다시 시도"가 열려 중복 정모를 만들 수 있다.
       const job = await queries.failJob({
         id,
         errorMessage: normalizedErrorMessage,
-        needsManualReview: needsManualReview === true,
+        needsManualReview: needsManualReview === true || Boolean(current?.submitAttemptedAt),
         result: normalizeResult(result),
       });
       if (!job) throwConflict('JOB_NOT_CLAIMED', 'Only claimed jobs can be failed');

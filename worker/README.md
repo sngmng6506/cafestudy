@@ -37,7 +37,9 @@ node worker/index.js
 | `ADB_PATH` | | `adb` | adb 실행 파일 경로 |
 | `ADB_SERIAL` | | (자동) | 기기를 명시 지정. 비우면 연결된 기기가 정확히 한 대일 때만 진행한다 |
 | `ADB_CONNECT_ADDRESS` | | — | 기기가 사라졌을 때 다시 붙을 주소(`IP:포트`). 비워도 mDNS로 찾는다 |
-| `ARTIFACT_DIR` | | `./worker-artifacts` | 스크린샷·UI dump 저장 위치 |
+| `ARTIFACT_DIR` | | `./worker-artifacts` | 스크린샷·UI dump 저장 위치. job id별 하위 폴더에 남는다 |
+| `SOMOIM_TARGET_GROUP_NAME` | | `[홍대] it&ai 스터디` | 정모를 만들 클럽 이름. 클럽장이 이름을 바꾸면 여기서 맞춘다 |
+| `WORKER_LOCK_FILE` | | (OS 임시폴더) | worker 중복 실행을 막는 락 파일 경로 |
 
 `INTERNAL_API_KEY`는 헤더로만 쓰고 로그·에러 메시지에 남기지 않는다.
 
@@ -55,6 +57,13 @@ adb devices -l                       # state가 device 여야 한다
 - 공유기에서 태블릿 IP를 고정 할당(DHCP 예약)해둔다. IP가 바뀌면 연결이 끊긴다.
 - 화면 잠금을 끄고 `adb shell settings put global stay_on_while_plugged_in 3`을 적용한다.
   잠금 화면은 계약상 무조건 `needsManualReview` 사유다.
+- **타임존을 `Asia/Seoul`로 맞춘다.** 앱은 기기 벽시계로 정모 시각을 해석하므로
+  타임존이 다르면 화면에는 맞는 값이 찍히는데 실제 정모는 다른 시각에 만들어진다.
+  handler가 시작할 때 확인하고 다르면 실패시킨다.
+
+  ```bash
+  adb shell getprop persist.sys.timezone   # Asia/Seoul 이어야 한다
+  ```
 - 충전기를 꽂아둔 채로 둔다. 빼면 화면 유지가 풀리고, 절전 중 Wi-Fi가 끊기면
   안드로이드가 무선 디버깅을 자동으로 꺼버린다. 다시 켜려면 태블릿 화면이 필요하다.
 
@@ -151,6 +160,7 @@ config.js             # 환경변수 → worker 설정
 api-client.js         # 서버 job endpoint 호출 (x-internal-key)
 job-runner.js         # job 하나 실행. dryRun/submit 안전장치와 실패 분기
 adb.js                # 기기 목록 파싱·선택, 자동 재연결, shell/screenshot/uiautomator 래퍼
+lock.js               # worker 중복 실행 방지(락 파일 + PID 확인)
 errors.js             # ManualReviewError / TransientError
 handlers/             # job type별 화면 자동화
 ```
@@ -173,8 +183,25 @@ worker가 claim한 뒤 죽어서 결과를 보고하지 못하면 job은 `claime
 다음 claim 요청 때 회수하므로(기본 900초, 3회) worker를 다시 켜면 알아서 재시도된다.
 재시도를 다 쓴 job은 `needs_manual_review`로 넘어간다.
 
-실패한 job이 마지막으로 본 화면은 `worker-artifacts/ui-dump.xml`에 남는다. 어느
-화면에서 막혔는지는 이 파일이 가장 확실한 증거다.
+**단, 제출 버튼을 누른 뒤 보고가 끊긴 job은 재시도하지 않는다.** 정모 생성은 되돌릴
+수 없고 job에 멱등성 키가 없어 "이미 만들었는지" 확인할 방법이 없다. 그래서 worker는
+버튼을 누르기 직전에 서버에 `submit-attempt`를 기록하고, 그 기록이 있는 job은 서버가
+`needs_manual_review`로 넘긴다. 기록에 실패하면 worker는 제출하지 않고 물러난다
+(아직 아무것도 만들지 않았으므로 그대로 재시도해도 안전하다). 자세한 규칙은
+[SOMOIM_AUTOMATION.md](../SOMOIM_AUTOMATION.md)의 "Submit attempt"에 있다.
+
+실패한 job이 마지막으로 본 화면은 `worker-artifacts/<job-id>/ui-dump.xml`에 남는다.
+어느 화면에서 막혔는지는 이 파일이 가장 확실한 증거다. job별로 폴더가 갈리므로 다음
+job이 돌아도 지워지지 않는다.
+
+## 중복 실행 방지
+
+기기는 한 대인데 job claim은 job 단위 원자성만 보장한다. worker를 두 개 띄우면 서로
+다른 job을 각각 claim해서 같은 태블릿을 동시에 조작한다 — 탭이 뒤섞여 화면이 엉망이
+된다. 그래서 worker는 시작할 때 락 파일(`WORKER_LOCK_FILE`, 기본은 OS 임시폴더)을
+잡고, 이미 살아 있는 worker가 있으면 `worker_start_failed`를 남기고 종료한다.
+
+크래시로 남은 락은 PID가 죽어 있으면 자동으로 회수하므로 손으로 지울 일은 없다.
 
 ## 테스트
 
