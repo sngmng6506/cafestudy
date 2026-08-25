@@ -190,11 +190,10 @@ pending → claimed → succeeded
   (재시도 여유가 있으면 `pending`, 다 썼으면 `needs_manual_review`).
 - 완료·실패가 **보고된** job은 다시 실행하지 않는다. worker가 결과를 보고했다면
   그 판단을 뒤집지 않는다.
-- 아직 claim되지 않은 `pending` job은 서버가 중단할 수 있다. 개설자가 모임을
-  취소하면 그 job을 `failed`로 바꾸고 `error_message`에
-  `모임이 취소되어 등록을 중단했어요`를 남긴다. 이미 claim된 job은 건드리지
-  않는다 — worker가 기기를 조작하는 중이라 상태를 바꾸면 complete/fail 보고와
-  어긋난다. 그때는 정모가 생성되며 사람이 정리해야 한다.
+- 개설자가 모임을 취소하면 아직 claim되지 않은 `pending` job은 `failed`가 되고
+  `error_message`에 `모임이 취소되어 등록을 중단했어요`가 남는다. 이미 claim된 job은
+  건드리지 않는다 — 기기를 조작하는 중이라 complete/fail 보고와 어긋난다. 그때는
+  정모가 생성되므로 사람이 정리한다.
 - `submit_attempted_at`이 찍힌 job은 재시도 여유가 남아 있어도 `pending`으로
   돌아가지 않고 `needs_manual_review`로 간다(위 "Submit attempt" 참고).
 
@@ -215,17 +214,15 @@ pending → claimed → succeeded
 2. 서버에 `SOMOIM_AUTOMATION_ALLOW_SUBMIT=true`가 설정되어 있다.
 3. worker 로컬 설정에 `ALLOW_SOMOIM_SUBMIT=true`가 설정되어 있다.
 4. 제출 직전 화면의 제목·일시·장소·정원 등 핵심 값이 payload와 일치한다.
-5. 기기 타임존이 `Asia/Seoul`이다. 앱은 기기 벽시계로 정모 시각을 해석하므로,
-   타임존이 다르면 화면 값은 맞는데 실제 정모 시각이 어긋난다. 4번 대조는 같은
-   문자열끼리 비교하므로 이 어긋남을 잡지 못한다.
+5. 기기 타임존이 `Asia/Seoul`이다. 4번은 우리가 만든 문자열끼리 비교하므로
+   기기 벽시계가 어긋난 것은 잡지 못한다.
 6. `submit-attempt` 기록에 성공했다.
 
 조건 하나라도 확인할 수 없으면 제출하지 않는다.
 
-제출한 뒤에는 **버튼을 눌렀다는 사실을 성공으로 삼지 않는다.** 정모 개설 폼이
-화면에서 사라졌는지 확인하고, 폼이 그대로면 앱이 제출을 거부한 것이므로
-`needsManualReview: true`로 실패 처리한다. 앱에 정모 목록을 프로그램적으로 대조할
-화면이 없어, "폼을 떠났다"가 지금 확인할 수 있는 가장 강한 신호다.
+제출한 뒤에는 버튼을 눌렀다는 사실을 성공으로 삼지 않는다. 정모 개설 폼이
+사라졌는지 확인하고, 그대로면 앱이 거부한 것이므로 실패 처리한다. 앱에 정모 목록을
+대조할 화면이 없어 "폼을 떠났다"가 확인 가능한 가장 강한 신호다.
 
 ## needsManualReview 기준
 

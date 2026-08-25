@@ -1,12 +1,12 @@
 # Development Notes
 
 `AGENTS.md`(커밋 컨벤션, feature 패턴, 에러/인증/마이그레이션 규칙)와 겹치지 않는,
-**운영중인 제품/데이터 설계 결정만** 남깁니다. 코딩 규칙을 찾는 중이면 `AGENTS.md`로.
+**운영중인 제품/데이터 설계 결정만** 남긴다. 코딩 규칙을 찾는 중이면 `AGENTS.md`로.
 
 ## 데이터 모델
 
 핵심 흐름: `users → meetups → participants → verifications → point_logs`.
-소모임 크롤링 데이터(`somoim_*`)는 앱 데이터와 분리된 읽기전용 테이블입니다.
+소모임 크롤링 데이터(`somoim_*`)는 앱 데이터와 분리된 읽기전용 테이블이다.
 
 ```text
 users
@@ -69,28 +69,24 @@ meetups                       -- 앱 안에서 직접 만든 모임
   materialize한 앱 모임이다. source_ref는 somoim_events.id 문자열이며 unique다.
   정산 목록 조회 직전에 매핑된 소모임 참석자(face_id -> somoim_members -> users)가 있는
   일정만 upsert하고 participants에 반영한다.
-- somoim_state는 앱 모임이 소모임 앱에도 등록됐는지를 나타낸다
-  (none/pending/registered/failed). source_type='somoim'과 혼동하지 않는다 —
-  그쪽은 "소모임에서 가져온 모임"이고 이쪽은 "앱 모임을 소모임에 올렸는가"다.
+- somoim_state는 앱 모임을 소모임 앱에 등록했는지다. source_type='somoim'과
+  혼동하지 않는다 — 그쪽은 "소모임에서 가져온 모임", 이쪽은 "앱 모임을 올렸는가"다.
 - pending과 failed인 모임에는 참가할 수 없다. failed는 개설자에게만 보인다.
-- pending → registered/failed 전이는 meetups가 직접 쓰지 않는다.
-  somoim-automation의 `/jobs/:id/complete`, `/jobs/:id/fail`이 각각
-  `somoimRegistrationSucceeded`/`somoimRegistrationFailed` 훅을 emit하면,
-  meetups의 `registerSomoimSuccessListener`/`registerSomoimFailureListener`가
-  `somoim_job_id`로 자기 행만 갱신한다(`AND somoim_state='pending'` 조건이 있어,
-  재시도로 이미 새 job에 넘어간 뒤 늦게 도착한 보고는 무시된다).
-  stale claim이 재시도 소진으로 넘어간 경우도 `/jobs/claim` 라우트가 같은 방식으로
-  emit해 모임이 pending에 갇히지 않게 한다. 예외는 `submit_attempted_at`이 찍힌
-  job으로, 이때는 알리지 않고 pending에 남긴다(SOMOIM_AUTOMATION.md "Submit attempt").
-- `POST /api/meetups/:id/retry-somoim`은 개설자(host)만, `somoim_state='failed'`인
-  모임만 재시도할 수 있다. `meetupCreated`가 아니라 `meetupSomoimRetryRequested`를
-  emit한다 — `meetupCreated` 리스너는 `SOMOIM_AUTOMATION_AUTO_REGISTER`가 꺼지면
-  구독되지 않으므로, 재시도를 거기 얹으면 자동 등록을 끈 뒤 재시도까지 막힌다.
-  모임 취소는 별도 endpoint 없이 기존 `DELETE /api/meetups/:id`를 그대로 쓴다.
-- `somoim_state='pending'`인 모임을 취소하면 `meetupCancelled`를 emit해 아직 큐에
-  남아 있는 job을 중단한다. 안 하면 worker가 나중에 그 job을 집어가 소모임에 정모를
-  만들고 웹에는 닫힌 모임만 남는다. **이미 claim된 job은 멈출 수 없다** — 그때는
-  정모가 생성되며 손으로 지워야 한다. 알려진 제약이다.
+- 상태 전이는 meetups가 직접 쓰지 않고 훅으로 받는다. somoim_job_id로 자기 행만
+  갱신하며 AND somoim_state='pending' 조건이 있어, 재시도로 새 job에 넘어간 뒤
+  늦게 도착한 보고는 무시된다.
+    meetupCreated                모임 생성 → job이 생기면 pending, 거부되면 failed
+    meetupSomoimRetryRequested   POST /api/meetups/:id/retry-somoim → pending
+    somoimRegistrationSucceeded  /jobs/:id/complete → registered
+    somoimRegistrationFailed     /jobs/:id/fail, /jobs/claim(재시도 소진) → failed
+    meetupCancelled              DELETE /api/meetups/:id → 큐에 남은 job 중단
+- 재시도는 개설자만, failed 모임만 할 수 있다. meetupCreated를 재사용하지 않는 것은
+  그 리스너가 SOMOIM_AUTOMATION_AUTO_REGISTER로 게이트돼 있어, 자동 등록을 끄면
+  재시도까지 함께 막히기 때문이다.
+- submit_attempted_at이 찍힌 job은 실패를 알리지 않아 somoim_state가 pending에
+  남는다(SOMOIM_AUTOMATION.md "Submit attempt").
+- 이미 claim된 job은 취소해도 멈출 수 없다. 정모가 생성되므로 손으로 지운다.
+  알려진 제약이다.
 
 participants                  -- meetup 참가 (UNIQUE meetup_id+user_id)
 - id, meetup_id, user_id, joined_at
@@ -235,8 +231,8 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
   실패 기록은 7일 뒤 재시도. 검색 API 미설정 시에는 기록하지 않음.
 ```
 
-전체 스키마와 변경 이력은 `migrations/`가 정답입니다. 위 요약이 실제 파일과
-어긋나면 마이그레이션 쪽이 맞습니다 — 이 문서를 고치세요.
+전체 스키마와 변경 이력은 `migrations/`가 정답이다. 위 요약이 실제 파일과
+어긋나면 마이그레이션 쪽이 맞다 — 이 문서를 고친다.
 
 ## 알려진 설계 한계
 

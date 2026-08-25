@@ -1,11 +1,11 @@
 # AGENTS.md
 
-AI 코딩 에이전트가 이 저장소에서 작업할 때 따르는 핵심 규칙입니다.
+AI 코딩 에이전트가 이 저장소에서 작업할 때 따르는 핵심 규칙이다.
 
 ## 프로젝트
 
 CafeStudy — Express/Node 22/PostgreSQL 백엔드와 Vue 3/Vite/Tailwind 프론트엔드.
-GitHub가 source of truth이며 로컬 환경 없이 작업하는 기여자도 있습니다.
+GitHub가 source of truth이며 로컬 환경 없이 작업하는 기여자도 있다.
 
 ## 관련 문서
 
