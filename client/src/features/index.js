@@ -19,9 +19,9 @@ import SettlementsPage from './settlements/SettlementsPage.vue';
 export const features = [
   { name: 'home', label: '홈', title: 'IT&AI 스터디', order: 0, icon: Home, component: HomePage, primary: true },
   { name: 'meetups', label: '모임', title: '모임', order: 10, icon: CalendarDays, component: MeetupPage, primary: true },
-  { name: 'verifications', label: '인증', title: '출석 인증', memberOnly: true, order: 20, icon: Camera, component: VerificationPage, primary: true },
-  { name: 'ranking', label: '랭킹', title: '랭킹', order: 30, icon: Trophy, component: RankingPage, primary: true },
-  { name: 'members', label: '멤버', title: '모임 멤버', order: 40, icon: Users, component: MembersPage, primary: true },
+  { name: 'verifications', label: '인증', title: '출석 인증', memberOnly: true, order: 20, icon: Camera, component: VerificationPage },
+  { name: 'ranking', label: '랭킹', title: '랭킹', order: 30, icon: Trophy, component: RankingPage },
+  { name: 'members', label: '멤버', title: '모임 멤버', order: 40, icon: Users, component: MembersPage },
   { name: 'notices', label: '공지사항', title: '공지사항', memberOnly: true, order: 90, icon: Megaphone, component: NoticesPage },
   { name: 'admin', label: '관리자', title: '관리자', order: 95, icon: ShieldCheck, component: AdminPage, adminOnly: true },
   { name: 'settlements', label: '정산', title: '정산', memberOnly: true, order: 98, icon: Calculator, component: SettlementsPage },
