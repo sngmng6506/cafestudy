@@ -80,14 +80,22 @@ export function createMeetupService({ db, storage, hooks, queries = createMeetup
 
       await queries.cancelMeetup(meetupId);
 
-      // 아직 큐에 남아 있는 등록 job을 멈춘다. 이걸 안 하면 worker가 나중에 그 job을
-      // 집어가 소모임에 정모를 만들고, 웹에는 닫힌 모임만 남아 손으로 지워야 한다.
-      // 이미 claim된 job은 worker가 실기기를 조작하는 중이라 멈출 수 없다(자동화 쪽에서 거른다).
-      if (meetup.somoimState === 'pending' && meetup.somoimJobId) {
-        await (hooks?.emit?.('meetupCancelled', { jobId: meetup.somoimJobId }) ?? Promise.resolve([]));
-      }
+      // 소모임 쪽 뒷정리는 듣는 쪽이 정한다 — 여기서는 취소했다는 사실만 알린다.
+      // 아직 등록 전이면 큐의 job을 멈추는 것으로 끝나지만, 이미 등록된 뒤라면
+      // 앱에 만들어진 정모를 지워야 한다. 그 판단에 필요한 상태와 제목·일시를
+      // 함께 넘긴다(정모를 찾는 키다). 이걸 안 하면 웹에서 취소한 모임이 소모임엔
+      // 그대로 남아, 멤버들은 취소된 줄 모르고 정모 페이지를 계속 본다.
+      const results = await (hooks?.emit?.('meetupCancelled', meetup) ?? Promise.resolve([]));
 
-      return { meetupId, cancelled: true };
+      // 뒷정리가 거부되면(예: 제출 스위치가 꺼져 있다) 취소는 그대로 두고 이유만
+      // 응답에 싣는다. 삼키면 소모임에 정모가 남았다는 사실이 아무 데도 안 남는다 —
+      // 성공한 삭제는 job 큐에 기록이 남지만, 만들어지지도 못한 job은 흔적이 없다.
+      const rejected = results.find((result) => result?.failed);
+      return {
+        meetupId,
+        cancelled: true,
+        somoimCleanup: rejected ? { requested: false, reason: rejected.reason } : null,
+      };
     },
 
     async retrySomoimRegistration({ meetupId, userId }) {

@@ -29,9 +29,23 @@ export function registerMeetupCreatedListener(ctx) {
   ctx.hooks.on('meetupSomoimRetryRequested', (meetup) => service.createJobForMeetup(meetup));
 
   // 취소는 autoRegister와 무관하게 구독한다. 자동 등록을 껐더라도 그전에 만들어진
-  // pending job이 큐에 남아 있을 수 있고, 그건 여전히 멈출 수 있어야 한다.
-  ctx.hooks.on('meetupCancelled', ({ jobId }) => {
-    if (!jobId) return undefined;
-    return service.cancelJobForMeetup(jobId);
+  // job과 이미 등록된 정모는 남아 있고, 그건 여전히 정리할 수 있어야 한다.
+  //
+  // 등록 단계에 따라 할 일이 다르다.
+  //   pending    — 아직 앱에 아무것도 없다. 큐의 job만 멈추면 끝난다.
+  //   registered — 앱에 정모가 이미 있다. 지우는 job을 새로 만든다.
+  // 그 사이(claimed 상태로 worker가 실기기를 조작하는 중) 취소하면 job 취소가
+  // 실패하고, 정모는 만들어진다. 그건 삭제 job으로 이어지지 않는다 — 취소 시점의
+  // somoim_state가 아직 pending이기 때문이다. 관리자 큐에 등록 성공으로 남으므로
+  // 손으로 지울 수 있다. 이 경합까지 자동으로 덮으려면 등록 완료 훅에서 취소 여부를
+  // 되짚어야 하는데, 희귀한 경합 때문에 정상 경로에 왕복을 더할 이유가 없다고 봤다.
+  ctx.hooks.on('meetupCancelled', (meetup) => {
+    if (meetup?.somoimState === 'pending' && meetup.somoimJobId) {
+      return service.cancelJobForMeetup(meetup.somoimJobId);
+    }
+    if (meetup?.somoimState === 'registered') {
+      return service.deleteJobForMeetup(meetup);
+    }
+    return undefined;
   });
 }

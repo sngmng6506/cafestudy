@@ -588,7 +588,15 @@ function cancelService({ somoimState, somoimJobId }) {
     },
     queries: {
       async getMeetupById() {
-        return { id: 'm1', hostId: 'host', status: 'open', somoimState, somoimJobId };
+        return {
+          id: 'm1',
+          hostId: 'host',
+          status: 'open',
+          title: '취소될 모임',
+          scheduledAt: '2026-09-01T10:00:00.000Z',
+          somoimState,
+          somoimJobId,
+        };
       },
       async cancelMeetup(id) { cancelled.push(id); },
     },
@@ -596,36 +604,33 @@ function cancelService({ somoimState, somoimJobId }) {
   return { service, emitted, cancelled };
 }
 
-test('cancelMeetup: 등록 대기 중이면 job을 멈추라고 알린다', async () => {
-  const { service, emitted, cancelled } = cancelService({
-    somoimState: 'pending',
-    somoimJobId: 'job-1',
-  });
-
-  const result = await service.cancelMeetup({ meetupId: 'm1', userId: 'host' });
-
-  assert.deepEqual(cancelled, ['m1'], '모임 취소가 먼저 일어나야 한다');
-  assert.deepEqual(emitted, [{ event: 'meetupCancelled', payload: { jobId: 'job-1' } }]);
-  assert.equal(result.cancelled, true);
-});
-
-test('cancelMeetup: 등록과 무관한 모임은 아무것도 알리지 않는다', async () => {
-  for (const somoimState of ['none', 'registered', 'failed']) {
+test('cancelMeetup: 취소 사실만 알리고 뒷정리 판단은 듣는 쪽에 맡긴다', async () => {
+  // 모든 상태에서 똑같이 알린다. 여기서 상태를 보고 거르면 소모임 등록 단계를
+  // 아는 지식이 모임 feature로 새어 들어온다.
+  for (const somoimState of ['none', 'pending', 'registered', 'failed']) {
     const { service, emitted, cancelled } = cancelService({ somoimState, somoimJobId: 'job-1' });
 
-    await service.cancelMeetup({ meetupId: 'm1', userId: 'host' });
+    const result = await service.cancelMeetup({ meetupId: 'm1', userId: 'host' });
 
-    assert.deepEqual(cancelled, ['m1'], `${somoimState}: 취소 자체는 되어야 한다`);
-    assert.deepEqual(emitted, [], `${somoimState}: 멈출 job이 없다`);
+    assert.deepEqual(cancelled, ['m1'], `${somoimState}: 취소 자체가 먼저 일어나야 한다`);
+    assert.equal(emitted.length, 1, `${somoimState}: 한 번 알려야 한다`);
+    assert.equal(emitted[0].event, 'meetupCancelled');
+    assert.equal(result.cancelled, true);
   }
 });
 
-test('cancelMeetup: job id가 없으면 알리지 않는다', async () => {
-  const { service, emitted } = cancelService({ somoimState: 'pending', somoimJobId: null });
+test('cancelMeetup: 알림에 정모를 찾을 키(제목·일시)를 함께 싣는다', async () => {
+  // 이미 등록된 정모를 지우려면 듣는 쪽이 제목과 일시를 알아야 한다. jobId만
+  // 넘기던 시절의 payload로 돌아가면 삭제 job을 만들 수 없다.
+  const { service, emitted } = cancelService({ somoimState: 'registered', somoimJobId: 'job-1' });
 
   await service.cancelMeetup({ meetupId: 'm1', userId: 'host' });
 
-  assert.deepEqual(emitted, []);
+  const { payload } = emitted[0];
+  assert.equal(payload.somoimState, 'registered');
+  assert.equal(payload.title, '취소될 모임');
+  assert.equal(payload.scheduledAt, '2026-09-01T10:00:00.000Z');
+  assert.equal(payload.hostId, 'host');
 });
 
 test('cancelMeetup: hooks가 없어도 취소는 성공한다', async () => {

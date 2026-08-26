@@ -208,10 +208,15 @@ pending → claimed → succeeded
   (재시도 여유가 있으면 `pending`, 다 썼으면 `needs_manual_review`).
 - 완료·실패가 **보고된** job은 다시 실행하지 않는다. worker가 결과를 보고했다면
   그 판단을 뒤집지 않는다.
-- 개설자가 모임을 취소하면 아직 claim되지 않은 `pending` job은 `failed`가 되고
-  `error_message`에 `모임이 취소되어 등록을 중단했어요`가 남는다. 이미 claim된 job은
-  건드리지 않는다 — 기기를 조작하는 중이라 complete/fail 보고와 어긋난다. 그때는
-  정모가 생성되므로 사람이 정리한다.
+- 개설자가 모임을 취소하면 등록 단계에 따라 갈라진다.
+  - `pending` — 아직 claim되지 않은 job은 `failed`가 되고 `error_message`에
+    `모임이 취소되어 등록을 중단했어요`가 남는다.
+  - `registered` — 앱에 정모가 이미 있으므로 `delete_meetup` job을 새로 만든다.
+  이미 claim된 job은 건드리지 않는다 — 기기를 조작하는 중이라 complete/fail 보고와
+  어긋난다. 그때는 정모가 생성되지만 취소 시점 상태가 `pending`이라 삭제 job으로도
+  이어지지 않으므로 사람이 정리한다.
+- 삭제 job은 일시의 미래 검증을 하지 않는다. 삭제에서 일시는 "언제 여는가"가 아니라
+  "어느 정모인가"를 가리키는 키라, 지난 정모도 지울 수 있어야 한다.
 - `submit_attempted_at`이 찍힌 job은 재시도 여유가 남아 있어도 `pending`으로
   돌아가지 않고 `needs_manual_review`로 간다(위 "Submit attempt" 참고).
 

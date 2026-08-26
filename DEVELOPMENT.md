@@ -79,14 +79,19 @@ meetups                       -- 앱 안에서 직접 만든 모임
     meetupSomoimRetryRequested   POST /api/meetups/:id/retry-somoim → pending
     somoimRegistrationSucceeded  /jobs/:id/complete → registered
     somoimRegistrationFailed     /jobs/:id/fail, /jobs/claim(재시도 소진) → failed
-    meetupCancelled              DELETE /api/meetups/:id → 큐에 남은 job 중단
+    meetupCancelled              DELETE /api/meetups/:id → 등록 단계에 따라 뒷정리
 - 재시도는 개설자만, failed 모임만 할 수 있다. meetupCreated를 재사용하지 않는 것은
   그 리스너가 SOMOIM_AUTOMATION_AUTO_REGISTER로 게이트돼 있어, 자동 등록을 끄면
   재시도까지 함께 막히기 때문이다.
 - submit_attempted_at이 찍힌 job은 실패를 알리지 않아 somoim_state가 pending에
   남는다(SOMOIM_AUTOMATION.md "Submit attempt").
-- 이미 claim된 job은 취소해도 멈출 수 없다. 정모가 생성되므로 손으로 지운다.
-  알려진 제약이다.
+- 취소 훅은 somoim_state를 보고 갈라진다: `pending`이면 큐의 job을 멈추고,
+  `registered`면 앱에 만들어진 정모를 지우는 `delete_meetup` job을 만든다.
+  모임 feature는 취소 사실만 알리고 이 판단은 자동화 쪽이 한다.
+- 이미 claim된 job은 취소해도 멈출 수 없다. 그 사이 정모가 생성되지만 취소 시점의
+  상태가 `pending`이라 삭제 job으로도 이어지지 않는다. 손으로 지운다. 알려진 제약이다.
+- 크롤링(`somoim_events`)과 자동 등록은 서로를 모른다. 자동 등록된 모임은 다음
+  크롤링에서 정모로도 들어와 같은 모임이 두 건으로 보인다("알려진 설계 한계" 참고).
 
 participants                  -- meetup 참가 (UNIQUE meetup_id+user_id)
 - id, meetup_id, user_id, joined_at
@@ -244,6 +249,14 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
   로컬에서 `npm run db:migrate`를 실행하지 않는다.
 - owner 초기 지정에는 부트스트랩 제약이 있다.
   변경 전 `app_owner`, `users.admin_role`, 비밀번호 상태를 함께 확인한다.
+- 자동 등록과 크롤링이 같은 모임을 두 번 만든다. 앱 모임을 소모임에 등록하면
+  다음 크롤링이 그걸 `somoim_events`로 가져오는데, 둘을 잇는 키가 없다.
+  - 예정 목록(`useUpcomingMeetups`)은 두 소스를 그대로 합쳐 같은 모임이 두 장 뜬다.
+  - 정산 화면은 크롤링된 일정을 `source_type='somoim'` 모임으로 materialize하므로,
+    참여·인증이 붙은 앱 모임과 정산이 붙은 모임이 갈라진다. 이때 host는 소모임
+    호스트(자동화 계정)로 잡힌다.
+  잇는다면 크롤러의 유니크 키와 같은 `(title, scheduled_at)`으로 `somoim_state`가
+  `registered`인 앱 모임과 짝지어 크롤링 쪽을 숨기는 방향이다. 미구현.
 
 ## 포인트 규칙
 

@@ -327,6 +327,72 @@ test('createJobForMeetup: 웹 모임을 그대로 payload로 옮긴다', async (
   assert.equal(calls.created[0].requestedBy, USER_ID);
 });
 
+test('deleteJobForMeetup: 취소된 모임을 지우는 job으로 옮긴다', async () => {
+  const { service, calls } = serviceWith({ allowSubmit: true });
+
+  const result = await service.deleteJobForMeetup({
+    id: 'meetup-1',
+    hostId: USER_ID,
+    title: '토요일 카페 스터디',
+    scheduledAt: '2026-08-29T01:00:00.000Z',
+  });
+
+  assert.equal(result.jobId, JOB_ID);
+  assert.equal(calls.created[0].type, 'delete_meetup');
+  assert.equal(calls.created[0].payload.title, '토요일 카페 스터디');
+  assert.equal(calls.created[0].payload.submit, true, '취소 뒷정리는 실제 삭제가 목적이다');
+  assert.equal(calls.created[0].payload.dryRun, false);
+  assert.equal(calls.created[0].requestedBy, USER_ID);
+});
+
+test('deleteJobForMeetup: 이미 지난 정모도 지울 수 있다', async () => {
+  // 삭제에서 일시는 "언제 여는가"가 아니라 "어느 정모인가"를 가리키는 키다.
+  // 생성 쪽 미래 검증을 그대로 물려받으면 지난 정모를 영영 못 지운다.
+  const { service, calls } = serviceWith({ allowSubmit: true });
+
+  const result = await service.deleteJobForMeetup({
+    id: 'meetup-1',
+    hostId: USER_ID,
+    title: '지난 스터디',
+    scheduledAt: '2020-01-01T01:00:00.000Z',
+  });
+
+  assert.equal(result.jobId, JOB_ID);
+  assert.equal(calls.created[0].payload.scheduledAt, '2020-01-01T01:00:00.000Z');
+});
+
+test('deleteJobForMeetup: 제출이 꺼져 있으면 job을 만들지 않고 이유를 돌려준다', async () => {
+  const { service, calls } = serviceWith({ allowSubmit: false });
+
+  const result = await service.deleteJobForMeetup({
+    id: 'meetup-1',
+    hostId: USER_ID,
+    title: '토요일 카페 스터디',
+    scheduledAt: '2026-08-29T01:00:00.000Z',
+  });
+
+  assert.equal(result.failed, true, '취소 자체를 되돌리지는 않는다 — 이유만 알린다');
+  assert.deepEqual(calls.created, []);
+});
+
+test('createMeetupJob: 지난 일시는 여전히 거부한다', async () => {
+  // 삭제에 붙인 requireFuture 옵션이 생성 쪽 검증까지 풀어버리면 안 된다.
+  const { service } = serviceWith({ allowSubmit: true });
+
+  await assert.rejects(
+    () => service.createMeetupJob({
+      requestedBy: USER_ID,
+      input: {
+        title: '지난 스터디',
+        scheduledAt: '2020-01-01T01:00:00.000Z',
+        location: '장소',
+        capacity: 6,
+      },
+    }),
+    (err) => err.code === 'VALIDATION_ERROR' && /future/.test(err.message),
+  );
+});
+
 test('createJobForMeetup: 설명이 없으면 빈 문자열로 보낸다', async () => {
   const { service, calls } = serviceWith({ allowSubmit: true });
 

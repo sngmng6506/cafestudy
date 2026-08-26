@@ -48,7 +48,9 @@ export function createSomoimAutomationService({
   async function deleteMeetupJob({ requestedBy, input }) {
     assertUuid(requestedBy, 'requestedBy');
     const title = normalizeText(input?.title, 'title', MAX_TITLE_LENGTH);
-    const scheduledAt = normalizeScheduledAt(input?.scheduledAt);
+    // 삭제는 미래 검증을 하지 않는다. 여기서 일시는 "언제 열 것인가"가 아니라
+    // "어느 정모인가"를 가리키는 키다 — 지난 정모도 지울 수 있어야 한다.
+    const scheduledAt = normalizeScheduledAt(input?.scheduledAt, { requireFuture: false });
     const submit = input?.submit === true;
     if (submit && !allowSubmit) {
       throwValidation('Final submit is disabled. Create a dry-run job first.');
@@ -80,6 +82,27 @@ export function createSomoimAutomationService({
         });
         return { jobId };
       } catch (err) {
+        if (err instanceof AppError && err.code === 'VALIDATION_ERROR') {
+          return { failed: true, reason: err.message };
+        }
+        throw err;
+      }
+    },
+
+    // 이미 소모임에 등록된 모임이 웹에서 취소됐을 때 부른다. 앱에 만들어진 정모를
+    // 지우는 job을 만든다. requestedBy는 호스트다 — 취소를 실행한 사람이 호스트이고
+    // (라우트에서 검증한다), 큐에서 누구 때문에 생긴 삭제인지 추적할 수 있어야 한다.
+    async deleteJobForMeetup(meetup) {
+      try {
+        const { jobId } = await deleteMeetupJob({
+          requestedBy: meetup.hostId,
+          input: { title: meetup.title, scheduledAt: meetup.scheduledAt, submit: true },
+        });
+        return { jobId };
+      } catch (err) {
+        // 취소 자체는 이미 커밋됐다. 삭제 job을 못 만들었다고 취소를 되돌리지는
+        // 않는다 — 사용자가 요청한 건 취소이고, 소모임 정리는 뒷정리다.
+        // 실패를 삼키지 않고 이유를 돌려주면 라우트가 응답에 실어 알릴 수 있다.
         if (err instanceof AppError && err.code === 'VALIDATION_ERROR') {
           return { failed: true, reason: err.message };
         }
@@ -212,11 +235,13 @@ function normalizeOptionalText(value, maxLength) {
 // 큐 대기·stale-claim 재시도·호스트가 임의 시점에 누르는 재시도를 거칠 수 있어
 // scheduledAt이 여기 도착할 때는 이미 지났을 수 있다. worker가 지난 시각으로 화면을
 // 채우려 드는 걸 막기 위해 여기서도 다시 검사한다.
-function normalizeScheduledAt(value) {
+function normalizeScheduledAt(value, { requireFuture = true } = {}) {
   if (!value) throwValidation('scheduledAt is required');
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) throwValidation('scheduledAt must be a valid date');
-  if (date.getTime() <= Date.now()) throwValidation('scheduledAt must be in the future');
+  if (requireFuture && date.getTime() <= Date.now()) {
+    throwValidation('scheduledAt must be in the future');
+  }
   return date.toISOString();
 }
 function normalizeCapacity(value) {
