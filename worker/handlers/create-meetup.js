@@ -614,6 +614,49 @@ async function setDateAndTime(adb, deviceId, artifactDir, target) {
   }
 }
 
+// 찾는 요소가 나올 때까지 아래로 스크롤하며 화면을 다시 읽는다. 정모 개설 폼은
+// 가로 화면에서 아래쪽(정모 공지, 저장 버튼)이 잘려 첫 덤프에 잡히지 않는다.
+async function scrollUntilFound(adb, deviceId, artifactDir, idSuffix, attempts = 5) {
+  let nodes = await readScreen(adb, deviceId, artifactDir);
+  for (let i = 0; i < attempts && !findByResourceId(nodes, idSuffix); i += 1) {
+    await adb.shell(deviceId, ['input', 'swipe', '1280', '1300', '1280', '500', '300']);
+    await sleep(800);
+    nodes = await readScreen(adb, deviceId, artifactDir);
+  }
+  return nodes;
+}
+
+// "정모 공지(전체 멤버 알림)" 체크박스를 원하는 상태로 맞춘다.
+//
+// 켜져 있으면 정모를 만들 때 클럽 전원에게 알림이 간다. 기본값은 켜짐이고 그게
+// 자동 등록의 목적이지만, 실기기에서 흐름을 시험할 때 실제 멤버에게 알림을 뿌리지
+// 않으려면 꺼야 한다. 상태는 check_box의 selected 속성으로 읽는다(체크 시 true).
+//
+// 가로 화면에서는 이 줄이 폼 아래쪽에 있어 처음 덤프에 안 잡힌다. 보일 때까지
+// 스크롤한 뒤 다룬다.
+async function setNoticeCheckbox(adb, deviceId, artifactDir, notify) {
+  let nodes = await scrollUntilFound(adb, deviceId, artifactDir, 'check_box');
+
+  const checkBox = findByResourceId(nodes, 'check_box');
+  if (!checkBox) {
+    throw new ManualReviewError('정모 공지 체크박스를 찾을 수 없음', { stage: 'set_notice' });
+  }
+  if (checkBox.selected === notify) return;
+
+  await tap(adb, deviceId, checkBox.center);
+  await sleep(800);
+
+  nodes = await readScreen(adb, deviceId, artifactDir);
+  const after = findByResourceId(nodes, 'check_box');
+  if (after?.selected !== notify) {
+    throw new ManualReviewError('정모 공지 설정을 바꾸지 못했음', {
+      stage: 'set_notice',
+      expected: notify,
+      actual: after?.selected ?? null,
+    });
+  }
+}
+
 // 폼이 사진을 받았는지. 안내 문구가 사라지면 받은 것이다.
 export function isPhotoAttached(nodes) {
   return !nodes.some((n) => n.text === PHOTO_PLACEHOLDER_TEXT);
@@ -674,11 +717,13 @@ async function attachMeetupPhoto(adb, deviceId, artifactDir, photoPath) {
   }
   await tap(adb, deviceId, cropButton.center);
 
-  // 폼으로 돌아와 사진이 실제로 붙었는지 확인한다.
+  // 폼으로 돌아와 사진이 실제로 붙었는지 확인한다. 폼 도착 판정에 save_button을
+  // 쓰면 안 된다 — 가로 화면에서는 폼 아래쪽이라 덤프에 안 잡힌다. 항상 보이는
+  // 화면 제목으로 판정한다.
   for (let i = 0; i < 10; i += 1) {
     await sleep(1000);
     nodes = await readScreen(adb, deviceId, artifactDir);
-    if (findByResourceId(nodes, 'save_button') && isPhotoAttached(nodes)) return;
+    if (nodes.some((n) => n.text === '정모 개설') && isPhotoAttached(nodes)) return;
   }
   throw new ManualReviewError('사진을 붙였는지 확인할 수 없음', { stage: 'attach_photo' });
 }
@@ -729,14 +774,39 @@ function buildExpectedFieldValues(payload, target) {
   return expected;
 }
 
+// 폼 전체를 위에서 아래로 훑으며 값을 모은다. 가로 화면에서는 폼이 한 화면에 다
+// 들어오지 않아, 한 번만 읽으면 화면 밖 칸이 "비어 있음"으로 보인다.
+async function collectFormValues(adb, deviceId, artifactDir, ids) {
+  // 먼저 맨 위로 올린다. 앞 단계에서 아래로 스크롤해 둔 상태일 수 있다.
+  for (let i = 0; i < 5; i += 1) {
+    await adb.shell(deviceId, ['input', 'swipe', '1280', '500', '1280', '1300', '200']);
+  }
+  await sleep(600);
+
+  const found = new Map();
+  for (let pass = 0; pass < 6; pass += 1) {
+    const nodes = await readScreen(adb, deviceId, artifactDir);
+    for (const id of ids) {
+      if (found.has(id)) continue;
+      const node = findByResourceId(nodes, id);
+      if (node) found.set(id, node.text);
+    }
+    if (found.size === ids.length) break;
+    await adb.shell(deviceId, ['input', 'swipe', '1280', '1300', '1280', '500', '300']);
+    await sleep(700);
+  }
+  return found;
+}
+
 async function verifyForm(adb, deviceId, artifactDir, payload, target) {
-  const nodes = await readScreen(adb, deviceId, artifactDir);
   const expected = buildExpectedFieldValues(payload, target);
+  const values = await collectFormValues(adb, deviceId, artifactDir, Object.keys(expected));
+
   const mismatches = [];
   for (const [id, expectedValue] of Object.entries(expected)) {
-    const node = findByResourceId(nodes, id);
-    if (!node || node.text !== expectedValue) {
-      mismatches.push({ field: id, expected: expectedValue, actual: node?.text ?? null });
+    const actual = values.get(id);
+    if (actual !== expectedValue) {
+      mismatches.push({ field: id, expected: expectedValue, actual: actual ?? null });
     }
   }
   if (mismatches.length > 0) {
@@ -791,6 +861,9 @@ export function createCreateMeetupHandler({
   targetGroupName = DEFAULT_TARGET_GROUP_NAME,
   // 정모 사진으로 쓸 로컬 이미지. 비우면 단색 16:9 플레이스홀더를 만들어 쓴다.
   photoPath = '',
+  // 정모를 만들 때 클럽 전원에게 알림을 보낼지. 자동 등록의 목적이 알리는 것이라
+  // 기본은 켜짐이고, 실기기 시험처럼 실제 멤버를 건드리면 안 될 때만 끈다.
+  notifyMembers = true,
 } = {}) {
   return async function createMeetup({ payload, deviceId, mode, jobId, onBeforeSubmit }) {
     if (mode !== 'dryRun' && mode !== 'submit') {
@@ -822,6 +895,10 @@ export function createCreateMeetupHandler({
       await attachMeetupPhoto(adb, deviceId, jobArtifactDir, photoPath);
     }
 
+    // 알림 설정은 dryRun에서도 맞춰 둔다. 제출 직전 화면이 실제 제출될 모습과
+    // 같아야 dry-run이 의미가 있다.
+    await setNoticeCheckbox(adb, deviceId, jobArtifactDir, notifyMembers);
+
     // 텍스트 입력 뒤에는 키보드가 떠 있다. 사진 영역이나 저장 버튼을 가릴 수 있어
     // 확인·제출 전에 내린다.
     await hideKeyboardIfShown(adb, deviceId);
@@ -835,7 +912,8 @@ export function createCreateMeetupHandler({
 
     // mode === 'submit': verifyForm이 방금 화면이 payload와 일치함을 확인했으므로
     // SOMOIM_AUTOMATION.md의 "제출 직전 화면이 payload와 일치" 조건을 만족한다.
-    const nodes = await readScreen(adb, deviceId, jobArtifactDir);
+    // 가로 화면에서는 저장 버튼이 폼 아래쪽이라 보일 때까지 스크롤해야 한다.
+    const nodes = await scrollUntilFound(adb, deviceId, jobArtifactDir, 'save_button');
     const saveButton = nodes.find((n) => n.resourceId.endsWith('/save_button') && n.text === '정모 만들기');
     if (!saveButton) {
       throw new ManualReviewError('정모 만들기 저장 버튼을 찾을 수 없음', { stage: 'submit' });
@@ -866,6 +944,11 @@ export function createCreateMeetupHandler({
       outcome = evaluateSubmitOutcome(await readScreen(adb, deviceId, jobArtifactDir), {
         title: payload.title,
       });
+      // 게시글 화면에 도착했지만 일시·장소 줄이 화면 밖일 수 있다(가로 화면).
+      // 그때만 조금 내려서 다시 본다.
+      if (outcome.reason === 'no_event_post') {
+        await adb.shell(deviceId, ['input', 'swipe', '1280', '1100', '1280', '700', '300']);
+      }
     }
 
     const evidence = await captureEvidence(adb, deviceId, jobArtifactDir, jobId, 'after-submit');

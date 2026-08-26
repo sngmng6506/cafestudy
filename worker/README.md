@@ -35,6 +35,7 @@ node worker/index.js
 | `ARTIFACT_DIR` | | `./worker-artifacts` | 스크린샷·UI dump 저장 위치. job id별 하위 폴더에 남는다 |
 | `SOMOIM_TARGET_GROUP_NAME` | | `[홍대] it&ai 스터디` | 정모를 만들 클럽 이름. 클럽장이 이름을 바꾸면 여기서 맞춘다 |
 | `MEETUP_PHOTO_PATH` | | (자동 생성) | 정모 사진으로 쓸 로컬 이미지. 비우면 단색 16:9 플레이스홀더를 만든다 |
+| `SOMOIM_NOTIFY_MEMBERS` | | `true` | 정모 생성 시 전체 멤버 알림. 실기기 시험용으로만 `false`로 끈다 |
 | `WORKER_LOCK_FILE` | | (OS 임시폴더) | worker 중복 실행을 막는 락 파일 경로 |
 
 `INTERNAL_API_KEY`는 헤더로만 쓰고 로그·에러 메시지에 남기지 않는다.
@@ -88,6 +89,15 @@ ADBKeyBoard의 `ADB_EDITOR_CODE`(IME_ACTION_SEARCH) 셋 다 화면을 바꾸지 
 
 **AM/PM 스피너는 값이 다를 때만 연다.** 열어 둔 드롭다운이 다이얼로그를 덮어,
 뒤따르는 `OK` 탭이 드롭다운을 닫는 데 쓰인다.
+
+**폼이 한 화면에 다 들어오지 않는다.** 가로 화면에서는 정모 공지 체크박스와 저장
+버튼이 아래로 밀려 첫 덤프에 없다. 요소를 찾을 때와 폼 값을 대조할 때 모두 스크롤하며
+읽는다(`scrollUntilFound`, `collectFormValues`). 화면 밖이라는 이유로 "값이 비었다"고
+판정하면 안 된다.
+
+**전체 멤버 알림은 `check_box`의 `selected`로 읽고 끈다.** 기본은 켜짐이라 정모를
+만들면 클럽 전원에게 알림이 간다. 실기기에서 흐름을 시험할 때는
+`SOMOIM_NOTIFY_MEMBERS=false`로 꺼서 실제 멤버를 건드리지 않는다.
 
 **폼이 안 보인다고 제출된 것이 아니다.** uiautomator는 맨 위 창만 덤프하므로 폼을
 덮는 창이 있으면 폼 노드가 통째로 사라진다. 실기기에서 두 번 당했다 — 사진

@@ -21,6 +21,7 @@ const handlers = {
     artifactDir: config.artifactDir,
     ...(config.targetGroupName ? { targetGroupName: config.targetGroupName } : {}),
     photoPath: config.meetupPhotoPath,
+    notifyMembers: config.notifyMembers,
   }),
 };
 
