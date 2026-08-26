@@ -78,8 +78,12 @@ Decision: <판단이 개입된 경우만>
 - 새 화면은 `client/src/features/<name>/`에 두고 `features/index.js`에 등록한다.
 - 페이지 제목은 `features/index.js`의 `title`에 둔다. 셸(`App.vue`)이 제목과 알림·프로필을
   한 헤더로 그리므로 화면 안에서 `<h1>`을 따로 렌더하지 않는다.
+- 하단 바에 탭은 없다. 등록한 화면은 모두 `더보기` 메뉴로 들어가며 `order`가 순서를
+  정한다. 하단 바가 소유하는 것은 `모임 만들기`와 기능 검색·`더보기`뿐이다.
 - 로그인해야 쓸 수 있는 화면은 `memberOnly: true`로 표시한다. 게스트에게는 잠금으로
   보이고 누르면 로그인 안내가 뜬다. 서버 라우트의 인증 요구와 어긋나지 않게 맞춘다.
+- 새 화면은 `test/guest-gate.test.js`의 목록에도 넣는다. 게스트에게 보일지 한 번은
+  의식적으로 정하게 하는 장치라, 넣지 않으면 테스트가 실패한다.
 - 자연어 기능 검색에 노출할 화면은 `features/index.js`의 `name`과 같은 `featureName`으로
   `client/src/features/menu-search/menu-search.metadata.js`에 `description`, `searchTerms`,
   `examples`를 함께 등록한다. Ternlight WASM은 이 문장들을 임베딩하며, 등록하지 않은

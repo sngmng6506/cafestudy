@@ -63,7 +63,10 @@ meetups                       -- 앱 안에서 직접 만든 모임
 - id, host_id, title, description, location, cafe_name(legacy, nullable),
   scheduled_at, capacity, status(open/closed), source_type(app/somoim),
   source_ref(nullable), somoim_state(none/pending/registered/failed),
-  somoim_job_id(nullable), created_at
+  somoim_job_id(nullable), place_id(nullable), place_url(nullable), created_at
+- place_id/place_url은 모임을 만들 때 검색 결과에서 고른 카카오 장소의 참조다.
+  place_url은 소모임 정모의 "지도 URL"에 그대로 들어가므로 카카오 도메인만 받는다.
+  직접 입력했거나 이 컬럼이 생기기 전 모임은 null이며, 그때는 문자열로만 다룬다.
 - `status`는 DB 운영 상태, API의 `lifecycleState`는 scheduled_at으로 계산한 upcoming/done 상태다.
 - source_type='somoim'인 행은 정산 화면에서 소모임 일정을 정산 대상으로 쓰기 위해
   materialize한 앱 모임이다. source_ref는 somoim_events.id 문자열이며 unique다.
@@ -232,10 +235,14 @@ game2048_scores               -- 2048 미니게임 최고점수 (유저당 한 �
   페이지 이탈 시에만 저장(서버 부하 최소화), 게임오버 시 NULL로 비움.
   서버가 구조를 검증해 저장(변조/오염 방어).
 
-cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩 캐시 (네이버 장소 검색)
+cafe_places                   -- 카페 위치 문자열 → 장소 해석 캐시 (카카오 로컬 검색)
 - location(PK, cafe_location과 같은 문자열 키), place_name, road_address,
-  lat, lng(둘 다 null이면 검색 실패 기록), resolved_at
-- 카페 목록 조회 시 미해석 위치를 요청당 최대 5개씩 lazy 지오코딩.
+  lat, lng(둘 다 null이면 검색 실패 기록), kakao_place_id, place_url, resolved_at
+- kakao_place_id가 카페 이력을 합치는 기준이다. 같은 값을 가리키는 항목만 한 곳으로
+  본다("디벙크", "디벙크 (합정)", "디벙크 (서울특별시 마포구 ...)").
+- 검색어 후보는 원문과 괄호를 벗긴 형태뿐이다. 꼬리 단어를 떼며 재시도하지 않는다 —
+  "아비아채 지하1층"에서 뒷단어를 떼면 "아비아채"가 되고 전혀 다른 지점을 물어온다.
+- 카페 목록 조회 시 미해석 위치를 요청당 최대 5개씩 lazy 해석.
   실패 기록은 7일 뒤 재시도. 검색 API 미설정 시에는 기록하지 않음.
 ```
 
