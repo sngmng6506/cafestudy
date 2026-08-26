@@ -174,15 +174,15 @@ function closeLogin() {
 
         <button
           v-if="hasOverflow"
-          class="focus-ring ui-radius-item ui-border flex h-10 shrink-0 items-center gap-1.5 border px-3 text-[13px] font-semibold transition"
+          class="focus-ring ui-radius-item ui-border flex h-10 w-10 shrink-0 items-center justify-center border transition"
           :class="moreOpen ? 'ui-nav-item-active' : 'ui-nav-item'"
           type="button"
+          aria-label="더보기"
           aria-haspopup="menu"
           :aria-expanded="moreOpen"
           @click="toggleMore"
         >
-          <MoreHorizontal :size="17" />
-          더보기
+          <MoreHorizontal :size="18" />
         </button>
       </div>
     </div>
