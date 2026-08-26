@@ -1,4 +1,4 @@
-import { Award, Calculator, CalendarDays, Camera, Coffee, Dices, Gamepad2, History, Home, Megaphone, QrCode, SearchCheck, ShieldCheck, Trophy, Users } from '@lucide/vue';
+import { Award, Calculator, CalendarDays, Camera, Coffee, Dices, Gamepad2, History, Home, Info, Megaphone, QrCode, SearchCheck, ShieldCheck, Trophy, Users } from '@lucide/vue';
 import HomePage from './home/HomePage.vue';
 import MeetupPage from './meetups/MeetupPage.vue';
 import RankingPage from './ranking/RankingPage.vue';
@@ -15,6 +15,7 @@ import Game2048Page from './game2048/Game2048Page.vue';
 import NoticesPage from './notices/NoticesPage.vue';
 import AdminPage from './admin/AdminPage.vue';
 import SettlementsPage from './settlements/SettlementsPage.vue';
+import AboutPage from './about/AboutPage.vue';
 
 export const features = [
   { name: 'home', label: '홈', title: 'IT&AI 스터디', order: 0, icon: Home, component: HomePage },
@@ -33,4 +34,5 @@ export const features = [
   { name: 'updates', label: '알려진 이슈', title: '알려진 이슈 & 개선 예정', order: 120, icon: History, component: UpdatesPage },
   { name: 'search-guide', label: '검색 안내', title: '자연어 기능 검색', order: 123, icon: SearchCheck, component: SearchGuidePage },
   { name: 'qr', label: '접속 QR', title: '접속 QR', order: 125, icon: QrCode, component: QrPage },
+  { name: 'about', label: '프로젝트 정보', title: '프로젝트 정보', order: 130, icon: Info, component: AboutPage },
 ];

@@ -95,6 +95,12 @@ export const menuSearchMetadata = [
     searchTerms: ['공유', '접속 주소', 'QR 코드', '링크 복사', '친구에게 보내기'],
     examples: ['친구에게 사이트 공유하고 싶어', '접속 QR 보여줘'],
   },
+  {
+    featureName: 'about',
+    description: '이 앱을 무엇으로 만들었는지 보고 GitHub 소스 코드로 갑니다.',
+    searchTerms: ['프로젝트 정보', '깃허브', 'GitHub', '소스 코드', '오픈소스', '저장소', '만든 사람', '기술 스택'],
+    examples: ['소스 코드 어디서 봐?', '깃허브 링크', '이 앱 뭘로 만들었어?'],
+  },
 ];
 
 export function buildMenuSearchEntries(metadata = menuSearchMetadata) {

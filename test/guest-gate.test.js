@@ -18,7 +18,7 @@ function registeredFeatures() {
 // 로그인해야만 내용이 생기는 화면. 서버 라우트가 requireUser로 막고 있는 기능들이다.
 const NEEDS_LOGIN = ['verifications', 'notices', 'badges', 'settlements'];
 // 비로그인으로도 읽을 수 있는 화면. 서버가 인증 없이 응답하는 기능들이다.
-const OPEN_TO_GUESTS = ['home', 'meetups', 'ranking', 'members', 'cafes', 'meetup-history'];
+const OPEN_TO_GUESTS = ['home', 'meetups', 'ranking', 'members', 'cafes', 'meetup-history', 'about'];
 
 test('로그인이 필요한 화면은 모두 memberOnly로 잠근다', () => {
   const features = registeredFeatures();
