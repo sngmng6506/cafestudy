@@ -39,11 +39,24 @@ export function registerMeetupCreatedListener(ctx) {
   // somoim_state가 아직 pending이기 때문이다. 관리자 큐에 등록 성공으로 남으므로
   // 손으로 지울 수 있다. 이 경합까지 자동으로 덮으려면 등록 완료 훅에서 취소 여부를
   // 되짚어야 하는데, 희귀한 경합 때문에 정상 경로에 왕복을 더할 이유가 없다고 봤다.
-  ctx.hooks.on('meetupCancelled', (meetup) => {
-    if (meetup?.somoimState === 'pending' && meetup.somoimJobId) {
-      return service.cancelJobForMeetup(meetup.somoimJobId);
-    }
+  ctx.hooks.on('meetupCancelled', async (meetup) => {
     if (meetup?.somoimState === 'registered') {
+      return service.deleteJobForMeetup(meetup);
+    }
+    if (meetup?.somoimState !== 'pending' || !meetup.somoimJobId) return undefined;
+
+    // 아직 큐에 있으면 멈추는 것으로 끝난다 — 앱에는 아직 아무것도 없다.
+    if (await service.cancelJobForMeetup(meetup.somoimJobId)) return { cancelled: true };
+
+    // 못 멈췄다 = worker가 이미 집어갔다. 그 job이 제출을 시도했다면 정모가
+    // 만들어졌을 수 있다. 실패로 보고된 job도 마찬가지다 — 실기기에서 제출 직후
+    // 화면을 읽다 adb가 깨져, job은 실패인데 정모는 앱에 남은 일이 있었다.
+    // 그때 somoim_state는 pending에 머물러 이 훅이 아무것도 하지 않았고, 취소한
+    // 모임의 정모가 앱에 그대로 남았다.
+    //
+    // 지우러 가는 쪽이 안전하다. 삭제 handler는 제목과 일시가 모두 맞을 때만
+    // 지우고, 정모가 없으면 사람에게 넘긴다 — 엉뚱한 것을 지우지 않는다.
+    if (await service.didAttemptSubmit(meetup.somoimJobId)) {
       return service.deleteJobForMeetup(meetup);
     }
     return undefined;

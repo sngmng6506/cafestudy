@@ -110,6 +110,15 @@ export function createSomoimAutomationService({
       }
     },
 
+    // job이 제출 버튼을 누르기 직전까지 갔는지. 눌렀다면 정모가 만들어졌을 수 있다 —
+    // 실패로 끝났더라도 그렇다. 실기기에서 제출 직후 화면을 읽다가 adb가 깨져
+    // job은 실패로 보고됐는데 정모는 남은 일이 있었다.
+    async didAttemptSubmit(jobId) {
+      assertUuid(jobId, 'jobId');
+      const job = await queries.getJob(jobId);
+      return Boolean(job?.submitAttemptedAt);
+    },
+
     // 모임 취소 훅이 부른다. 아직 claim되지 않은 job만 중단된다.
     async cancelJobForMeetup(jobId) {
       assertUuid(jobId, 'jobId');
