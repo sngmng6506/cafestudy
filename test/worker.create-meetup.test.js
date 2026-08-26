@@ -7,6 +7,7 @@ import {
   evaluateSubmitOutcome,
   fitLocationForApp,
   isCreateFormPresent,
+  resolveMapUrl,
 } from '../worker/somoim-form.js';
 import {
   assertScheduledAtIsFuture,
@@ -504,4 +505,27 @@ test('100자를 넘으면 붙이지 않는다', () => {
 test('장소가 없으면 만들지 않는다', () => {
   assert.equal(buildNaverMapUrl(''), null);
   assert.equal(buildNaverMapUrl('   '), null);
+});
+
+test('resolveMapUrl: 진짜 장소 URL이 있으면 그것을 쓴다', () => {
+  // 검색 URL은 이름으로 만든 것이라 그 가게를 정확히 열지 못한다. 서버가 카카오
+  // 검색 결과에서 받아 둔 상세페이지가 있으면 그쪽이 우선이다.
+  assert.equal(
+    resolveMapUrl({ mapUrl: 'https://place.map.kakao.com/1095339694', location: '아비아채 서울홍대점 (서울...)' }),
+    'https://place.map.kakao.com/1095339694',
+  );
+});
+
+test('resolveMapUrl: 없으면 이름으로 만든 검색 URL로 물러난다', () => {
+  // 직접 입력했거나 이 기능 이전에 만들어진 모임이다. 지도가 아예 없는 것보단 낫다.
+  assert.equal(
+    resolveMapUrl({ location: '아비아채 서울홍대점 (서울특별시 마포구 와우산로37길 52)' }),
+    'https://map.naver.com/p/search/아비아채%20서울홍대점',
+  );
+});
+
+test('resolveMapUrl: 100자를 넘는 장소 URL은 붙이지 않는다', () => {
+  // 앱이 100자에서 자르는데, 잘린 링크는 열리지 않아 없느니만 못하다.
+  const tooLong = `https://place.map.kakao.com/${'9'.repeat(100)}`;
+  assert.equal(resolveMapUrl({ mapUrl: tooLong, location: '어딘가' }), null);
 });

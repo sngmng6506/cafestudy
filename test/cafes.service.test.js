@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createCafesService, geocodeCandidates } from '../src/features/cafes/cafes.service.js';
+import { createCafesService, foldByPlaceId, geocodeCandidates } from '../src/features/cafes/cafes.service.js';
 
 const USER_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -202,4 +202,59 @@ test('upsertComment: 방문 이력이 없으면 거부한다', async () => {
     () => service.upsertComment({ userId: USER_ID, location: '아비아채', body: '좋아요' }),
     (err) => err.code === 'COMMENT_NOT_ALLOWED',
   );
+});
+
+// --- 장소 ID로 카페 합치기 ---
+
+function cafeMap(entries) {
+  return new Map(entries.map((entry) => [entry.location, {
+    meetupCount: 1, lastVisitedAt: '2026-08-01', canComment: false, comments: [], ...entry,
+  }]));
+}
+
+test('foldByPlaceId: 같은 장소 ID면 한 카페로 합친다', () => {
+  // 같은 카페가 출처마다 다르게 적힌다. 앱 모임은 "이름 (도로명주소)"로,
+  // 크롤링 정모는 사람이 앱에 적은 대로 들어온다.
+  const folded = foldByPlaceId(cafeMap([
+    { location: '디벙크 (합정)', placeId: '1040119941', placeName: '디벙크', meetupCount: 2 },
+    { location: '디벙크 (서울특별시 마포구 성지1길 30)', placeId: '1040119941', placeName: '디벙크', meetupCount: 1, lastVisitedAt: '2026-08-20' },
+  ]));
+
+  assert.equal(folded.length, 1);
+  assert.equal(folded[0].location, '디벙크', '표시 이름은 검색이 돌려준 상호명을 쓴다');
+  assert.equal(folded[0].meetupCount, 3);
+  assert.equal(folded[0].lastVisitedAt, '2026-08-20', '가장 최근 방문을 남긴다');
+  assert.deepEqual(folded[0].locations, ['디벙크 (합정)', '디벙크 (서울특별시 마포구 성지1길 30)']);
+});
+
+test('foldByPlaceId: 장소 ID가 없으면 합치지 않는다', () => {
+  // 카카오가 못 찾은 자유 입력이다. 좌표를 억지로 붙여 합치면 남의 카페에 이력이
+  // 섞인다 — 실제로 "아비아채 지하1층"은 검색어를 깎으면 다른 지점을 물어왔다.
+  const folded = foldByPlaceId(cafeMap([
+    { location: '아비아채 지하1층', placeId: null, placeName: null },
+    { location: '정기모임장소 근처', placeId: null, placeName: null },
+  ]));
+
+  assert.equal(folded.length, 2, '각자 남아야 한다');
+  assert.deepEqual(folded.map((c) => c.location).sort(), ['아비아채 지하1층', '정기모임장소 근처']);
+});
+
+test('foldByPlaceId: ID 없는 항목끼리도 서로 합쳐지지 않는다', () => {
+  // placeId가 둘 다 null이라고 같은 카페로 보면 안 된다.
+  const folded = foldByPlaceId(cafeMap([
+    { location: 'A 카페', placeId: null },
+    { location: 'B 카페', placeId: null },
+  ]));
+
+  assert.equal(folded.length, 2);
+});
+
+test('foldByPlaceId: 코멘트와 코멘트 권한을 합친다', () => {
+  const folded = foldByPlaceId(cafeMap([
+    { location: '디벙크', placeId: '1', placeName: '디벙크', canComment: false, comments: [{ id: 'a' }] },
+    { location: '디벙크 (합정)', placeId: '1', placeName: '디벙크', canComment: true, comments: [{ id: 'b' }] },
+  ]));
+
+  assert.equal(folded[0].canComment, true, '한쪽에서 방문했으면 코멘트할 수 있다');
+  assert.deepEqual(folded[0].comments.map((c) => c.id), ['a', 'b']);
 });
