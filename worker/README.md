@@ -138,11 +138,14 @@ lock.js               # worker 중복 실행 방지(락 파일 + PID 확인)
 placeholder-image.js  # 정모 사진용 단색 PNG 생성(의존성 없이)
 errors.js             # ManualReviewError / TransientError
 somoim-app.js         # 두 handler가 공유하는 앱 화면 이동·기기 조작
+somoim-form.js        # 정모 개설 폼의 규칙(길이 제한·기본값·제출 판정). 순수 함수
 handlers/             # job type별 화면 자동화 (create_meetup, delete_meetup)
 ```
 
 서버 통신(`api-client`)과 job 실행(`job-runner`)을 분리해서, 기기 없이도 안전장치와
-실패 분기를 단위 테스트로 검증한다.
+실패 분기를 단위 테스트로 검증한다. 같은 이유로 폼 규칙은 `somoim-form.js`에 순수
+함수로 둔다 — 앱이 장소를 몇 자에서 자르는지, 제출이 실제로 됐는지 판정하는 기준은
+태블릿 없이 검증할 수 있어야 한다.
 
 worker는 시작할 때 락 파일을 잡는다. 기기는 한 대인데 job claim은 job 단위 원자성만
 보장하므로, worker가 둘이면 같은 태블릿을 동시에 조작해 화면이 엉망이 된다. 이미

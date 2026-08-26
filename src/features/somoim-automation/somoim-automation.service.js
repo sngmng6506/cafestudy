@@ -1,6 +1,7 @@
 import { AppError, throwConflict, throwNotFound, throwValidation } from '../../shared/errors.js';
 import { createSomoimAutomationQueries } from './somoim-automation.queries.js';
 import { SOMOIM_AUTOMATION_LIMITS } from '../../../shared/domain-constraints.js';
+import { normalizeKakaoPlaceUrl } from '../../shared/kakao-place.js';
 
 const JOB_TYPE_CREATE_MEETUP = 'create_meetup';
 const JOB_TYPE_DELETE_MEETUP = 'delete_meetup';
@@ -226,20 +227,13 @@ function normalizeMeetupPayload(input = {}, { allowSubmit }) {
   const capacity = normalizeCapacity(input.capacity);
   const description = normalizeOptionalText(input.description, MAX_DESCRIPTION_LENGTH);
   const cost = normalizeOptionalText(input.cost, MAX_COST_LENGTH);
-  const mapUrl = normalizeMapUrl(input.mapUrl);
+  // 저장할 때와 같은 규칙을 쓴다(shared/kakao-place.js). 규칙이 갈라지면
+  // 저장은 되는데 정모에는 안 붙는 값이 조용히 생긴다.
+  const mapUrl = normalizeKakaoPlaceUrl(input.mapUrl) ?? '';
   const submit = input.submit === true;
   if (submit && !allowSubmit) throwValidation('Final submit is disabled. Create a dry-run job first.');
   return { title, scheduledAt, location, capacity, description, cost, mapUrl, dryRun: !submit, submit };
 }
-// 앱의 지도 URL 칸에 그대로 들어가고, 그걸 누르는 건 모임 멤버들이다. 카카오
-// 장소 상세페이지만 받는다 — 다른 링크는 담지 않고 조용히 버린다(지도는 선택 항목이라
-// 이것 때문에 등록 전체를 실패시키지 않는다).
-function normalizeMapUrl(value) {
-  const text = (value ?? '').toString().trim();
-  if (!text) return '';
-  return /^https:\/\/place\.map\.kakao\.com\/\d+$/.test(text) ? text : '';
-}
-
 function normalizeText(value, field, maxLength) {
   const text = (value ?? '').toString().replace(/\s+/g, ' ').trim();
   if (!text) throwValidation(`${field} is required`);

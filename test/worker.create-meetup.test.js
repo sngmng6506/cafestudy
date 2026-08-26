@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  evaluateSubmitOutcome,
-  isCreateFormPresent,
-  fitLocationForApp,
   buildExpectedFieldValues,
-  costForApp,
   buildNaverMapUrl,
-} from '../worker/handlers/create-meetup.js';
+  costForApp,
+  evaluateSubmitOutcome,
+  fitLocationForApp,
+  isCreateFormPresent,
+} from '../worker/somoim-form.js';
 import {
   assertScheduledAtIsFuture,
   buildScreenshotKey,

@@ -24,9 +24,9 @@ export function createMeetupRouter(ctx) {
         location: req.body.location,
         scheduledAt: req.body.scheduledAt,
         capacity: Number(req.body.capacity),
-        // 검색 결과에서 고른 장소의 참조. 직접 입력이면 없다.
-        placeId: normalizePlaceField(req.body.placeId),
-        placeUrl: normalizePlaceField(req.body.placeUrl),
+        // 검색 결과에서 고른 장소의 참조. 직접 입력이면 없다. 검증은 service가 한다.
+        placeId: req.body.placeId,
+        placeUrl: req.body.placeUrl,
       });
 
       sendOk(res, meetup, 201);
@@ -74,14 +74,4 @@ export function createMeetupRouter(ctx) {
   });
 
   return router;
-}
-
-// 장소 참조는 사용자가 보내는 값이라 그대로 믿지 않는다. 상세페이지 URL은 카카오
-// 도메인만 받는다 — 다른 링크를 넣으면 소모임 정모에 그대로 올라가고, 그걸 누르는
-// 건 모임 멤버들이다.
-function normalizePlaceField(value) {
-  const text = (value ?? '').toString().trim();
-  if (!text || text.length > 300) return null;
-  if (!/^https?:\/\//i.test(text)) return text;
-  return /^https:\/\/place\.map\.kakao\.com\//.test(text) ? text : null;
 }

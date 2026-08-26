@@ -2,6 +2,7 @@ import { createMeetupQueries } from './meetup.queries.js';
 import { throwError, throwConflict } from '../../shared/errors.js';
 import { attachBadgeImageUrls } from '../../shared/badge-image.js';
 import { MEETUP_LIMITS } from '../../../shared/domain-constraints.js';
+import { normalizeKakaoPlaceId, normalizeKakaoPlaceUrl } from '../../shared/kakao-place.js';
 
 export const MIN_LEAD_MS = MEETUP_LIMITS.minLeadMs;
 export const MAX_CAPACITY = MEETUP_LIMITS.maxCapacity;
@@ -23,7 +24,13 @@ export function createMeetupService({ db, storage, hooks, queries = createMeetup
 
     async createMeetup(input) {
       validateMeetupInput(input);
-      const meetup = await queries.createMeetup(input);
+      const meetup = await queries.createMeetup({
+        ...input,
+        // 사용자가 보낸 값이라 그대로 저장하지 않는다. 형식이 아니면 없는 것으로
+        // 본다 — 장소 참조는 있으면 좋은 정보지 모임 생성의 조건은 아니다.
+        placeId: normalizeKakaoPlaceId(input.placeId),
+        placeUrl: normalizeKakaoPlaceUrl(input.placeUrl),
+      });
 
       // 듣는 리스너가 없으면 자동 등록도 없다. 자동화가 꺼진 환경은 여기서 그대로 끝난다.
       const results = await (hooks?.emit?.('meetupCreated', meetup) ?? Promise.resolve([]));
