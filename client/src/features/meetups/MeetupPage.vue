@@ -275,7 +275,7 @@ function toLocalInputValue(date) {
       </div>
 
       <div v-if="form.lat != null" class="mb-4 overflow-hidden rounded-lg border border-[var(--ui-color-stroke)]">
-        <!-- relative z-0: Leaflet 내부 z-index가 z-50 모달을 덮지 않게 가둔다. -->
+        <!-- relative z-0: Leaflet 내부 z-index가 오버레이 레이어의 모달을 덮지 않게 가둔다. -->
         <div ref="mapEl" class="relative z-0 h-44 w-full"></div>
       </div>
 
@@ -370,7 +370,7 @@ function toLocalInputValue(date) {
     <!-- 장소 검색 모달 -->
     <div
       v-if="showSearch"
-      class="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      class="fixed inset-0 ui-layer-overlay flex items-end justify-center sm:items-center"
       @click.self="showSearch = false"
     >
       <div class="absolute inset-0 bg-[var(--ui-color-content)]/30" @click="showSearch = false"></div>
@@ -426,11 +426,14 @@ function toLocalInputValue(date) {
     <!-- 개설 확인 팝업 -->
     <div
       v-if="showConfirm"
-      class="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      class="fixed inset-0 ui-layer-overlay flex items-center justify-center px-4"
       @click.self="showConfirm = false"
     >
       <div class="absolute inset-0 bg-[var(--ui-color-content)]/30" @click="showConfirm = false"></div>
-      <div class="relative z-10 w-full max-w-md rounded-t-xl bg-white p-5 shadow-sm sm:rounded-xl">
+      <!-- 확인 팝업은 가운데에 띄운다. 아래에 붙이면 고정 탭바와 같은 자리에서
+           겹쳐 버튼을 누르기 어렵다. 장소 검색 시트와 달리 목록을 훑는 화면이
+           아니라 높이도 필요 없다. -->
+      <div class="ui-bg-surface relative z-10 w-full max-w-md rounded-xl p-5 shadow-sm">
         <p class="text-[17px] font-bold text-[var(--ui-color-content)]">이 내용으로 모임을 만들까요?</p>
         <dl class="mt-4 grid gap-2.5 rounded-lg bg-[var(--ui-color-surface-subtle)] p-4 text-[14px]">
           <div class="flex gap-3">

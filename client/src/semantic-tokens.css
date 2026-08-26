@@ -47,6 +47,14 @@
   --ui-font-body-large-size: var(--text-body-lg);
   --ui-font-body-size: var(--text-body);
   --ui-font-caption-size: var(--text-caption);
+
+  /* 쌓임 순서. 셸 크롬(고정 탭바)과 오버레이가 같은 값을 쓰면 DOM 순서가 이기는데,
+     셸이 페이지보다 나중에 그려져 화면 안에서 띄운 팝업의 버튼을 덮는다. 값을
+     직접 적지 말고 이 토큰을 쓴다. */
+  --ui-layer-menu: 40;       /* 탭바에서 펼치는 메뉴 — 탭바가 계속 보여야 해 아래에 둔다 */
+  --ui-layer-shell: 50;      /* 고정 탭바, 헤더 등 셸이 소유한 크롬 */
+  --ui-layer-overlay: 60;    /* 시트·모달과 그 배경막 — 셸 위에 온다 */
+  --ui-layer-toast: 80;      /* 오버레이 위에도 보여야 하는 알림 */
 }
 
 .ui-text { color: var(--ui-color-content); }
@@ -180,3 +188,10 @@
 .ui-button-external:hover {
   background-color: var(--ui-color-external-strong-hover);
 }
+
+/* 쌓임 레이어. z-50 같은 숫자를 화면마다 적으면 셸 크롬과 동률이 되어
+   DOM 순서에 따라 팝업이 탭바 밑으로 들어간다. */
+.ui-layer-menu { z-index: var(--ui-layer-menu); }
+.ui-layer-shell { z-index: var(--ui-layer-shell); }
+.ui-layer-overlay { z-index: var(--ui-layer-overlay); }
+.ui-layer-toast { z-index: var(--ui-layer-toast); }

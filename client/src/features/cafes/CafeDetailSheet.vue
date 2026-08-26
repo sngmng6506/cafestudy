@@ -30,7 +30,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center px-4">
+  <div class="fixed inset-0 ui-layer-overlay flex items-center justify-center px-4">
     <div class="absolute inset-0 bg-black/30" @click="emit('close')"></div>
 
     <div class="relative z-10 max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-xl bg-white px-5 pb-6 pt-5 shadow-lg">

@@ -96,7 +96,7 @@ function closeLogin() {
     <component :is="activeFeature.component" />
 
     <div
-      class="ui-bg-surface ui-border fixed bottom-0 left-1/2 z-50 w-full max-w-md -translate-x-1/2 border-t px-2 pt-2 shadow-[0_-4px_18px_rgba(0,0,0,0.06)]"
+      class="ui-bg-surface ui-border fixed bottom-0 left-1/2 ui-layer-shell w-full max-w-md -translate-x-1/2 border-t px-2 pt-2 shadow-[0_-4px_18px_rgba(0,0,0,0.06)]"
     >
       <Transition name="bottom-search">
         <div v-if="showBottomSearch" class="bottom-search-slot overflow-hidden px-2">

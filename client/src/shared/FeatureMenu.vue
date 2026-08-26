@@ -24,7 +24,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-40">
+  <!-- 탭바보다 아래 레이어다. 배경막도 탭바 위에서 끊어 탭바가 계속 눌리게 둔다. -->
+  <div class="fixed inset-0 ui-layer-menu">
     <div class="absolute inset-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] bg-[var(--ui-color-content)]/20" @click="emit('close')"></div>
 
     <section

@@ -73,7 +73,7 @@ function selectResult(name) {
 
 <template>
   <div
-    class="fixed inset-0 z-[70] flex items-end justify-center bg-black/35"
+    class="fixed inset-0 ui-layer-overlay flex items-end justify-center bg-black/35"
     role="presentation"
     @click.self="emit('close')"
   >
