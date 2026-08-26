@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { Lock, MoreHorizontal, Plus, Search } from '@lucide/vue';
 import ToastContainer from './shared/ToastContainer.vue';
 import MemberSelectModal from './shared/MemberSelectModal.vue';
@@ -52,6 +52,25 @@ function openCreateMeetup() {
   }
   createOpen.value = true;
 }
+
+// 하단 바 높이를 CSS 변수로 내보낸다. 더보기 메뉴가 이 값 위에 자리를 잡는데,
+// 예전엔 한 줄짜리 탭바 높이를 상수로 박아 둬서 바가 두 줄이 되자 메뉴가 바 뒤로
+// 들어가 버렸다. 재는 편이 다음에 바가 바뀌어도 어긋나지 않는다.
+const bottomBar = ref(null);
+let barObserver = null;
+
+onMounted(() => {
+  if (!bottomBar.value || typeof ResizeObserver === 'undefined') return;
+  const publish = () => {
+    const height = bottomBar.value?.offsetHeight ?? 0;
+    document.documentElement.style.setProperty('--ui-bottom-bar-height', `${height}px`);
+  };
+  publish();
+  barObserver = new ResizeObserver(publish);
+  barObserver.observe(bottomBar.value);
+});
+
+onBeforeUnmount(() => barObserver?.disconnect());
 
 async function onMeetupCreated() {
   await loadMeetups();
@@ -118,11 +137,14 @@ function closeLogin() {
     <component :is="activeFeature.component" />
 
     <div
-      class="ui-bg-surface ui-border fixed bottom-0 left-1/2 ui-layer-shell w-full max-w-md -translate-x-1/2 border-t px-2 pt-2 shadow-[0_-4px_18px_rgba(0,0,0,0.06)]"
+      ref="bottomBar"
+      class="ui-bg-surface ui-border fixed bottom-0 left-1/2 ui-layer-shell w-full max-w-md -translate-x-1/2 border-t shadow-[0_-4px_18px_rgba(0,0,0,0.06)]"
     >
-      <div class="px-2 pt-1">
+      <!-- 만들기는 이동 수단이 아니라 행동이라 줄을 나눈다. 검색·더보기와 한 칸에
+           섞으면 셋이 같은 무게로 보인다. -->
+      <div class="border-b border-[var(--ui-color-stroke-subtle)] px-3 py-2.5">
         <button
-          class="focus-ring ui-radius-control flex h-11 w-full items-center justify-center gap-1.5 bg-[var(--ui-color-brand)] text-[14px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)]"
+          class="focus-ring ui-radius-control flex h-11 w-full items-center justify-center gap-1.5 bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)]"
           type="button"
           @click="openCreateMeetup"
         >
@@ -132,31 +154,34 @@ function closeLogin() {
         </button>
       </div>
 
-      <div class="flex items-center gap-2 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
+      <div class="flex items-center gap-2 px-3 pb-[calc(0.625rem+env(safe-area-inset-bottom))] pt-2.5">
         <button
           v-if="showBottomSearch"
-          class="focus-ring ui-search-trigger flex h-11 min-w-0 flex-1 items-center gap-2.5 px-4 text-left transition"
+          class="focus-ring ui-search-trigger flex h-10 min-w-0 flex-1 items-center gap-2.5 px-3.5 text-left transition"
           type="button"
           aria-label="자연어로 기능 찾기"
           @click="openMenuSearch"
         >
-          <Search class="ui-text-brand shrink-0" :size="18" />
+          <Search class="ui-text-brand shrink-0" :size="17" />
           <span class="min-w-0 flex-1 truncate">찾고 싶은 기능 검색</span>
         </button>
-        <span v-else class="min-w-0 flex-1 truncate text-[14px] font-semibold text-[var(--ui-color-content)]">
-          {{ activeFeature.title }}
+        <span
+          v-else
+          class="ui-radius-item ui-border flex h-10 min-w-0 flex-1 items-center border px-3.5 text-[14px] font-semibold text-[var(--ui-color-content)]"
+        >
+          <span class="min-w-0 truncate">{{ activeFeature.title }}</span>
         </span>
 
         <button
           v-if="hasOverflow"
-          class="focus-ring ui-radius-control flex h-11 shrink-0 items-center gap-1.5 px-3 text-[13px] font-semibold transition"
-          :class="moreOpen || overflowActive ? 'ui-nav-item-active' : 'ui-nav-item'"
+          class="focus-ring ui-radius-item ui-border flex h-10 shrink-0 items-center gap-1.5 border px-3 text-[13px] font-semibold transition"
+          :class="moreOpen ? 'ui-nav-item-active' : 'ui-nav-item'"
           type="button"
           aria-haspopup="menu"
           :aria-expanded="moreOpen"
           @click="toggleMore"
         >
-          <MoreHorizontal :size="18" />
+          <MoreHorizontal :size="17" />
           더보기
         </button>
       </div>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { Calendar, MapPin, Search, X } from '@lucide/vue';
 import { apiFetch } from './api.js';
 import { useToast } from './useToast.js';
@@ -15,6 +15,8 @@ const toast = useToast();
 const scheduledAt = ref(defaultScheduledAt());
 const location = ref('');
 const placeName = ref('');
+const lat = ref(null);
+const lng = ref(null);
 const title = ref('');
 const titleTouched = ref(false);
 const capacity = ref(MEETUP_LIMITS.defaultCapacity);
@@ -54,6 +56,8 @@ watch(() => props.open, (open) => {
   scheduledAt.value = defaultScheduledAt();
   location.value = '';
   placeName.value = '';
+  lat.value = null;
+  lng.value = null;
   title.value = '';
   titleTouched.value = false;
   capacity.value = MEETUP_LIMITS.defaultCapacity;
@@ -61,6 +65,8 @@ watch(() => props.open, (open) => {
   searchQuery.value = '';
   searchResults.value = [];
   searchError.value = '';
+  map?.remove();
+  map = null;
 });
 
 async function runPlaceSearch() {
@@ -83,15 +89,56 @@ function selectPlace(place) {
     ? `${place.placeName} (${place.roadAddress})`
     : place.placeName;
   placeName.value = place.placeName;
+  lat.value = place.lat ?? null;
+  lng.value = place.lng ?? null;
   searchResults.value = [];
   searchQuery.value = '';
+  void renderMap();
 }
 
 function clearPlace() {
   location.value = '';
   placeName.value = '';
+  lat.value = null;
+  lng.value = null;
   void nextTick(() => searchInput.value?.focus());
 }
+
+// 지도는 고른 곳이 맞는지 확인하는 용도라 무겁게 두지 않는다. Leaflet은 장소를
+// 고른 뒤에만 불러온다 — 팝업을 열 때마다 받아오면 만들기가 그만큼 느려진다.
+const mapEl = ref(null);
+let leaflet = null;
+let map = null;
+let marker = null;
+
+async function renderMap() {
+  if (lat.value == null || lng.value == null) return;
+  if (!leaflet) {
+    const mod = await import('leaflet');
+    await import('leaflet/dist/leaflet.css');
+    leaflet = mod.default;
+  }
+  await nextTick();
+  if (!mapEl.value) return;
+
+  const center = [lat.value, lng.value];
+  if (!map) {
+    map = leaflet.map(mapEl.value, { zoomControl: false, attributionControl: false }).setView(center, 16);
+    leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    marker = leaflet.circleMarker(center, {
+      radius: 8, color: '#03C75A', fillColor: '#03C75A', fillOpacity: 0.9, weight: 2,
+    }).addTo(map);
+  } else {
+    map.setView(center, 16);
+    marker.setLatLng(center);
+  }
+  map.invalidateSize();
+}
+
+onBeforeUnmount(() => {
+  map?.remove();
+  map = null;
+});
 
 function pickCapacity(value) {
   capacity.value = value;
@@ -214,15 +261,23 @@ function formatWhen(date) {
           </div>
 
           <template v-else>
-            <div class="relative">
-              <Search :size="16" class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ui-color-content-muted)]" />
+            <div class="flex items-center gap-2">
               <input
                 ref="searchInput"
                 v-model="searchQuery"
-                class="h-12 w-full rounded-lg border border-[var(--ui-color-stroke)] pl-11 pr-4 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
-                placeholder="카페 이름으로 검색"
+                class="h-12 min-w-0 flex-1 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
+                placeholder="카페 이름"
                 @keydown.enter.prevent="runPlaceSearch"
               />
+              <button
+                class="focus-ring ui-radius-control flex h-12 shrink-0 items-center gap-1.5 bg-[var(--ui-color-brand)] px-4 text-[14px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-60"
+                type="button"
+                :disabled="searching || !searchQuery.trim()"
+                @click="runPlaceSearch"
+              >
+                <Search :size="16" />
+                검색
+              </button>
             </div>
             <p v-if="searching" class="px-1 text-[13px] text-[var(--ui-color-content-muted)]">찾는 중이에요…</p>
             <p v-else-if="searchError" class="px-1 text-[13px] font-semibold text-[var(--ui-color-destructive)]">{{ searchError }}</p>
