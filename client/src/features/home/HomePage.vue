@@ -244,19 +244,7 @@ function calendarAttendeeStack(meetup) {
             {{ upcomingMeetups.length }}
           </span>
         </div>
-        <div class="flex items-center gap-2">
-          <RefreshSomoimButton @refreshed="loadSomoimEvents" />
-          <!-- 갱신 버튼과 같은 크기·모양으로 맞춘다. 헤더 오른쪽은 이 섹션을
-               다루는 조작들이 모이는 자리다. -->
-          <button
-            class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--ui-color-stroke)] bg-white text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)]"
-            type="button"
-            aria-label="모임 전체 보기"
-            @click="goToFeature('meetups')"
-          >
-            <CalendarDays :size="15" />
-          </button>
-        </div>
+        <RefreshSomoimButton @refreshed="loadSomoimEvents" />
       </div>
 
       <p v-if="actionError" class="mb-4 rounded-lg bg-[var(--ui-color-danger-surface)] px-4 py-3 text-sm font-semibold text-[var(--ui-color-destructive)]">
@@ -309,6 +297,20 @@ function calendarAttendeeStack(meetup) {
             @cancel="cancelMeetup"
           />
         </ul>
+
+        <!-- 카드 안의 액션 아이콘(소모임 앱 열기 등)과 같은 크기·정렬로 맞춘다.
+             목록 흐름을 끊지 않도록 전체 폭 버튼 대신 아이콘 하나만 둔다. -->
+        <div class="mt-3 flex justify-end">
+          <button
+            class="focus-ring ui-radius-control ui-border inline-flex h-9 w-9 items-center justify-center border text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+            type="button"
+            aria-label="모임 전체 보기"
+            title="모임 전체 보기"
+            @click="goToFeature('meetups')"
+          >
+            <CalendarDays :size="16" />
+          </button>
+        </div>
       </template>
     </section>
 
