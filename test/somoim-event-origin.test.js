@@ -42,6 +42,15 @@ test('등록된 앱 모임만 짝으로 본다', () => {
   assert.match(NOT_FROM_APP_MEETUP, /origin\.source_type = 'app'/);
 });
 
+test('제목은 공백을 접어서 비교한다', () => {
+  // 앱 모임 제목은 입력 그대로 저장되고, 등록 job은 normalizeText로 연속 공백을
+  // 줄여 앱에 넣는다. 크롤러가 읽는 건 줄어든 쪽이라 원문끼리 비교하면 어긋난다.
+  assert.match(NOT_FROM_APP_MEETUP, /regexp_replace\(btrim\(origin\.title\)/);
+  assert.match(NOT_FROM_APP_MEETUP, /regexp_replace\(btrim\(e\.title\)/);
+  // JS 문자열을 거쳐 Postgres에 \s+가 그대로 도착해야 한다.
+  assert.ok(NOT_FROM_APP_MEETUP.includes("'\\s+'"), '이스케이프가 한 겹 벗겨져야 한다');
+});
+
 test('일시는 분 단위로 비교한다', () => {
   // 초가 어긋나면 짝을 못 찾고 중복이 되살아난다 — 실패가 조용해서 명시해 둔다.
   assert.match(NOT_FROM_APP_MEETUP, /date_trunc\('minute', origin\.scheduled_at\)/);

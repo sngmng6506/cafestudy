@@ -13,7 +13,12 @@ export const NOT_FROM_APP_MEETUP = `
     FROM meetups origin
     WHERE origin.somoim_state = 'registered'
       AND origin.source_type = 'app'
-      AND origin.title = e.title
+      -- 공백을 접어서 비교한다. 앱 모임 제목은 입력 그대로 저장되지만, 등록 job은
+      -- normalizeText로 연속 공백을 하나로 줄이고 앞뒤를 잘라 앱에 입력한다. 크롤러가
+      -- 읽어오는 건 그 줄어든 제목이라, "카페  스터디"(공백 둘)처럼 저장된 모임은
+      -- 그대로 비교하면 짝을 못 찾고 중복이 되살아난다.
+      AND regexp_replace(btrim(origin.title), '\\s+', ' ', 'g')
+        = regexp_replace(btrim(e.title), '\\s+', ' ', 'g')
       -- 분 단위로 자른다. 크롤러는 화면에 찍힌 "8월 29일 (금) 오후 2:00"을 파싱하고
       -- 앱 모임은 초까지 들고 있어, 정확 비교로는 14:00:00과 14:00:30이 다른 모임이
       -- 된다. 그러면 짝을 못 찾고 중복이 조용히 되살아난다.
