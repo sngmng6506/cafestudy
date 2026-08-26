@@ -44,8 +44,8 @@ export function useAppShell() {
       .filter((feature) => !feature.adminOnly || isAdmin.value)
       .sort((a, b) => a.order - b.order),
   );
-  const primaryFeatures = computed(() => visibleFeatures.value.filter((feature) => feature.primary));
-  const overflowFeatures = computed(() => visibleFeatures.value.filter((feature) => !feature.primary));
+  // 하단에 탭이 없다. 모든 화면이 더보기 메뉴로 간다 — 홈이 order 0이라 맨 위에 온다.
+  const overflowFeatures = computed(() => visibleFeatures.value);
   const hasOverflow = computed(() => overflowFeatures.value.length > 0);
   const showBottomSearch = computed(() => activeFeatureName.value === 'home' && !moreOpen.value);
   const activeFeature = computed(
@@ -146,7 +146,6 @@ export function useAppShell() {
     menuSearchOpen,
     moreOpen,
     visibleFeatures,
-    primaryFeatures,
     hasOverflow,
     showBottomSearch,
     activeFeatureName,

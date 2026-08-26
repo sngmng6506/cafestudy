@@ -1,10 +1,13 @@
 <script setup>
-import { Lock, MoreHorizontal, Search } from '@lucide/vue';
+import { ref } from 'vue';
+import { Lock, MoreHorizontal, Plus, Search } from '@lucide/vue';
 import ToastContainer from './shared/ToastContainer.vue';
 import MemberSelectModal from './shared/MemberSelectModal.vue';
 import FeatureMenu from './shared/FeatureMenu.vue';
 import NotificationBell from './shared/NotificationBell.vue';
 import MenuSearchSheet from './features/menu-search/MenuSearchSheet.vue';
+import CreateMeetupDialog from './shared/CreateMeetupDialog.vue';
+import { useMeetups } from './shared/useMeetups.js';
 import UserAvatar from './shared/UserAvatar.vue';
 import { useAppShell } from './shared/useAppShell.js';
 
@@ -19,7 +22,6 @@ const {
   menuSearchOpen,
   moreOpen,
   visibleFeatures,
-  primaryFeatures,
   hasOverflow,
   showBottomSearch,
   activeFeatureName,
@@ -35,7 +37,27 @@ const {
   selectFeature,
   openMenuSearch,
   toggleMore,
+  requireLogin,
 } = useAppShell();
+
+// 모임 만들기는 셸이 소유한다. 하단에 항상 떠 있어야 하므로 화면 하나에 매달 수 없다.
+const createOpen = ref(false);
+// 목록 상태는 모듈 스코프라, 셸에서 한 번 다시 읽으면 홈과 모임 화면이 함께 갱신된다.
+const { loadMeetups } = useMeetups();
+
+function openCreateMeetup() {
+  if (isGuest.value) {
+    requireLogin('모임 만들기는 로그인하면 쓸 수 있어요.');
+    return;
+  }
+  createOpen.value = true;
+}
+
+async function onMeetupCreated() {
+  await loadMeetups();
+  // 다른 화면에서 만들었다면 결과가 보이는 곳으로 데려간다.
+  if (activeFeatureName.value !== 'home') selectFeature('home');
+}
 
 function browseAsGuest() {
   startBrowsing();
@@ -98,62 +120,49 @@ function closeLogin() {
     <div
       class="ui-bg-surface ui-border fixed bottom-0 left-1/2 ui-layer-shell w-full max-w-md -translate-x-1/2 border-t px-2 pt-2 shadow-[0_-4px_18px_rgba(0,0,0,0.06)]"
     >
-      <Transition name="bottom-search">
-        <div v-if="showBottomSearch" class="bottom-search-slot overflow-hidden px-2">
-          <button
-            class="focus-ring ui-search-trigger flex h-11 w-full items-center gap-2.5 px-4 text-left transition"
-            type="button"
-            aria-label="자연어로 기능 찾기"
-            @click="openMenuSearch"
-          >
-            <Search class="ui-text-brand shrink-0" :size="18" />
-            <span class="min-w-0 flex-1 truncate">찾고 싶은 기능 검색</span>
-          </button>
-        </div>
-      </Transition>
-
-      <nav
-        class="flex gap-1 pb-[calc(0.375rem+env(safe-area-inset-bottom))] transition-[margin] duration-200 ease-out"
-        :class="showBottomSearch ? 'mt-1.5' : ''"
-        aria-label="기능 탭"
-      >
+      <div class="px-2 pt-1">
         <button
-          v-for="feature in primaryFeatures"
-          :key="feature.name"
-          class="focus-ring relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition"
-          :class="[
-            feature.name === activeFeatureName ? 'ui-nav-item-active' : 'ui-nav-item',
-            isLocked(feature) ? 'opacity-40' : '',
-          ]"
+          class="focus-ring ui-radius-control flex h-11 w-full items-center justify-center gap-1.5 bg-[var(--ui-color-brand)] text-[14px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)]"
           type="button"
-          :aria-disabled="isLocked(feature)"
-          @click="selectFeature(feature.name)"
+          @click="openCreateMeetup"
         >
-          <span class="relative">
-            <component :is="feature.icon" :size="20" />
-            <Lock
-              v-if="isLocked(feature)"
-              class="ui-bg-surface absolute -right-1.5 -top-1 rounded-full"
-              :size="11"
-            />
-          </span>
-          {{ feature.label }}
+          <Plus :size="18" />
+          모임 만들기
+          <Lock v-if="isGuest" :size="13" class="opacity-80" />
         </button>
+      </div>
+
+      <div class="flex items-center gap-2 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
+        <button
+          v-if="showBottomSearch"
+          class="focus-ring ui-search-trigger flex h-11 min-w-0 flex-1 items-center gap-2.5 px-4 text-left transition"
+          type="button"
+          aria-label="자연어로 기능 찾기"
+          @click="openMenuSearch"
+        >
+          <Search class="ui-text-brand shrink-0" :size="18" />
+          <span class="min-w-0 flex-1 truncate">찾고 싶은 기능 검색</span>
+        </button>
+        <span v-else class="min-w-0 flex-1 truncate text-[14px] font-semibold text-[var(--ui-color-content)]">
+          {{ activeFeature.title }}
+        </span>
 
         <button
           v-if="hasOverflow"
-          class="focus-ring relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition"
-          :class="overflowActive ? 'ui-nav-item-active' : 'ui-nav-item'"
+          class="focus-ring ui-radius-control flex h-11 shrink-0 items-center gap-1.5 px-3 text-[13px] font-semibold transition"
+          :class="moreOpen || overflowActive ? 'ui-nav-item-active' : 'ui-nav-item'"
           type="button"
           aria-haspopup="menu"
           :aria-expanded="moreOpen"
           @click="toggleMore"
         >
-          <MoreHorizontal :size="20" />
+          <MoreHorizontal :size="18" />
           더보기
         </button>
-      </nav>
+      </div>
     </div>
+
+    <CreateMeetupDialog :open="createOpen" @close="createOpen = false" @created="onMeetupCreated" />
 
     <ToastContainer />
 
@@ -184,36 +193,5 @@ function closeLogin() {
 </template>
 
 <style scoped>
-.bottom-search-slot {
-  max-height: 44px;
-  transform-origin: bottom center;
-}
-
-.bottom-search-enter-active {
-  transition:
-    max-height 220ms cubic-bezier(0, 0, 0.2, 1),
-    opacity 180ms cubic-bezier(0, 0, 0.2, 1),
-    transform 220ms cubic-bezier(0, 0, 0.2, 1);
-}
-
-.bottom-search-leave-active {
-  transition:
-    max-height 220ms cubic-bezier(0.4, 0, 1, 1),
-    opacity 160ms cubic-bezier(0.4, 0, 1, 1),
-    transform 220ms cubic-bezier(0.4, 0, 1, 1);
-}
-
-.bottom-search-enter-from,
-.bottom-search-leave-to {
-  max-height: 0;
-  opacity: 0;
-  transform: translateY(14px) scale(0.98);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .bottom-search-enter-active,
-  .bottom-search-leave-active {
-    transition: none;
-  }
-}
+/* 하단 검색 슬롯의 등장 트랜지션은 검색이 더보기와 한 줄이 되면서 사라졌다. */
 </style>

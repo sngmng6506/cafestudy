@@ -282,14 +282,7 @@ function calendarAttendeeStack(meetup) {
       </p>
       <div v-else-if="upcomingMeetups.length === 0" class="py-8 text-center">
         <p class="text-[14px] text-[var(--ui-color-content)]">예정된 모임이 없어요.</p>
-        <button
-          class="focus-ring ui-text-link mt-1 inline-flex items-center gap-1 px-2 py-1 text-[13px] font-semibold"
-          type="button"
-          @click="goToFeature('meetups')"
-        >
-          새 모임 만들기
-          <ArrowRight :size="14" />
-        </button>
+        <p class="mt-1 text-[13px] text-[var(--ui-color-content-muted)]">아래 ‘모임 만들기’로 새 모임을 열어 보세요.</p>
       </div>
 
       <template v-else>
