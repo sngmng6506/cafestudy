@@ -18,10 +18,13 @@ worker 서버에서만 실행한다.
 Node 22가 필요하다. 외부 의존성은 없다.
 
 ```bash
-CAFESTUDY_SERVER_URL=https://cafestudy-production.up.railway.app \
-INTERNAL_API_KEY=<서버와 같은 값> \
-node worker/index.js
+cp worker/.env.example worker/.env   # 값을 채운다. gitignore되므로 커밋되지 않는다
+node --env-file=worker/.env worker/index.js
 ```
+
+worker는 태블릿과 같은 네트워크에 있는 기계에서 돈다. 서버(Railway) 환경변수는
+worker에 전달되지 않으니 설정은 그 기계의 `worker/.env`에 둔다. 상시 운영은
+[TABLET_SETUP.md](./TABLET_SETUP.md)의 systemd 등록 절차를 따른다.
 
 | 환경변수 | 필수 | 기본값 | 설명 |
 |---|---|---|---|

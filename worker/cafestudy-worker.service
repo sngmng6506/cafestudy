@@ -1,0 +1,33 @@
+# systemd 유닛. 등록 절차는 worker/TABLET_SETUP.md "worker를 서비스로 등록"에 있다.
+# 비밀은 이 파일에 두지 않는다 — EnvironmentFile이 gitignore된 worker/.env를 읽는다.
+[Unit]
+Description=CafeStudy 소모임 자동화 worker
+Documentation=https://github.com/sngmng6506/cafestudy/blob/main/worker/README.md
+# 네트워크가 올라온 뒤에 뜬다. 태블릿이 아직 안 붙었어도 worker는 폴링하며 기다리므로
+# 기기 상태를 조건으로 걸지 않는다 — 조건으로 걸면 태블릿이 늦게 켜졌을 때 영영 안 뜬다.
+After=network-online.target
+Wants=network-online.target
+# 계속 즉시 실패하는 상황(설정 오류 등)에서 무한 재시작하지 않도록 한도를 둔다.
+# StartLimit*은 [Service]가 아니라 여기에 둬야 systemd가 읽는다.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+# 이 두 줄은 설치하는 기계에 맞게 고친다. %h는 서비스를 등록한 사용자의 홈이다.
+WorkingDirectory=%h/cafestudy
+EnvironmentFile=%h/cafestudy/worker/.env
+ExecStart=/usr/bin/node worker/index.js
+
+# 죽으면 다시 띄운다. 자동 등록은 아무도 지켜보지 않는 시각에 돌기 때문에,
+# 조용히 멈춰 있는 것이 가장 나쁜 실패다.
+Restart=always
+RestartSec=10
+
+# 로그는 journal로 간다: journalctl --user -u cafestudy-worker -f
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cafestudy-worker
+
+[Install]
+WantedBy=default.target

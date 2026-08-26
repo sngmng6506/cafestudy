@@ -92,3 +92,32 @@ job이 `App did not reach the home screen`으로 실패한다.
 adb shell pm list packages -3                    # 서드파티 앱 확인
 adb shell pm disable-user --user 0 <package>     # 삭제가 아니라 비활성화라 되돌릴 수 있다
 ```
+
+## worker를 서비스로 등록
+
+worker는 태블릿과 같은 네트워크에 있는 기계에서 돈다. adb가 태블릿의 사설 IP에
+직접 닿아야 해서 서버(Railway)에서는 실행할 수 없다. 설정도 그 기계에 둔다 —
+서버 환경변수는 worker에 전달되지 않는다. GitHub Actions self-hosted runner나
+GitLab Runner와 같은 구조로, 클라우드에는 대조할 공유 비밀만 둔다.
+
+```bash
+cp worker/.env.example worker/.env   # INTERNAL_API_KEY는 서버 환경변수와 같은 값
+chmod 600 worker/.env                # 비밀이 들어가므로 커밋하지 않는다(gitignore됨)
+
+mkdir -p ~/.config/systemd/user
+cp worker/cafestudy-worker.service ~/.config/systemd/user/
+# WorkingDirectory와 EnvironmentFile 경로가 이 기계와 맞는지 확인한 뒤:
+systemctl --user daemon-reload
+systemctl --user enable --now cafestudy-worker
+loginctl enable-linger "$USER"       # 로그아웃해도 계속 돌게 한다
+```
+
+확인과 로그:
+
+```bash
+systemctl --user status cafestudy-worker
+journalctl --user -u cafestudy-worker -f
+```
+
+락 파일이 worker 두 개가 같은 태블릿을 조작하는 것을 막는다. 손으로 띄운 worker가
+떠 있으면 서비스가 뜨지 못하니, 등록 전에 먼저 끈다.
