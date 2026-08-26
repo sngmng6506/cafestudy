@@ -90,8 +90,11 @@ meetups                       -- 앱 안에서 직접 만든 모임
   모임 feature는 취소 사실만 알리고 이 판단은 자동화 쪽이 한다.
 - 이미 claim된 job은 취소해도 멈출 수 없다. 그 사이 정모가 생성되지만 취소 시점의
   상태가 `pending`이라 삭제 job으로도 이어지지 않는다. 손으로 지운다. 알려진 제약이다.
-- 크롤링(`somoim_events`)과 자동 등록은 서로를 모른다. 자동 등록된 모임은 다음
-  크롤링에서 정모로도 들어와 같은 모임이 두 건으로 보인다("알려진 설계 한계" 참고).
+- 자동 등록된 모임은 다음 크롤링에서 `somoim_events`로 되돌아온다. 소모임이 부여한
+  정모 id를 자동화가 알 수 없어 둘을 잇는 키가 없으므로, 크롤러의 유니크 키와 같은
+  `(제목, 일시)`로 짝짓는다(`shared/somoim-event-origin.js`, 분 단위 비교). 짝이
+  있는 크롤링 정모는 목록·카페 통계에서 빼고, 정산 모임으로 materialize하지도 않는다.
+  이 조건이 한 곳에서 빠지면 그 화면에서만 같은 모임이 두 건으로 보인다.
 
 participants                  -- meetup 참가 (UNIQUE meetup_id+user_id)
 - id, meetup_id, user_id, joined_at
@@ -249,21 +252,10 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
   로컬에서 `npm run db:migrate`를 실행하지 않는다.
 - owner 초기 지정에는 부트스트랩 제약이 있다.
   변경 전 `app_owner`, `users.admin_role`, 비밀번호 상태를 함께 확인한다.
-- 카페 방문 통계가 소모임 정모를 두 번 센다. `listCafeVisits`는 `meetups`를
-  source_type 구분 없이 세는데, 여기엔 정산이 materialize한 `source_type='somoim'`
-  행이 들어 있다. 그 원본인 `somoim_events`는 `listSomoimCafeVisits`가 또 센다.
-  서비스가 둘을 location별로 합산하므로(`cafes.service.js`) 한 정모가 2회가 된다.
-  정산 화면을 한 번이라도 연 뒤부터 그렇다. 자동화와 무관하게 존재한다.
-- 자동 등록과 크롤링이 같은 모임을 두 번 만든다. 앱 모임을 소모임에 등록하면
-  다음 크롤링이 그걸 `somoim_events`로 가져오는데, 둘을 잇는 키가 없다. 정산이
-  소모임 참석자 기준으로 도는 것 자체는 의도된 설계이나(그쪽이 실제 참석 기록이다),
-  같은 모임이 앱 행과 소모임 행으로 갈라져 집계에 겹쳐 들어온다.
-  - 예정 목록(`useUpcomingMeetups`)은 두 소스를 그대로 합쳐 같은 모임이 두 장 뜬다.
-  - `getMemberStats.meetupCount`는 `participants`를 source_type 구분 없이 세므로,
-    앱 모임 참여와 materialize된 행의 참석이 각각 1회로 잡힌다.
-  - 카페 방문 통계는 위 항목과 겹쳐 한 모임이 3회까지 올라간다.
-  잇는다면 크롤러의 유니크 키와 같은 `(title, scheduled_at)`으로 `somoim_state`가
-  `registered`인 앱 모임과 짝지어 크롤링 쪽을 숨기는 방향이다. 미구현.
+- 이번 변경 전에 만들어진 `source_type='somoim'` 모임 행은 그대로 남는다. 앱 모임과
+  겹치는 행이 있어도 지우지 않는다 — 정산이 참조하고 있을 수 있어 파괴적이다.
+  자동 등록을 켠 직후라 겹치는 행이 없을 가능성이 높지만, 정산 목록에 같은 모임이
+  두 번 보이면 이게 원인이다.
 
 ## 포인트 규칙
 

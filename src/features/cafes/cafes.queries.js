@@ -1,3 +1,5 @@
+import { NOT_FROM_APP_MEETUP } from '../../shared/somoim-event-origin.js';
+
 export function createCafesQueries(db) {
   return {
     async listInternalCafeVisits(userId) {
@@ -12,6 +14,10 @@ export function createCafesQueries(db) {
           LEFT JOIN participants p ON p.meetup_id = m.id
           WHERE m.status = 'open'
             AND m.scheduled_at <= now()
+            -- 앱 모임만 센다. 정산이 소모임 일정을 materialize한 source_type='somoim'
+            -- 행까지 세면, 그 원본 somoim_events를 세는 listSomoimCafeVisits와 합산될 때
+            -- (cafes.service.js) 한 정모가 두 번 방문한 것이 된다.
+            AND m.source_type = 'app'
           GROUP BY m.location
         `,
         [userId ?? null],
@@ -34,6 +40,9 @@ export function createCafesQueries(db) {
           WHERE e.location IS NOT NULL
             AND e.location <> ''
             AND e.scheduled_at <= now()
+            -- 자동 등록으로 소모임에 올라갔다가 크롤링으로 되돌아온 정모는 위
+            -- listCafeVisits가 앱 모임으로 이미 셌다.
+            AND ${NOT_FROM_APP_MEETUP}
           GROUP BY e.location
         `,
         [userId ?? null],

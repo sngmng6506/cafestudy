@@ -1,3 +1,5 @@
+import { NOT_FROM_APP_MEETUP } from '../../shared/somoim-event-origin.js';
+
 export function createMembersQueries(db) {
   return {
     async upsertMembers(client, members, sourceUrl) {
@@ -111,7 +113,13 @@ export function createMembersQueries(db) {
       const result = await db.query(
         `
           SELECT
-            (SELECT COUNT(*)::int FROM participants p WHERE p.user_id = $1) AS "meetupCount",
+            -- 카드 라벨이 "앱 모임 참여"다. 정산이 소모임 일정을 materialize한
+            -- source_type='somoim' 행은 앱에서 만든 모임이 아니므로 세지 않는다.
+            -- 그쪽 참석은 아래 somoimCount("정모 참석")가 이미 센다.
+            (SELECT COUNT(*)::int
+               FROM participants p
+               JOIN meetups m ON m.id = p.meetup_id
+              WHERE p.user_id = $1 AND m.source_type = 'app') AS "meetupCount",
             (SELECT COUNT(*)::int FROM verifications v
               WHERE v.user_id = $1 AND v.status = 'approved') AS "verifiedCount",
             (SELECT COUNT(*)::int
@@ -236,6 +244,7 @@ export function createMembersQueries(db) {
           LEFT JOIN somoim_members sm ON sm.face_id = a.face_id
           LEFT JOIN users u ON u.id = sm.id
           LEFT JOIN badges b ON b.id = u.active_badge_id
+          WHERE ${NOT_FROM_APP_MEETUP}
           GROUP BY e.id
           ORDER BY e.scheduled_at ASC NULLS LAST
         `,

@@ -1,3 +1,5 @@
+import { NOT_FROM_APP_MEETUP } from '../../shared/somoim-event-origin.js';
+
 export function createSettlementQueries(db) {
   return {
     async listUserMeetups(userId) {
@@ -44,6 +46,11 @@ export function createSettlementQueries(db) {
              JOIN somoim_event_attendees a ON a.event_id = e.id
              JOIN somoim_members sm ON sm.face_id = a.face_id
              WHERE e.scheduled_at IS NOT NULL
+               -- 자동화가 올린 앱 모임이 크롤링으로 돌아온 정모는 materialize하지
+               -- 않는다. 그러면 같은 모임에 meetups 행이 둘(앱 행과 이 행) 생겨
+               -- 정산 목록에 두 번 나오고, 한 모임에 정산을 두 번 만들 수 있다.
+               -- 그런 모임은 앱 행으로 정산하면 된다.
+               AND ${NOT_FROM_APP_MEETUP}
            ),
            event_hosts AS (
              SELECT
