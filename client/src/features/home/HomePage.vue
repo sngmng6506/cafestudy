@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from '@lucide/vue';
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from '@lucide/vue';
 import { formatTime } from '../../shared/useMeetups.js';
 import { dayKey, useUpcomingMeetups } from '../../shared/useUpcomingMeetups.js';
 import { useFeatureNav } from '../../shared/useFeatureNav.js';
@@ -33,7 +33,6 @@ const selectedDate = ref(null);
 const infoOpen = ref(false);
 
 const previewMeetups = computed(() => upcomingMeetups.value.slice(0, PREVIEW_COUNT));
-const hiddenCount = computed(() => Math.max(0, upcomingMeetups.value.length - PREVIEW_COUNT));
 
 const monthLabel = computed(() =>
   new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long' }).format(viewMonth.value),
@@ -245,7 +244,19 @@ function calendarAttendeeStack(meetup) {
             {{ upcomingMeetups.length }}
           </span>
         </div>
-        <RefreshSomoimButton @refreshed="loadSomoimEvents" />
+        <div class="flex items-center gap-2">
+          <RefreshSomoimButton @refreshed="loadSomoimEvents" />
+          <!-- 갱신 버튼과 같은 크기·모양으로 맞춘다. 헤더 오른쪽은 이 섹션을
+               다루는 조작들이 모이는 자리다. -->
+          <button
+            class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--ui-color-stroke)] bg-white text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)]"
+            type="button"
+            aria-label="모임 전체 보기"
+            @click="goToFeature('meetups')"
+          >
+            <CalendarDays :size="15" />
+          </button>
+        </div>
       </div>
 
       <p v-if="actionError" class="mb-4 rounded-lg bg-[var(--ui-color-danger-surface)] px-4 py-3 text-sm font-semibold text-[var(--ui-color-destructive)]">
@@ -298,15 +309,6 @@ function calendarAttendeeStack(meetup) {
             @cancel="cancelMeetup"
           />
         </ul>
-
-        <button
-          class="focus-ring ui-radius-control ui-border mt-4 flex h-11 w-full items-center justify-center gap-1.5 border text-[14px] font-semibold transition"
-          type="button"
-          @click="goToFeature('meetups')"
-        >
-          {{ hiddenCount > 0 ? `모임 ${hiddenCount}건 더 보기` : '모임 탭에서 전체 보기' }}
-          <ArrowRight :size="16" />
-        </button>
       </template>
     </section>
 
