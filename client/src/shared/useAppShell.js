@@ -47,7 +47,10 @@ export function useAppShell() {
   // 하단에 탭이 없다. 모든 화면이 더보기 메뉴로 간다 — 홈이 order 0이라 맨 위에 온다.
   const overflowFeatures = computed(() => visibleFeatures.value);
   const hasOverflow = computed(() => overflowFeatures.value.length > 0);
-  const showBottomSearch = computed(() => activeFeatureName.value === 'home' && !moreOpen.value);
+  // 더보기 여닫는 것과 무관하다. 예전엔 메뉴를 열면 검색칸이 접혔는데, 그 자리에
+  // 화면 제목이 들어오면서 더보기를 누를 때마다 문구가 바뀌어 보였다. 바 높이가
+  // 그대로 유지되어야 메뉴가 그 위에서 튀지 않는 이점도 있다.
+  const showBottomSearch = computed(() => activeFeatureName.value === 'home');
   const activeFeature = computed(
     () => visibleFeatures.value.find((feature) => feature.name === activeFeatureName.value)
       ?? visibleFeatures.value[0],
