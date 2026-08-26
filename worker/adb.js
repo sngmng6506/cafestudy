@@ -147,11 +147,11 @@ export function createAdb({
       return localPath;
     },
 
-    async dumpUi(deviceId, localPath) {
-      const remotePath = '/sdcard/cafestudy-ui.xml';
-      await run(['-s', deviceId, 'shell', 'uiautomator', 'dump', remotePath]);
-      await run(['-s', deviceId, 'pull', remotePath, localPath]);
-      return localPath;
+    // exec-out으로 덤프를 바로 받는다. 기기에 파일을 쓰고 pull로 되가져오면 왕복이
+    // 한 번 더 늘어난다 — 실기기에서 재보니 dump 자체가 2.35초, pull이 0.3초였다.
+    // XML만 돌려주고, 파일로 남기는 일은 호출부(readScreen)가 한다.
+    async dumpUiXml(deviceId) {
+      return run(['-s', deviceId, 'exec-out', 'uiautomator', 'dump', '/dev/tty']);
     },
   };
 }

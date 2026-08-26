@@ -34,6 +34,15 @@ export { DEFAULT_TARGET_GROUP_NAME };
 // 앱이 정모 사진 없이는 제출을 받지 않는다(실기기 확인). 기기로 밀어 넣을 위치와,
 // 폼이 아직 사진을 받지 않았을 때 띄우는 안내 문구다.
 const REMOTE_PHOTO_PATH = '/sdcard/Pictures/cafestudy-meetup.png';
+
+// 앱은 경비를 필수로 받는다. 비우고 제출하면 "경비를 입력해 주세요." 토스트를 띄우고
+// 폼에 머문다(실기기에서 스크린샷으로 확인). 토스트는 uiautomator 덤프에 안 잡혀서,
+// 겉으로는 "눌렀는데 아무 일도 안 일어남"으로만 보인다.
+//
+// 카페스터디 모임에는 참가비 개념이 없다. 값이 없을 때 이 문구를 넣는다 — 빈칸을
+// 우회하려고 아무 숫자나 넣으면 멤버에게 없는 비용을 알리는 셈이 된다.
+// 카페에서 모이므로 각자 음료를 사는 것이 실제 비용이다.
+const DEFAULT_COST_TEXT = '각자 음료값';
 const PHOTO_PLACEHOLDER_TEXT = '정모사진을 등록해주세요.';
 
 async function openCreateMeetupForm(adb, deviceId, artifactDir, targetGroupName) {
@@ -194,7 +203,7 @@ async function setDateAndTime(adb, deviceId, artifactDir, target) {
   const { hour12, period } = to12Hour(target.hour24);
 
   await tap(adb, deviceId, hourField.center);
-  await clearFocusedField(adb, deviceId);
+  await clearFocusedField(adb, deviceId, hourField.text);
   await typeText(adb, deviceId, String(hour12));
   await sleep(200);
 
@@ -203,7 +212,7 @@ async function setDateAndTime(adb, deviceId, artifactDir, target) {
   // 00:00이 된다. TAB은 레이아웃과 무관하게 다음 입력칸으로 넘어간다.
   await adb.shell(deviceId, ['input', 'keyevent', 'KEYCODE_TAB']);
   await sleep(300);
-  await clearFocusedField(adb, deviceId);
+  await clearFocusedField(adb, deviceId, minuteField.text);
   await typeText(adb, deviceId, String(target.minute).padStart(2, '0'));
   await sleep(300);
 
@@ -212,6 +221,15 @@ async function setDateAndTime(adb, deviceId, artifactDir, target) {
   nodes = await readScreen(adb, deviceId, artifactDir);
   const typedHour = findByResourceId(nodes, 'input_hour')?.text;
   const typedMinute = findByResourceId(nodes, 'input_minute')?.text;
+  // 칸이 사라진 것과 값이 틀린 것을 구분한다. 둘을 같은 메시지로 묶었더니 IME가
+  // 죽어 크래시 창이 화면을 덮은 상황이 "입력한 시각이 안 들어갔다"로 보고돼,
+  // 실제 원인(ADB_CLEAR_TEXT가 IME를 죽임)을 찾는 데 한참 걸렸다.
+  if (typedHour == null || typedMinute == null) {
+    throw new ManualReviewError('Time picker fields vanished before the typed time could be checked', {
+      stage: 'set_time',
+      hint: '다른 창이 화면을 덮었을 수 있다 — 저장된 ui-dump.xml을 본다',
+    });
+  }
   if (Number(typedHour) !== hour12 || Number(typedMinute) !== target.minute) {
     throw new ManualReviewError('Typed time did not land in the picker fields', {
       stage: 'set_time',
@@ -347,7 +365,6 @@ async function attachMeetupPhoto(adb, deviceId, artifactDir, photoPath) {
   // 시스템 사진 선택기가 뜰 때까지 기다린다. 앱과 다른 패키지라 그걸로 판정한다.
   let picked = null;
   for (let i = 0; i < 10 && !picked; i += 1) {
-    await sleep(1000);
     nodes = await readScreen(adb, deviceId, artifactDir);
     // 방금 push한 사진이 가장 최근이라 목록 첫 항목이다.
     picked = nodes.find(
@@ -362,7 +379,6 @@ async function attachMeetupPhoto(adb, deviceId, artifactDir, photoPath) {
   // 앱 내부 크롭 화면(Edit Photo)이 이어진다. 그대로 Crop을 눌러 통과한다.
   let cropButton = null;
   for (let i = 0; i < 10 && !cropButton; i += 1) {
-    await sleep(1000);
     nodes = await readScreen(adb, deviceId, artifactDir);
     cropButton = findByResourceId(nodes, 'menu_crop');
   }
@@ -375,7 +391,6 @@ async function attachMeetupPhoto(adb, deviceId, artifactDir, photoPath) {
   // 쓰면 안 된다 — 가로 화면에서는 폼 아래쪽이라 덤프에 안 잡힌다. 항상 보이는
   // 화면 제목으로 판정한다.
   for (let i = 0; i < 10; i += 1) {
-    await sleep(1000);
     nodes = await readScreen(adb, deviceId, artifactDir);
     if (nodes.some((n) => n.text === '정모 개설') && isPhotoAttached(nodes)) return;
   }
@@ -397,34 +412,143 @@ async function fillField(adb, deviceId, artifactDir, fieldId, value) {
 
   await tap(adb, deviceId, field.center);
   await sleep(300);
-  await clearFocusedField(adb, deviceId);
-  await typeText(adb, deviceId, value);
+  await clearFocusedField(adb, deviceId, field.text);
+  // 빈 값이면 비우는 것으로 끝낸다. 앱이 지난 입력을 폼에 되살려 두기 때문에
+  // 건너뛰면 그 값이 그대로 남는다 — 참가비를 안 받는 정모에 지난번 "식사비
+  // 15000원"이 붙어 올라갔다(실기기에서 확인).
+  if (value !== '') await typeText(adb, deviceId, value);
   await sleep(300);
+}
+
+// 소모임 정모 화면의 장소 칸은 20자에서 잘린다(실기기 확인: 44자를 넣었더니 앞
+// 20자만 남았다). 서버 쪽 limit은 120자라 통과하므로, 여기서 앱에 맞게 줄인다.
+//
+// 웹 모임의 장소는 "가게이름 (도로명주소)" 형태다. 이걸 20자에서 그냥 자르면
+// 주소가 중간에 끊겨("아비아채 서울홍대점 (서울특별시 마포") 오히려 못 알아본다.
+// 괄호 앞 가게 이름만 남기는 편이 짧으면서 알아보기 쉽다.
+export const APP_LOCATION_MAX_LENGTH = 20;
+
+export function costForApp(payload) {
+  const cost = String(payload?.cost ?? '').trim();
+  return cost || DEFAULT_COST_TEXT;
+}
+
+export function fitLocationForApp(location, limit = APP_LOCATION_MAX_LENGTH) {
+  const trimmed = String(location ?? '').trim();
+  if (trimmed.length <= limit) return trimmed;
+
+  const nameOnly = trimmed.replace(/\s*\(.*$/, '').trim();
+  if (nameOnly && nameOnly.length <= limit) return nameOnly;
+
+  return (nameOnly || trimmed).slice(0, limit);
+}
+
+
+// 앱의 지도 URL 칸은 100자에서 자른다(실기기 확인: 130자를 넣었더니 정확히 앞
+// 100자만 남았다). 잘린 URL은 열리지 않으므로 없느니만 못하다.
+const APP_MAP_URL_MAX_LENGTH = 100;
+
+// 네이버 지도 검색 URL. 네이버 API는 필요 없다 — payload의 장소 문자열만으로
+// 만든다. v5/search와 ?query= 형식은 모두 이 형태로 리다이렉트되므로 이것이 정식이다.
+//
+// 한글을 퍼센트 인코딩하지 않는다. 한 글자가 9자(%EC%95%84)가 되어 100자 예산을
+// 금방 넘긴다 — "아비아채 서울홍대점"은 전체 인코딩 시 115자로 잘린다. 공백만
+// 인코딩한다. 공백이 그대로 있는 문자열은 URL로서 유효하지 않아 받는 쪽이 거부할 수 있다.
+export function buildNaverMapUrl(location, limit = APP_MAP_URL_MAX_LENGTH) {
+  const query = fitLocationForApp(location, Number.MAX_SAFE_INTEGER)
+    .replace(/\s*\(.*$/, '')
+    .trim();
+  if (!query) return null;
+
+  const url = `https://map.naver.com/p/search/${query.replace(/ /g, '%20')}`;
+  // 길면 붙이지 않는다. 잘린 링크를 남기느니 지도 없이 올리는 편이 낫다.
+  return url.length <= limit ? url : null;
+}
+
+// "지도 URL 추가"를 눌러 다이얼로그에 URL을 넣는다.
+//
+// 키보드를 먼저 내려야 한다. IME 창은 uiautomator 덤프에 안 잡히면서 그 아래 탭을
+// 삼킨다 — 이 버튼이 안 눌려서 한참 헤맸다(실기기에서 확인).
+async function attachMapUrl(adb, deviceId, artifactDir, url) {
+  await hideKeyboardIfShown(adb, deviceId);
+  let nodes = await readScreen(adb, deviceId, artifactDir);
+
+  // 이미 지도가 붙어 있으면 버튼 대신 URL(map_text)이 보이고, 누르면
+  // [지도 보기 / 지도 수정 / 지도 삭제] 메뉴가 뜬다. 이전 입력이 남아 있는
+  // 경우이므로 수정으로 들어가 덮어쓴다.
+  const existing = findByResourceId(nodes, 'map_text');
+  if (existing?.center) {
+    await tap(adb, deviceId, existing.center);
+    await sleep(800);
+    nodes = await readScreen(adb, deviceId, artifactDir);
+    const edit = nodes.find((n) => n.text === '지도 수정');
+    if (!edit?.center) {
+      throw new ManualReviewError('지도 수정 항목을 찾을 수 없음', { stage: 'attach_map' });
+    }
+    await tap(adb, deviceId, edit.center);
+  } else {
+    const addButton = findByResourceId(nodes, 'insert_map_button');
+    if (!addButton?.center) {
+      throw new ManualReviewError('지도 URL 추가 버튼을 찾을 수 없음', { stage: 'attach_map' });
+    }
+    await tap(adb, deviceId, addButton.center);
+  }
+  await sleep(800);
+
+  nodes = await readScreen(adb, deviceId, artifactDir);
+  const input = findByResourceId(nodes, 'edittext');
+  const confirm = nodes.find((n) => n.resourceId.endsWith('/button1') && n.text === '확인');
+  if (!input?.center || !confirm?.center) {
+    throw new ManualReviewError('지도 URL 입력창이 열리지 않음', { stage: 'attach_map' });
+  }
+
+  await tap(adb, deviceId, input.center);
+  await sleep(300);
+  await clearFocusedField(adb, deviceId, input.text);
+  await typeText(adb, deviceId, url);
+  await sleep(300);
+
+  // 확인을 누르기 전에 키보드를 내린다. 다이얼로그 버튼도 IME에 가려 안 눌린다.
+  await hideKeyboardIfShown(adb, deviceId);
+  nodes = await readScreen(adb, deviceId, artifactDir);
+  const confirmNow = nodes.find((n) => n.resourceId.endsWith('/button1') && n.text === '확인');
+  await tap(adb, deviceId, (confirmNow ?? confirm).center);
+  await sleep(800);
+
+  // 붙었는지는 폼에 URL이 보이는지로 판정한다. 눌렀다는 사실은 증거가 아니다.
+  nodes = await readScreen(adb, deviceId, artifactDir);
+  const mapText = findByResourceId(nodes, 'map_text');
+  if (!mapText) {
+    throw new ManualReviewError('지도 URL이 폼에 반영되지 않음', { stage: 'attach_map' });
+  }
+  return mapText.text;
 }
 
 async function fillTextFields(adb, deviceId, artifactDir, payload) {
   await fillField(adb, deviceId, artifactDir, 'name_edit', payload.title);
-  await fillField(adb, deviceId, artifactDir, 'location_edit', payload.location);
+  await fillField(adb, deviceId, artifactDir, 'location_edit', fitLocationForApp(payload.location));
 
   // "새 게시글 자동 생성" 모드인 이 화면엔 description을 넣을 자리가 없다(정모
   // 안내문은 제목/일시/장소/비용으로 자동 생성된다). "기존 게시글 연동" 모드로
   // 바꾸지 않는 한 채울 수 없는, 확인된 앱 제약이라 description은 그냥 건너뛴다.
 
-  if (payload.cost) {
-    await fillField(adb, deviceId, artifactDir, 'expense_edit', payload.cost);
-  }
+  await fillField(adb, deviceId, artifactDir, 'expense_edit', costForApp(payload));
   await fillField(adb, deviceId, artifactDir, 'max_count_edit', String(payload.capacity));
 }
 
-function buildExpectedFieldValues(payload, target) {
+export function buildExpectedFieldValues(payload, target) {
   const expected = {
     name_edit: payload.title,
-    location_edit: payload.location,
+    // 앱이 잘라서 담을 값과 비교해야 한다. 원본과 비교하면 항상 어긋난다.
+    location_edit: fitLocationForApp(payload.location),
     max_count_edit: String(payload.capacity),
     date_text: formatKoreanDate(target),
     time_text: formatKoreanTime(target),
   };
-  if (payload.cost) expected.expense_edit = payload.cost;
+  // 항상 값이 들어간다(앱이 필수로 받는다). 그래서 hint와 헷갈릴 일도 없다 —
+  // uiautomator는 빈 EditText의 hint를 text로 돌려주므로, 빈 값을 기대했다면
+  // "식사비 15000원"과 영원히 어긋났을 것이다.
+  expected.expense_edit = costForApp(payload);
   return expected;
 }
 
@@ -564,6 +688,13 @@ export function createCreateMeetupHandler({
     await setDateAndTime(adb, deviceId, jobArtifactDir, target);
     await fillTextFields(adb, deviceId, jobArtifactDir, payload);
 
+    // 지도 URL은 선택 항목이다. 만들 수 없으면(장소가 너무 길어 100자를 넘으면)
+    // 그냥 건너뛴다 — 지도 하나 때문에 정모 등록 전체를 실패시키지 않는다.
+    const mapUrl = buildNaverMapUrl(payload.location);
+    if (mapUrl) {
+      await attachMapUrl(adb, deviceId, jobArtifactDir, mapUrl);
+    }
+
     // 사진은 submit에서만 붙인다. dryRun은 제출하지 않으므로 필요 없고, 붙이려면
     // 기기에 파일을 밀어 넣고 선택기·크롭을 거쳐야 해서 화면을 더 건드리게 된다.
     if (mode === 'submit') {
@@ -615,11 +746,20 @@ export function createCreateMeetupHandler({
     // 때까지 기다린다. 제출 중에는 앱이 로딩 다이얼로그를 띄우므로 넉넉히 본다.
     let outcome = { ok: false, reason: 'not_checked' };
     for (let i = 0; i < 20 && !outcome.ok; i += 1) {
-      await sleep(1000);
+      // 먼저 한 번만 읽어 폼이 아직 있는지 본다. 폼이 있으면 성공일 수 없으므로
+      // 스크롤하며 게시글을 모으는 비싼 경로로 들어갈 이유가 없다 — 그쪽은 화면을
+      // 최대 4번 읽고, 한 번 읽는 데 실기기에서 2.35초가 든다.
+      const nodes = await readScreen(adb, deviceId, jobArtifactDir);
+      if (isCreateFormPresent(nodes)) {
+        outcome = { ok: false, reason: 'form_still_present' };
+        await sleep(1000);
+        continue;
+      }
       outcome = evaluateSubmitOutcome(
         await collectPostNodes(adb, deviceId, jobArtifactDir),
         { title: payload.title },
       );
+      if (!outcome.ok) await sleep(1000);
     }
 
     const evidence = await captureEvidence(adb, deviceId, jobArtifactDir, jobId, 'after-submit');

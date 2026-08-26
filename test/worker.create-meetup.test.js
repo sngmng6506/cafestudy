@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { evaluateSubmitOutcome, isCreateFormPresent } from '../worker/handlers/create-meetup.js';
+import {
+  evaluateSubmitOutcome,
+  isCreateFormPresent,
+  fitLocationForApp,
+  buildExpectedFieldValues,
+  costForApp,
+  buildNaverMapUrl,
+} from '../worker/handlers/create-meetup.js';
 import {
   assertScheduledAtIsFuture,
   buildScreenshotKey,
@@ -15,6 +22,9 @@ import {
   to12Hour,
   toKstParts,
   uniqueByBounds,
+  typeText,
+  findCrashDialogButton,
+  clearFocusedField,
 } from '../worker/somoim-app.js';
 
 // 실제 uiautomator dump에서 뽑아낸 조각들(이 세션에서 태블릿으로 직접 확인한 값).
@@ -322,4 +332,176 @@ test('assertScheduledAtIsFuture: this is exactly the gap a stale-claim retry loo
   const scheduledAt = new Date(now + minLeadMs).toISOString();
   const afterWorstCaseRetry = now + worstCaseRetryMs;
   assert.throws(() => assertScheduledAtIsFuture(scheduledAt, afterWorstCaseRetry));
+});
+
+// --- ADBKeyBoard 크래시 대응 (실기기에서 겪은 연쇄 실패) ---
+
+test('typeText: 숫자는 IME를 거치지 않는다', async () => {
+  const calls = [];
+  const adb = { async shell(_id, args) { calls.push(args); return ''; } };
+
+  await typeText(adb, 'dev', '7');
+  await typeText(adb, 'dev', '30');
+
+  // input text로 직접 넣는다. 시각 입력 중 ADBKeyBoard가 죽어 화면이 크래시
+  // 다이얼로그로 덮였고, 그 뒤 job들이 줄줄이 "홈 화면 못 찾음"으로 실패했다.
+  assert.deepEqual(calls, [['input', 'text', '7'], ['input', 'text', '30']]);
+  assert.ok(!JSON.stringify(calls).includes('ADB_INPUT_TEXT'));
+});
+
+test('typeText: 한글은 IME 브로드캐스트로 보낸다', async () => {
+  const calls = [];
+  const adb = { async shell(_id, args) { calls.push(args); return ''; } };
+
+  await typeText(adb, 'dev', '토요일 스터디');
+
+  // input text로는 한글을 넣을 수 없으므로 이 경로는 그대로 둔다.
+  assert.equal(calls.length, 1);
+  assert.match(calls[0][0], /ADB_INPUT_TEXT/);
+  assert.match(calls[0][0], /토요일 스터디/);
+});
+
+test('크래시 다이얼로그를 알아본다', () => {
+  // 실기기 덤프 그대로: 우리 앱이 아니라 android 패키지가 띄운 창이라
+  // force-stop으로는 사라지지 않는다.
+  const nodes = parseUiNodes(`<hierarchy>
+    <node resource-id="android:id/alertTitle" text="ADBKeyBoard has stopped" bounds="[0,0][100,50]" package="android"/>
+    <node resource-id="android:id/aerr_app_info" text="App info" bounds="[0,60][100,110]" package="android"/>
+    <node resource-id="android:id/aerr_close" text="Close app" bounds="[0,120][100,170]" package="android"/>
+  </hierarchy>`);
+
+  const button = findCrashDialogButton(nodes);
+  assert.ok(button, '닫기 버튼을 찾아야 한다');
+  assert.equal(button.resourceId, 'android:id/aerr_close');
+});
+
+test('평범한 화면을 크래시 다이얼로그로 오인하지 않는다', () => {
+  const nodes = parseUiNodes(`<hierarchy>
+    <node resource-id="com.friendscube.somoim:id/search_btn_layout" text="" bounds="[0,0][100,50]" package="com.friendscube.somoim"/>
+  </hierarchy>`);
+
+  assert.equal(findCrashDialogButton(nodes), null);
+});
+
+test('입력칸 비우기는 IME를 거치지 않는다', async () => {
+  const calls = [];
+  const adb = { async shell(_id, args) { calls.push(args); return ''; } };
+
+  await clearFocusedField(adb, 'dev', '12');
+
+  // ADB_CLEAR_TEXT는 쓰지 않는다. ADBKeyBoard가 getExtractedText()를 null 검사
+  // 없이 읽어서, ExtractedText를 주지 않는 시간 선택기 칸에서 매번 죽었다.
+  assert.ok(!JSON.stringify(calls).includes('ADB_CLEAR_TEXT'));
+  assert.deepEqual(calls[0], ['input', 'keyevent', 'KEYCODE_MOVE_END']);
+  // 기존 두 글자 + 여유 2회.
+  assert.equal(calls[1].filter((key) => key === 'KEYCODE_DEL').length, 4);
+});
+
+test('입력칸 비우기: 현재 값을 몰라도 동작한다', async () => {
+  const calls = [];
+  const adb = { async shell(_id, args) { calls.push(args); return ''; } };
+
+  await clearFocusedField(adb, 'dev');
+
+  // 이미 빈 칸에 DEL을 더 보내도 해가 없다.
+  assert.ok(calls[1].filter((key) => key === 'KEYCODE_DEL').length >= 1);
+});
+
+// --- 앱의 장소 칸 길이 제한 (실기기: 44자를 넣었더니 20자만 남았다) ---
+
+test('장소가 짧으면 그대로 쓴다', () => {
+  assert.equal(fitLocationForApp('강남역 스타벅스'), '강남역 스타벅스');
+});
+
+test('장소가 길면 괄호 앞 가게 이름만 남긴다', () => {
+  // 그냥 20자에서 자르면 "아비아채 서울홍대점 (서울특별시 마포"가 되어 주소가
+  // 중간에 끊긴다. 이름만 남기는 편이 짧으면서 알아보기 쉽다.
+  assert.equal(
+    fitLocationForApp('아비아채 서울홍대점 (서울특별시 마포구 와우산로37길 52 아비아채 서울홍대점)'),
+    '아비아채 서울홍대점',
+  );
+});
+
+test('가게 이름마저 길면 잘라서라도 넣는다', () => {
+  const long = '가'.repeat(30);
+  const fitted = fitLocationForApp(`${long} (서울시 어딘가)`);
+  assert.equal(fitted.length, 20);
+  assert.ok(long.startsWith(fitted));
+});
+
+test('괄호가 없는 긴 장소도 제한을 넘지 않는다', () => {
+  const fitted = fitLocationForApp('서울특별시 마포구 와우산로37길 52 어딘가 아주 긴 장소 이름');
+  assert.equal(fitted.length, 20);
+});
+
+test('빈 값이어도 터지지 않는다', () => {
+  assert.equal(fitLocationForApp(''), '');
+  assert.equal(fitLocationForApp(null), '');
+});
+
+test('참가비가 없으면 기본 문구를 넣는다', () => {
+  // 앱이 경비를 필수로 받는다. 비우고 제출하면 "경비를 입력해 주세요." 토스트를
+  // 띄우고 폼에 머문다 — 토스트는 덤프에 안 잡혀서 원인이 안 보인다(실기기 확인).
+  assert.equal(costForApp({ cost: '' }), '각자 음료값');
+  assert.equal(costForApp({}), '각자 음료값');
+  assert.equal(costForApp({ cost: '   ' }), '각자 음료값');
+});
+
+test('참가비가 있으면 그대로 쓴다', () => {
+  assert.equal(costForApp({ cost: '음료 5000원' }), '음료 5000원');
+});
+
+test('참가비는 항상 검증한다', () => {
+  const expected = buildExpectedFieldValues(
+    { title: '스터디', location: '카페', capacity: 6, cost: '' },
+    { year: 2026, month: 8, day: 27, hour24: 11, minute: 0 },
+  );
+
+  // 늘 값이 들어가므로 hint("식사비 15000원")와 헷갈릴 일이 없다.
+  assert.equal(expected.expense_edit, '각자 음료값');
+  assert.equal(expected.name_edit, '스터디');
+});
+
+test('참가비가 있으면 그 값으로 검증한다', () => {
+  const expected = buildExpectedFieldValues(
+    { title: '스터디', location: '카페', capacity: 6, cost: '음료 5000원' },
+    { year: 2026, month: 8, day: 27, hour24: 11, minute: 0 },
+  );
+
+  assert.equal(expected.expense_edit, '음료 5000원');
+});
+
+// --- 네이버 지도 URL (앱 칸은 100자에서 자른다: 130자 → 100자, 실기기 확인) ---
+
+test('장소 이름으로 네이버 검색 URL을 만든다', () => {
+  // 네이버 API는 필요 없다. payload의 장소 문자열만으로 만든다.
+  assert.equal(
+    buildNaverMapUrl('아비아채 서울홍대점 (서울특별시 마포구 와우산로37길 52 아비아채 서울홍대점)'),
+    'https://map.naver.com/p/search/아비아채%20서울홍대점',
+  );
+});
+
+test('한글은 퍼센트 인코딩하지 않는다', () => {
+  // 한 글자가 9자(%EC%95%84)가 되어 100자 예산을 넘긴다. 같은 장소를 전체
+  // 인코딩하면 115자라 잘린다.
+  const url = buildNaverMapUrl('아비아채 서울홍대점');
+  assert.ok(!url.includes('%EC'), '한글이 인코딩되면 안 된다');
+  assert.ok(url.length <= 100);
+});
+
+test('공백은 인코딩한다', () => {
+  // 공백이 그대로 있으면 URL로서 유효하지 않아 받는 쪽이 거부할 수 있다.
+  const url = buildNaverMapUrl('강남역 스타벅스');
+  assert.ok(!url.includes(' '), '날 공백이 남으면 안 된다');
+  assert.match(url, /%20/);
+});
+
+test('100자를 넘으면 붙이지 않는다', () => {
+  // 잘린 URL은 열리지 않는다. 지도 없이 올리는 편이 낫다.
+  assert.equal(buildNaverMapUrl('가'.repeat(90)), null);
+});
+
+test('장소가 없으면 만들지 않는다', () => {
+  assert.equal(buildNaverMapUrl(''), null);
+  assert.equal(buildNaverMapUrl('   '), null);
 });

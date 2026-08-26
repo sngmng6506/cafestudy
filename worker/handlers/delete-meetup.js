@@ -61,7 +61,6 @@ async function openClubHome(adb, deviceId, artifactDir, targetGroupName) {
   const homeTab = nodes.find((n) => n.text === '홈');
   if (homeTab) {
     await tap(adb, deviceId, homeTab.center);
-    await sleep(1000);
     nodes = await readScreen(adb, deviceId, artifactDir);
   }
   if (!nodes.some((n) => n.text === targetGroupName)) {

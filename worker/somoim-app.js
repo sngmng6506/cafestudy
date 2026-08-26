@@ -1,4 +1,4 @@
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ManualReviewError, TransientError } from './errors.js';
 
@@ -168,15 +168,41 @@ function escapeForRemoteDoubleQuotes(value) {
   return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`');
 }
 
+// 숫자만 있는 값은 ADBKeyBoard를 거치지 않는다. `input text`는 ASCII를 그대로
+// 넣을 수 있고, 숫자는 이스케이프할 특수문자도 없다. IME를 안 거치면 그만큼
+// 죽을 일도 없다 — 실기기에서 시각을 입력하다 ADBKeyBoard가 죽었고, 그 크래시
+// 다이얼로그가 화면을 덮어 이후 job들까지 "홈 화면을 못 찾음"으로 연달아 실패했다.
+// 한글은 `input text`로 넣을 수 없으므로 그때만 IME 브로드캐스트를 쓴다.
 export async function typeText(adb, deviceId, text) {
-  const escaped = escapeForRemoteDoubleQuotes(text);
+  const value = String(text);
+  if (/^[0-9]+$/.test(value)) {
+    await adb.shell(deviceId, ['input', 'text', value]);
+    return;
+  }
+  const escaped = escapeForRemoteDoubleQuotes(value);
   await adb.shell(deviceId, [`am broadcast -a ADB_INPUT_TEXT --es msg "${escaped}"`]);
 }
 
-// ADBKeyBoard의 ADB_CLEAR_TEXT는 포커스된 입력창 전체를 지운다(공식 문서에 명시된
-// 표준 액션). 기존 글자 수를 세어 backspace를 보내는 것보다 안전하다.
-export async function clearFocusedField(adb, deviceId) {
-  await adb.shell(deviceId, ['am broadcast -a ADB_CLEAR_TEXT']);
+// 포커스된 입력창을 비운다.
+//
+// ADBKeyBoard의 ADB_CLEAR_TEXT를 쓰지 않는다. 그쪽이 표준 액션이고 글자 수를 세는
+// 것보다 안전해 보이지만, 실기기에서 IME를 반복해서 죽였다:
+//
+//   Error receiving broadcast Intent { act=ADB_CLEAR_TEXT }
+//   NullPointerException: ExtractedText.text is null
+//     at AdbIME$AdbReceiver.onReceive(AdbIME.java:157)
+//
+// ADBKeyBoard가 getExtractedText() 결과를 null 검사 없이 읽는데, 시간 선택기의
+// 숫자 입력칸은 ExtractedText를 주지 않아 매번 NPE가 났다. IME가 죽으면 "앱이
+// 중지되었습니다" 창이 화면을 덮은 채 남아 이후 job까지 연달아 실패한다.
+//
+// 끝으로 이동한 뒤 지우는 방식은 IME를 거치지 않는다. currentText를 주면 그 길이만큼,
+// 모르면 넉넉히 지운다 — 이미 빈 칸에 DEL을 더 보내도 해가 없다.
+export async function clearFocusedField(adb, deviceId, currentText = '') {
+  const count = String(currentText ?? '').length + 2;
+  await adb.shell(deviceId, ['input', 'keyevent', 'KEYCODE_MOVE_END']);
+  // 한 번의 keyevent 호출로 여러 키를 보낸다. DEL을 한 건씩 보내면 왕복이 그만큼 늘어난다.
+  await adb.shell(deviceId, ['input', 'keyevent', ...Array(count).fill('KEYCODE_DEL')]);
 }
 
 // 키보드를 내린다. IME 창은 uiautomator 덤프에 안 잡히면서 그 아래 버튼의 탭을
@@ -191,10 +217,12 @@ export async function hideKeyboardIfShown(adb, deviceId) {
 }
 
 export async function readScreen(adb, deviceId, artifactDir) {
+  const xml = await adb.dumpUiXml(deviceId);
+  // 마지막으로 읽은 화면을 파일로도 남긴다. 실패를 진단할 때 이 파일이 유일한
+  // 단서다 — 토스트처럼 덤프에 안 잡히는 것까지는 못 담지만, 어느 화면에서
+  // 멈췄는지는 여기서 나온다.
   await mkdir(artifactDir, { recursive: true });
-  const dumpPath = path.join(artifactDir, 'ui-dump.xml');
-  await adb.dumpUi(deviceId, dumpPath);
-  const xml = await readFile(dumpPath, 'utf8');
+  await writeFile(path.join(artifactDir, 'ui-dump.xml'), xml, 'utf8');
   return parseUiNodes(xml);
 }
 
@@ -257,16 +285,47 @@ export async function dismissRegionGateIfPresent(adb, deviceId, artifactDir, nod
 // 매번 강제 종료 후 재실행해 알 수 없는 이전 화면 상태(뒤로가기 스택, 남은 다이얼로그
 // 등)에 의존하지 않는 결정적인 시작점을 만든다. 콜드 스타트는 웜 스타트보다 훨씬
 // 느릴 수 있어(수 초) 고정 sleep 대신 홈 화면이 뜰 때까지 폴링한다.
+// "<앱> has stopped" 크래시 다이얼로그. 우리 앱이 아니라 android 패키지가 띄우는
+// 창이라 force-stop으로 사라지지 않고, 화면을 덮은 채 남아 이후 job들이 전부
+// "홈 화면을 못 찾음"으로 실패한다(ADBKeyBoard가 죽었을 때 실기기에서 확인).
+export function findCrashDialogButton(nodes) {
+  const isCrashDialog = nodes.some((node) => node.resourceId.endsWith('/aerr_close')
+    || node.resourceId.endsWith('/aerr_app_info'));
+  if (!isCrashDialog) return null;
+  return findByResourceId(nodes, 'aerr_close') ?? findByResourceId(nodes, 'button1') ?? null;
+}
+
+async function dismissCrashDialogIfPresent(adb, deviceId, artifactDir) {
+  const button = findCrashDialogButton(await readScreen(adb, deviceId, artifactDir));
+  if (!button?.center) return false;
+  await tap(adb, deviceId, button.center);
+  await sleep(800);
+  return true;
+}
+
 export async function launchApp(adb, deviceId, artifactDir) {
+  // 앞선 job이 남긴 크래시 다이얼로그를 먼저 치운다. 이게 떠 있으면 앱을 아무리
+  // 다시 띄워도 그 위를 덮고 있어 홈 화면을 영영 읽지 못한다.
+  await dismissCrashDialogIfPresent(adb, deviceId, artifactDir);
   await adb.shell(deviceId, ['am', 'force-stop', APP_PACKAGE]);
   await adb.shell(deviceId, ['monkey', '-p', APP_PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1']);
 
   const attempts = 10;
   let dismissedRegionGate = false;
   for (let i = 0; i < attempts; i += 1) {
-    await sleep(1000);
+    // 읽기 전에 자지 않는다. uiautomator dump 자체가 화면이 안정될 때까지 기다리고
+    // (실기기에서 2.35초), 그 앞의 sleep은 준비가 이미 끝난 경우에도 그대로 낭비된다.
+    // 못 찾았을 때만 아래에서 기다린다.
     const nodes = await readScreen(adb, deviceId, artifactDir);
     if (findByResourceId(nodes, 'search_btn_layout')) return;
+
+    // 실행 도중에도 뜰 수 있다. 덮인 채로 남은 시도를 흘려보내지 않는다.
+    const crashButton = findCrashDialogButton(nodes);
+    if (crashButton?.center) {
+      await tap(adb, deviceId, crashButton.center);
+      await sleep(800);
+      continue;
+    }
 
     if (!dismissedRegionGate && (await dismissRegionGateIfPresent(adb, deviceId, artifactDir, nodes))) {
       dismissedRegionGate = true;
@@ -344,7 +403,6 @@ export async function openJoinedGroup(adb, deviceId, artifactDir, targetGroupNam
   let joined = [];
   let dismissedRegionGate = false;
   for (let i = 0; i < 10; i += 1) {
-    await sleep(1000);
     nodes = await readScreen(adb, deviceId, artifactDir);
     // "가입한 모임" 헤더가 보여야 내모임 화면이다. 이 확인 없이 name_text를 세면
     // 아직 홈에 있을 때 남의 정모 이름을 가입 모임으로 착각한다.
