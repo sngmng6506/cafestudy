@@ -26,8 +26,10 @@ export function createWorkerConfig(env = process.env) {
     // 정모 사진으로 쓸 이미지. 앱이 사진 없이는 제출을 받지 않는다.
     // 비우면 worker가 단색 16:9 플레이스홀더를 만들어 쓴다.
     meetupPhotoPath: (env.MEETUP_PHOTO_PATH ?? '').trim(),
-    // 정모 생성 시 클럽 전원 알림. 기본 켜짐이고, 실기기 시험용으로만 끈다.
-    notifyMembers: env.SOMOIM_NOTIFY_MEMBERS !== 'false',
+    // 정모 생성 시 클럽 전원 알림. 기본은 꺼짐이다 — 자동 등록은 아무도 지켜보지
+    // 않는 시각에 돌고, 실패해서 다시 시도하면 그만큼 알림이 반복된다. 멤버 124명에게
+    // 가는 알림은 되돌릴 수 없으니 켤 때만 명시적으로 켠다.
+    notifyMembers: env.SOMOIM_NOTIFY_MEMBERS === 'true',
     // worker 두 개가 같은 태블릿을 동시에 조작하는 것을 막는 락 파일.
     lockFile: (env.WORKER_LOCK_FILE ?? '').trim(),
   };
