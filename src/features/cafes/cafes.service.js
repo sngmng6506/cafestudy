@@ -1,6 +1,6 @@
 import { createCafesQueries } from './cafes.queries.js';
 import { throwValidation, throwForbidden } from '../../shared/errors.js';
-import { searchPlaces } from '../../shared/naver-local.js';
+import { searchPlaces } from '../../shared/kakao-local.js';
 
 const RESOLVE_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 const RESOLVE_BATCH = 5;
@@ -22,9 +22,43 @@ export function geocodeCandidates(location) {
   return candidates;
 }
 
+
+// 같은 장소 ID를 가리키는 항목을 하나로 합친다. 문자열로만 묶으면 같은 카페가
+// 출처마다 다르게 적혀 갈라진다 — 앱 모임은 "이름 (도로명주소)"로, 크롤링 정모는
+// 사람이 앱에 적은 대로("아비아채 지하1층") 들어오기 때문이다.
+//
+// 장소 ID가 없는 항목은 합치지 않는다. 카카오가 못 찾은 자유 입력인데, 억지로
+// 좌표를 붙여 합치면 엉뚱한 카페에 남의 이력이 섞인다(네이버는 "정기모임장소 근처"를
+// 고양시 스터디룸으로 자신 있게 돌려줬다). 갈라진 채 두는 편이 낫다.
+export function foldByPlaceId(cafes) {
+  const merged = new Map();
+
+  for (const cafe of cafes.values()) {
+    const key = cafe.placeId ? `id:${cafe.placeId}` : `raw:${cafe.location}`;
+    const current = merged.get(key);
+    if (!current) {
+      merged.set(key, { ...cafe, locations: [cafe.location] });
+      continue;
+    }
+
+    current.meetupCount += cafe.meetupCount;
+    current.canComment = current.canComment || cafe.canComment;
+    current.comments = [...current.comments, ...cafe.comments];
+    current.locations.push(cafe.location);
+    if (!current.lastVisitedAt || new Date(cafe.lastVisitedAt) > new Date(current.lastVisitedAt)) {
+      current.lastVisitedAt = cafe.lastVisitedAt;
+    }
+    // 표시 이름은 검색이 돌려준 상호명을 쓴다. 원본 문자열 중 무엇을 고를지
+    // 고민할 필요가 없고, 합쳐진 항목끼리도 같은 이름으로 보인다.
+    current.location = current.placeName ?? current.location;
+  }
+
+  return [...merged.values()];
+}
+
 export function createCafesService({ db, storage, config = {}, searchPlacesFn }) {
   const queries = createCafesQueries(db);
-  const placeSearch = searchPlacesFn ?? ((query) => searchPlaces(query, config.naver ?? {}));
+  const placeSearch = searchPlacesFn ?? ((query) => searchPlaces(query, config.kakao ?? {}));
 
   return {
     async listCafes(userId) {
@@ -54,7 +88,7 @@ export function createCafesService({ db, storage, config = {}, searchPlacesFn })
         if (cafe) cafe.comments.push(comment);
       }
       await attachPlaces(cafes);
-      return [...cafes.values()].sort((a, b) => new Date(b.lastVisitedAt) - new Date(a.lastVisitedAt));
+      return foldByPlaceId(cafes).sort((a, b) => new Date(b.lastVisitedAt) - new Date(a.lastVisitedAt));
     },
 
     async listCafePhotos({ userId, location }) {
@@ -104,6 +138,9 @@ export function createCafesService({ db, storage, config = {}, searchPlacesFn })
       cafe.roadAddress = place?.roadAddress ?? null;
       cafe.lat = place?.lat ?? null;
       cafe.lng = place?.lng ?? null;
+      // 합치는 기준. 없으면 이 항목은 혼자 남는다(foldByPlaceId 참고).
+      cafe.placeId = place?.kakaoPlaceId ?? null;
+      cafe.placeUrl = place?.placeUrl ?? null;
     }
   }
 
@@ -125,6 +162,8 @@ export function createCafesService({ db, storage, config = {}, searchPlacesFn })
       roadAddress: found?.roadAddress ?? null,
       lat: found?.lat ?? null,
       lng: found?.lng ?? null,
+      kakaoPlaceId: found?.placeId ?? null,
+      placeUrl: found?.placeUrl ?? null,
     });
   }
 

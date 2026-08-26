@@ -15,6 +15,8 @@ const toast = useToast();
 const scheduledAt = ref(defaultScheduledAt());
 const location = ref('');
 const placeName = ref('');
+const placeId = ref(null);
+const placeUrl = ref(null);
 const lat = ref(null);
 const lng = ref(null);
 const title = ref('');
@@ -56,6 +58,8 @@ watch(() => props.open, (open) => {
   scheduledAt.value = defaultScheduledAt();
   location.value = '';
   placeName.value = '';
+  placeId.value = null;
+  placeUrl.value = null;
   lat.value = null;
   lng.value = null;
   title.value = '';
@@ -89,6 +93,9 @@ function selectPlace(place) {
     ? `${place.placeName} (${place.roadAddress})`
     : place.placeName;
   placeName.value = place.placeName;
+  // 카페 이력을 묶고, 소모임 정모의 지도 링크로 쓰는 값이다.
+  placeId.value = place.placeId ?? null;
+  placeUrl.value = place.placeUrl ?? null;
   lat.value = place.lat ?? null;
   lng.value = place.lng ?? null;
   searchResults.value = [];
@@ -99,6 +106,8 @@ function selectPlace(place) {
 function clearPlace() {
   location.value = '';
   placeName.value = '';
+  placeId.value = null;
+  placeUrl.value = null;
   lat.value = null;
   lng.value = null;
   void nextTick(() => searchInput.value?.focus());
@@ -177,6 +186,8 @@ async function submit() {
         location: location.value.trim(),
         scheduledAt: when.toISOString(),
         capacity: size,
+        placeId: placeId.value,
+        placeUrl: placeUrl.value,
       }),
     });
     toast.success('새 모임을 만들었어요.');
@@ -285,7 +296,7 @@ function formatWhen(date) {
             <p v-if="searching" class="px-1 text-[13px] text-[var(--ui-color-content-muted)]">찾는 중이에요…</p>
             <p v-else-if="searchError" class="px-1 text-[13px] font-semibold text-[var(--ui-color-destructive)]">{{ searchError }}</p>
             <ul v-else-if="searchResults.length" class="max-h-52 overflow-y-auto rounded-lg border border-[var(--ui-color-stroke)]">
-              <li v-for="place in searchResults" :key="`${place.placeName}-${place.roadAddress}`" class="border-b border-[var(--ui-color-stroke-subtle)] last:border-b-0">
+              <li v-for="place in searchResults" :key="place.placeId ?? `${place.placeName}-${place.roadAddress}`" class="border-b border-[var(--ui-color-stroke-subtle)] last:border-b-0">
                 <button
                   class="focus-ring w-full px-4 py-3 text-left transition hover:bg-[var(--ui-color-surface-subtle)]"
                   type="button"

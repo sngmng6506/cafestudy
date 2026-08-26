@@ -109,6 +109,7 @@ test('createMeetupJob: normalizes payload as dry-run by default', async () => {
       capacity: 8,
       description: '각자 할 일',
       cost: '각자 음료',
+      mapUrl: '',
       dryRun: true,
       submit: false,
     },
@@ -652,4 +653,33 @@ test('failJob: 제출을 시도하지 않은 job은 기존대로 재시도한다
 
   assert.equal(outcome.requeued, true);
   assert.deepEqual(calls.jobRequeues, [{ id: JOB_ID, errorMessage: 'app launch timed out' }]);
+});
+
+test('createMeetupJob: 카카오 장소 URL만 지도 링크로 담는다', async () => {
+  // 이 값은 소모임 정모에 그대로 올라가고 누르는 건 모임 멤버들이다.
+  const { service, calls } = serviceWith();
+  const scheduledAt = futureScheduledAt();
+  const base = {
+    title: '스터디', scheduledAt: scheduledAt.input, location: '강남역 스타벅스', capacity: 6,
+  };
+
+  await service.createMeetupJob({ requestedBy: USER_ID, input: { ...base, mapUrl: 'https://place.map.kakao.com/1095339694' } });
+  assert.equal(calls.created[0].payload.mapUrl, 'https://place.map.kakao.com/1095339694');
+
+  for (const bad of ['https://evil.example/1', 'https://place.map.kakao.com/../x', 'javascript:alert(1)']) {
+    await service.createMeetupJob({ requestedBy: USER_ID, input: { ...base, mapUrl: bad } });
+    assert.equal(calls.created.at(-1).payload.mapUrl, '', `${bad}는 담지 않는다`);
+  }
+});
+
+test('createJobForMeetup: 모임의 장소 상세페이지를 지도 링크로 넘긴다', async () => {
+  const { service, calls } = serviceWith({ allowSubmit: true });
+
+  await service.createJobForMeetup({
+    id: 'meetup-1', hostId: USER_ID, title: '스터디', description: null,
+    location: '아비아채 서울홍대점 (서울 마포구 와우산로37길 52)', scheduledAt: '2026-08-29T01:00:00.000Z',
+    capacity: 6, placeUrl: 'https://place.map.kakao.com/1095339694',
+  });
+
+  assert.equal(calls.created[0].payload.mapUrl, 'https://place.map.kakao.com/1095339694');
 });

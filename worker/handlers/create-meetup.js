@@ -454,6 +454,17 @@ const APP_MAP_URL_MAX_LENGTH = 100;
 // 한글을 퍼센트 인코딩하지 않는다. 한 글자가 9자(%EC%95%84)가 되어 100자 예산을
 // 금방 넘긴다 — "아비아채 서울홍대점"은 전체 인코딩 시 115자로 잘린다. 공백만
 // 인코딩한다. 공백이 그대로 있는 문자열은 URL로서 유효하지 않아 받는 쪽이 거부할 수 있다.
+// payload에 장소 상세페이지 URL이 있으면 그걸 쓴다. 서버가 카카오 검색 결과에서
+// 받아 둔 진짜 장소 페이지라, 이름으로 만든 검색 URL과 달리 정확히 그 가게를 연다.
+//
+// 없으면(직접 입력했거나 이 기능 이전에 만들어진 모임) 예전처럼 이름으로 검색 URL을
+// 만든다 — 지도가 아예 없는 것보다는 낫다.
+export function resolveMapUrl(payload = {}) {
+  const placeUrl = String(payload.mapUrl ?? '').trim();
+  if (placeUrl) return placeUrl.length <= APP_MAP_URL_MAX_LENGTH ? placeUrl : null;
+  return buildNaverMapUrl(payload.location);
+}
+
 export function buildNaverMapUrl(location, limit = APP_MAP_URL_MAX_LENGTH) {
   const query = fitLocationForApp(location, Number.MAX_SAFE_INTEGER)
     .replace(/\s*\(.*$/, '')
@@ -690,7 +701,7 @@ export function createCreateMeetupHandler({
 
     // 지도 URL은 선택 항목이다. 만들 수 없으면(장소가 너무 길어 100자를 넘으면)
     // 그냥 건너뛴다 — 지도 하나 때문에 정모 등록 전체를 실패시키지 않는다.
-    const mapUrl = buildNaverMapUrl(payload.location);
+    const mapUrl = resolveMapUrl(payload);
     if (mapUrl) {
       await attachMapUrl(adb, deviceId, jobArtifactDir, mapUrl);
     }

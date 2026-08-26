@@ -57,6 +57,14 @@ export function createConfig(env = {}) {
       puppeteerExecutablePath: env.PUPPETEER_EXECUTABLE_PATH || '',
     },
 
+    // 장소 검색은 카카오를 쓴다. 장소 ID와 상세페이지 URL을 함께 주는 쪽이라
+    // 같은 카페를 식별할 수 있고 지도 링크도 진짜 장소 페이지가 된다.
+    kakao: {
+      restApiKey: env.KAKAO_REST_API_KEY || '',
+    },
+    // 네이버는 예전 장소 문자열을 좌표로 푸는 데만 남겨 둔다. 카카오가 못 찾는
+    // 자유 입력도 풀어내지만, 확신 없이 엉뚱한 곳을 돌려주기도 해서 카페를 합치는
+    // 기준으로는 쓰지 않는다.
     naver: {
       clientId: env.NAVER_SEARCH_CLIENT_ID || '',
       clientSecret: env.NAVER_SEARCH_CLIENT_SECRET || '',

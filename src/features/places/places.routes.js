@@ -12,7 +12,7 @@ export function createPlacesRouter(ctx) {
         return sendOk(res, []);
       }
 
-      const places = await searchPlaces(query, ctx.config?.naver ?? {});
+      const places = await searchPlaces(query, ctx.config?.kakao ?? {});
       sendOk(res, places);
     } catch (error) {
       next(error);

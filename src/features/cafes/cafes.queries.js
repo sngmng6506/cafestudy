@@ -83,6 +83,8 @@ export function createCafesQueries(db) {
             road_address AS "roadAddress",
             lat,
             lng,
+            kakao_place_id AS "kakaoPlaceId",
+            place_url AS "placeUrl",
             resolved_at AS "resolvedAt"
           FROM cafe_places
         `,
@@ -91,17 +93,20 @@ export function createCafesQueries(db) {
       return result.rows;
     },
 
-    async upsertCafePlace({ location, placeName, roadAddress, lat, lng }) {
+    async upsertCafePlace({ location, placeName, roadAddress, lat, lng, kakaoPlaceId, placeUrl }) {
       const result = await db.query(
         `
-          INSERT INTO cafe_places (location, place_name, road_address, lat, lng, resolved_at)
-          VALUES ($1, $2, $3, $4, $5, now())
+          INSERT INTO cafe_places
+            (location, place_name, road_address, lat, lng, kakao_place_id, place_url, resolved_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, now())
           ON CONFLICT (location)
           DO UPDATE SET
             place_name = EXCLUDED.place_name,
             road_address = EXCLUDED.road_address,
             lat = EXCLUDED.lat,
             lng = EXCLUDED.lng,
+            kakao_place_id = EXCLUDED.kakao_place_id,
+            place_url = EXCLUDED.place_url,
             resolved_at = now()
           RETURNING
             location,
@@ -109,9 +114,11 @@ export function createCafesQueries(db) {
             road_address AS "roadAddress",
             lat,
             lng,
+            kakao_place_id AS "kakaoPlaceId",
+            place_url AS "placeUrl",
             resolved_at AS "resolvedAt"
         `,
-        [location, placeName, roadAddress, lat, lng],
+        [location, placeName, roadAddress, lat, lng, kakaoPlaceId ?? null, placeUrl ?? null],
       );
 
       return result.rows[0];

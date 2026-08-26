@@ -66,12 +66,13 @@ export function createMeetupQueries(db) {
       return result.rows;
     },
 
-    createMeetup({ hostId, title, description, location, scheduledAt, capacity }) {
+    createMeetup({ hostId, title, description, location, scheduledAt, capacity, placeId, placeUrl }) {
       return db.transaction(async (client) => {
         const result = await client.query(
           `
-            INSERT INTO meetups (host_id, title, description, location, scheduled_at, capacity, status)
-            VALUES ($1, $2, $3, $4, $5, $6, 'open')
+            INSERT INTO meetups
+              (host_id, title, description, location, scheduled_at, capacity, status, place_id, place_url)
+            VALUES ($1, $2, $3, $4, $5, $6, 'open', $7, $8)
             RETURNING
               id,
               host_id AS "hostId",
@@ -83,9 +84,11 @@ export function createMeetupQueries(db) {
               capacity,
               somoim_state AS "somoimState",
               somoim_job_id AS "somoimJobId",
+              place_id AS "placeId",
+              place_url AS "placeUrl",
               created_at AS "createdAt"
           `,
-          [hostId, title, description, location, scheduledAt, capacity],
+          [hostId, title, description, location, scheduledAt, capacity, placeId ?? null, placeUrl ?? null],
         );
 
         const meetup = result.rows[0];
@@ -157,7 +160,8 @@ export function createMeetupQueries(db) {
         `
           SELECT id, host_id AS "hostId", title, description, location,
             scheduled_at AS "scheduledAt", status, capacity,
-            somoim_state AS "somoimState", somoim_job_id AS "somoimJobId"
+            somoim_state AS "somoimState", somoim_job_id AS "somoimJobId",
+            place_id AS "placeId", place_url AS "placeUrl"
           FROM meetups
           WHERE id = $1
         `,
