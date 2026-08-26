@@ -25,6 +25,17 @@ export function createRankingRouter(ctx) {
     }
   });
 
+  // year/month가 없으면 전체 기간이다. 월간 랭킹은 생략 시 이번 달로 보지만,
+  // 참석은 "지금까지 몇 번"을 보는 쪽이 기본이라 다르게 둔다.
+  router.get('/attendance', async (req, res, next) => {
+    try {
+      const ranking = await rankingService.getAttendanceRanking(parseMonthQuery(req.query));
+      sendOk(res, ranking);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }
 

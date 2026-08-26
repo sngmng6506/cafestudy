@@ -22,6 +22,16 @@ export function createRankingService({ db, storage }) {
 
       return attachBadgeImageUrls(storage, await queries.getMonthlyRanking(range));
     },
+
+    // 정모 참석 횟수 순위. year/month를 주면 그 달, 없으면 전체 기간이다.
+    async getAttendanceRanking({ year, month } = {}) {
+      const range =
+        Number.isInteger(year) && Number.isInteger(month)
+          ? getMonthRange(year, month - 1)
+          : {};
+
+      return attachBadgeImageUrls(storage, await queries.getAttendanceRanking(range));
+    },
   };
 }
 

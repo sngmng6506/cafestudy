@@ -19,9 +19,9 @@ export const menuSearchMetadata = [
   },
   {
     featureName: 'ranking',
-    description: '누적 포인트와 월간 활동 순위를 확인합니다.',
-    searchTerms: ['순위', '포인트 순위', '월간 랭킹', '누가 1등', '내 등수'],
-    examples: ['이번 달 1등 누구야', '내 순위 보고 싶어'],
+    description: '누적 포인트와 월간 활동 순위, 정모 참석 횟수 순위를 확인합니다.',
+    searchTerms: ['순위', '포인트 순위', '월간 랭킹', '누가 1등', '내 등수', '참석 횟수', '정모 참석', '누가 많이 나왔나', '개근'],
+    examples: ['이번 달 1등 누구야', '내 순위 보고 싶어', '정모 제일 많이 나온 사람'],
   },
   {
     featureName: 'members',

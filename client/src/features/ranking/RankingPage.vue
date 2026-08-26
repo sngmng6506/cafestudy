@@ -55,16 +55,24 @@ function onMiniTouchEnd(e) {
   goMini(miniIndex.value + (dx < 0 ? 1 : -1));
 }
 
-const title = computed(() => (mode.value === 'monthly' ? '월간 랭킹' : '누적 랭킹'));
+const TITLES = { monthly: '월간 랭킹', 'all-time': '누적 랭킹', attendance: '정모 참석' };
+const title = computed(() => TITLES[mode.value]);
+// 참석은 소모임 앱의 기록이라 포인트와 집계 출처가 다르다. 어디서 온 숫자인지
+// 밝혀두지 않으면 "인증했는데 왜 안 오르지"가 된다.
+const subtitle = computed(() => (mode.value === 'attendance'
+  ? '소모임 앱에 기록된 정모 참석 횟수예요.'
+  : '인증으로 쌓은 포인트 순이에요.'));
+// 참석 모드는 월을 고르지 않으면 전체 기간이다.
+const showsMonthNav = computed(() => mode.value === 'monthly' || mode.value === 'attendance');
 const monthLabel = computed(() => `${cursor.value.year}년 ${cursor.value.month}월`);
 const isCurrentMonth = computed(
   () => cursor.value.year === CURRENT.year && cursor.value.month === CURRENT.month,
 );
-const emptyMessage = computed(() =>
-  mode.value === 'monthly'
-    ? '이 달에 쌓은 포인트가 아직 없어요.'
-    : '아직 포인트를 모은 멤버가 없어요.',
-);
+const emptyMessage = computed(() => {
+  if (mode.value === 'attendance') return '이 달에 기록된 정모 참석이 없어요.';
+  if (mode.value === 'monthly') return '이 달에 쌓은 포인트가 아직 없어요.';
+  return '아직 포인트를 모은 멤버가 없어요.';
+});
 
 onMounted(() => {
   void loadRanking();
@@ -98,7 +106,7 @@ async function loadGame2048Ranking() {
 
 async function switchMode(nextMode) {
   mode.value = nextMode;
-  if (nextMode === 'monthly') cursor.value = { ...CURRENT };
+  if (nextMode !== 'all-time') cursor.value = { ...CURRENT };
   await loadRanking();
 }
 
@@ -121,10 +129,12 @@ async function loadRanking() {
   errorMessage.value = '';
 
   try {
-    const endpoint =
-      mode.value === 'monthly'
-        ? `/api/ranking/monthly?year=${cursor.value.year}&month=${cursor.value.month}`
-        : '/api/ranking/all-time';
+    const month = `year=${cursor.value.year}&month=${cursor.value.month}`;
+    const endpoint = {
+      monthly: `/api/ranking/monthly?${month}`,
+      attendance: `/api/ranking/attendance?${month}`,
+      'all-time': '/api/ranking/all-time',
+    }[mode.value];
     const body = await apiFetch(endpoint);
     if (!rankingRequestGuard.isCurrent(requestId)) return;
     rankings.value = body.data;
@@ -142,10 +152,10 @@ async function loadRanking() {
     <section class="surface-card">
       <div class="mb-5 flex items-center gap-2">
         <Trophy :size="18" class="text-[var(--ui-color-brand)]" />
-        <p class="text-[14px] text-[var(--ui-color-content-muted)]">인증으로 쌓은 포인트 순이에요.</p>
+        <p class="text-[14px] text-[var(--ui-color-content-muted)]">{{ subtitle }}</p>
       </div>
 
-      <div class="mb-5 grid grid-cols-2 rounded-xl border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] p-1">
+      <div class="mb-5 grid grid-cols-3 rounded-xl border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] p-1">
         <button
           class="focus-ring h-11 rounded text-[15px] font-semibold transition"
           :class="mode === 'monthly' ? 'bg-[var(--ui-color-brand)] text-white shadow-sm' : 'text-[var(--ui-color-content-muted)]'"
@@ -162,9 +172,17 @@ async function loadRanking() {
         >
           누적
         </button>
+        <button
+          class="focus-ring h-11 rounded text-[15px] font-semibold transition"
+          :class="mode === 'attendance' ? 'bg-[var(--ui-color-brand)] text-white shadow-sm' : 'text-[var(--ui-color-content-muted)]'"
+          type="button"
+          @click="switchMode('attendance')"
+        >
+          참석
+        </button>
       </div>
 
-      <div v-if="mode === 'monthly'" class="mb-5 flex items-center justify-center gap-2">
+      <div v-if="showsMonthNav" class="mb-5 flex items-center justify-center gap-2">
         <button
           class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
           type="button"
@@ -247,7 +265,7 @@ async function loadRanking() {
             class="shrink-0 font-bold"
             :class="user.rank === 1 ? 'text-[17px] text-[var(--ui-color-brand)]' : 'text-base text-[var(--ui-color-content)]'"
           >
-            {{ user.points }}점
+            {{ mode === 'attendance' ? `${user.attendedCount}회` : `${user.points}점` }}
           </strong>
         </li>
       </ol>
