@@ -287,7 +287,7 @@ function calendarAttendeeStack(meetup) {
       <template v-else>
         <ul class="divide-y divide-[var(--ui-color-stroke)]">
           <MeetupCard
-            v-for="meetup in previewMeetups"
+            v-for="(meetup, index) in previewMeetups"
             :key="meetup.id"
             :meetup="meetup"
             :pending-id="pendingId"
@@ -295,22 +295,22 @@ function calendarAttendeeStack(meetup) {
             @toggle-join="toggleJoin"
             @retry-somoim="retrySomoim"
             @cancel="cancelMeetup"
-          />
-        </ul>
-
-        <!-- 카드 안의 액션 아이콘(소모임 앱 열기 등)과 같은 크기·정렬로 맞춘다.
-             목록 흐름을 끊지 않도록 전체 폭 버튼 대신 아이콘 하나만 둔다. -->
-        <div class="mt-3 flex justify-end">
-          <button
-            class="focus-ring ui-radius-control ui-border inline-flex h-9 w-9 items-center justify-center border text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
-            type="button"
-            aria-label="모임 전체 보기"
-            title="모임 전체 보기"
-            @click="goToFeature('meetups')"
           >
-            <CalendarDays :size="16" />
-          </button>
-        </div>
+            <!-- 마지막 카드의 액션 줄 끝에 붙여 지도·소모임 아이콘과 한 가로줄에 둔다.
+                 목록 아래 따로 놓으면 아이콘만 한 줄 내려가 어긋나 보인다. -->
+            <template v-if="index === previewMeetups.length - 1" #trailing-action>
+              <button
+                class="focus-ring ui-radius-control ui-border inline-flex h-9 w-9 items-center justify-center border text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+                type="button"
+                aria-label="모임 전체 보기"
+                title="모임 전체 보기"
+                @click="goToFeature('meetups')"
+              >
+                <CalendarDays :size="16" />
+              </button>
+            </template>
+          </MeetupCard>
+        </ul>
       </template>
     </section>
 

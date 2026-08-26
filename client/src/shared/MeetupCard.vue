@@ -245,6 +245,9 @@ const somoimLink = somoimAppLink();
         >
           참여하기
         </button>
+        <!-- 카드를 쓰는 화면이 액션 줄 끝에 아이콘 하나를 더 붙일 수 있게 열어둔다.
+             홈의 "모임 전체 보기"가 이 자리에 들어가 카드 아이콘과 한 줄이 된다. -->
+        <slot name="trailing-action" />
       </div>
     </div>
   </li>
