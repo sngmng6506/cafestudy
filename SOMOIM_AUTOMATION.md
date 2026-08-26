@@ -82,6 +82,24 @@ UTC ISO로 정규화되고 `dryRun`이 `submit`의 반대값으로 채워진다.
 - `scheduledAt`은 미래여야 한다. 이미 지난 시각은 거부한다.
 - `submit: true`는 서버에 `SOMOIM_AUTOMATION_ALLOW_SUBMIT=true`가 없으면 거부한다.
 
+## 정모 삭제 job
+
+```http
+POST /api/somoim-automation/meetups/delete
+Cookie: cafestudy_session=<session-token>
+Content-Type: application/json
+```
+
+```json
+{ "title": "토요일 카페 스터디", "scheduledAt": "2026-09-05T19:00:00+09:00", "submit": false }
+```
+
+소모임에 이미 만들어진 정모를 지운다. worker는 제목으로 카드를 찾고, 정모 수정
+화면에서 **제목과 일시가 모두 일치할 때만** 지운다. 지난 정모는 이 경로로 지울 수
+없다(정기모임 섹션에 없다) — `scheduledAt`이 미래여야 한다.
+
+`dryRun`은 삭제 직전에 멈추고, `submit`은 create와 같은 이중 스위치를 요구한다.
+
 ## Job 조회
 
 관리자 전용이며 세션 쿠키를 사용한다.

@@ -22,6 +22,11 @@ export function createSomoimAutomationRouter(ctx, service = createSomoimAutomati
       return sendOk(res, await service.createMeetupJob({ requestedBy: req.user.id, input: req.body ?? {} }), 202);
     } catch (err) { return next(err); }
   });
+  router.post('/meetups/delete', ctx.auth.requireAdmin, async (req, res, next) => {
+    try {
+      return sendOk(res, await service.deleteMeetupJob({ requestedBy: req.user.id, input: req.body ?? {} }), 202);
+    } catch (err) { return next(err); }
+  });
   router.get('/jobs', ctx.auth.requireAdmin, async (req, res, next) => {
     try {
       return sendOk(res, await service.listJobs({

@@ -1,21 +1,21 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { evaluateSubmitOutcome, isCreateFormPresent } from '../worker/handlers/create-meetup.js';
 import {
   assertScheduledAtIsFuture,
   buildScreenshotKey,
-  evaluateSubmitOutcome,
   findByResourceId,
-  isCreateFormPresent,
   formatEnglishHeader,
   formatKoreanDate,
   formatKoreanTime,
   monthsBetween,
   parseEnglishHeaderDate,
+  joinedGroupsBelow,
   parseUiNodes,
   to12Hour,
   toKstParts,
   uniqueByBounds,
-} from '../worker/handlers/create-meetup.js';
+} from '../worker/somoim-app.js';
 
 // 실제 uiautomator dump에서 뽑아낸 조각들(이 세션에서 태블릿으로 직접 확인한 값).
 const GROUP_SEARCH_RESULT_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/groupname_text" class="android.widget.TextView" package="com.friendscube.somoim" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[196,660][1568,708]" drawing-order="1" hint="" /></hierarchy>`;
@@ -87,6 +87,25 @@ test('홈 화면의 name_text는 정모 이름이지 가입 모임이 아니다'
     false,
     '"가입한 모임" 헤더가 없으므로 내모임 화면이 아니다 — 여기서 세면 안 된다',
   );
+});
+
+// 회귀 방지: 정모를 하나라도 만들면 내모임 위쪽에 "참여중인 정모 채팅" 섹션이
+// 생기고 거기에도 같은 클럽 이름이 name_text로 나온다. 위치를 안 따지면 클럽 대신
+// 정모 채팅방이 열린다(실기기에서 겪음).
+const MY_GROUPS_WITH_EVENT_CHAT_XML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="3"><node index="0" text="참여중인 정모 채팅" resource-id="com.friendscube.somoim:id/text" class="android.widget.TextView" bounds="[32,472][258,514]" /><node index="1" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/name_text" class="android.widget.TextView" bounds="[34,656][150,720]" /><node index="2" text="가입한 모임" resource-id="com.friendscube.somoim:id/text" class="android.widget.TextView" bounds="[32,770][187,818]" /><node index="3" text="[홍대] it&amp;ai 스터디" resource-id="com.friendscube.somoim:id/name_text" class="android.widget.TextView" bounds="[164,884][392,926]" /></hierarchy>`;
+
+test('joinedGroupsBelow: "가입한 모임" 아래의 모임만 고른다', () => {
+  const nodes = parseUiNodes(MY_GROUPS_WITH_EVENT_CHAT_XML);
+  const header = nodes.find((n) => n.text === '가입한 모임');
+
+  const joined = joinedGroupsBelow(nodes, header);
+
+  assert.equal(joined.length, 1, '정모 채팅 쪽 이름은 세면 안 된다');
+  assert.deepEqual(joined[0].center, { x: 278, y: 905 });
+});
+
+test('joinedGroupsBelow: 헤더가 없으면 아무것도 고르지 않는다', () => {
+  assert.deepEqual(joinedGroupsBelow(parseUiNodes(MY_GROUPS_WITH_EVENT_CHAT_XML), null), []);
 });
 
 test('내모임 화면은 "가입한 모임" 헤더로 구분한다', () => {

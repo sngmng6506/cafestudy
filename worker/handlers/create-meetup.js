@@ -1,375 +1,40 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ManualReviewError, TransientError } from '../errors.js';
 import { createSolidPng } from '../placeholder-image.js';
+import {
+  ADB_KEYBOARD_IME,
+  APP_PACKAGE,
+  DEFAULT_TARGET_GROUP_NAME,
+  assertDeviceTimezone,
+  assertScheduledAtIsFuture,
+  buildScreenshotKey,
+  captureEvidence,
+  clearFocusedField,
+  findByResourceId,
+  formatEnglishHeader,
+  formatKoreanDate,
+  formatKoreanTime,
+  hideKeyboardIfShown,
+  launchApp,
+  monthsBetween,
+  openJoinedGroup,
+  parseEnglishHeaderDate,
+  readScreen,
+  scrollUntilFound,
+  sleep,
+  tap,
+  to12Hour,
+  toKstParts,
+  typeText,
+} from '../somoim-app.js';
 
-// 소모임 앱(com.friendscube.somoim) 자동화 상수.
-//
-// 이 bot 계정은 "[홍대] it&ai 스터디" 클럽 운영진 권한만 가지고 있고, 다른 클럽은
-// 쓰지 않는다(사용자 확정). payload에 groupId가 없으므로 이 클럽 하나로 고정한다.
-// 클럽 이름은 화면에서 정확히 일치 비교하므로, 클럽장이 이름을 바꾸면 모든 job이
-// 실패한다. 코드 수정 없이 복구할 수 있도록 설정(SOMOIM_TARGET_GROUP_NAME)으로 뺐다.
-const APP_PACKAGE = 'com.friendscube.somoim';
-export const DEFAULT_TARGET_GROUP_NAME = '[홍대] it&ai 스터디';
-const MY_GROUPS_TAB = '내모임';
-const JOINED_SECTION_TITLE = '가입한 모임';
-const ADB_KEYBOARD_IME = 'com.android.adbkeyboard/.AdbIME';
-// 앱은 기기의 벽시계 기준으로 정모 시각을 해석한다. 기기 타임존이 KST가 아니면
-// 화면에 찍힌 값은 맞는데 실제 정모 시각이 어긋나고, verifyForm은 같은 문자열끼리
-// 비교하므로 이 어긋남을 잡지 못한다 — 조용히 틀리는 것보다 실패가 낫다.
-const REQUIRED_TIMEZONE = 'Asia/Seoul';
+export { DEFAULT_TARGET_GROUP_NAME };
+
 // 앱이 정모 사진 없이는 제출을 받지 않는다(실기기 확인). 기기로 밀어 넣을 위치와,
 // 폼이 아직 사진을 받지 않았을 때 띄우는 안내 문구다.
 const REMOTE_PHOTO_PATH = '/sdcard/Pictures/cafestudy-meetup.png';
 const PHOTO_PLACEHOLDER_TEXT = '정모사진을 등록해주세요.';
-
-const EN_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const EN_MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-const KO_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
-
-// ---- 화면 트리 파싱 (순수 함수, 기기 없이 테스트 가능) ----
-
-function decodeXmlEntities(value) {
-  return value
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&amp;/g, '&');
-}
-
-export function parseUiNodes(xml) {
-  const nodes = [];
-  // 자식이 있는 노드는 <node ...>...</node>로, 리프 노드는 <node .../>로 끝난다.
-  // 뒤가 "/>"인지는 신경 쓰지 않고 첫 ">"까지만 잡아야 컨테이너 노드도 놓치지 않는다.
-  const nodeRe = /<node\b([^>]*)>/g;
-  const attrRe = /([\w:-]+)="([^"]*)"/g;
-  let nodeMatch;
-  while ((nodeMatch = nodeRe.exec(xml))) {
-    const attrs = {};
-    attrRe.lastIndex = 0;
-    let attrMatch;
-    while ((attrMatch = attrRe.exec(nodeMatch[1]))) {
-      attrs[attrMatch[1]] = decodeXmlEntities(attrMatch[2]);
-    }
-    const boundsMatch = (attrs.bounds || '').match(/\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]/);
-    const bounds = boundsMatch
-      ? {
-          x1: Number(boundsMatch[1]),
-          y1: Number(boundsMatch[2]),
-          x2: Number(boundsMatch[3]),
-          y2: Number(boundsMatch[4]),
-        }
-      : null;
-    nodes.push({
-      text: attrs.text || '',
-      contentDesc: attrs['content-desc'] || '',
-      resourceId: attrs['resource-id'] || '',
-      className: attrs.class || '',
-      packageName: attrs.package || '',
-      clickable: attrs.clickable === 'true',
-      enabled: attrs.enabled === 'true',
-      selected: attrs.selected === 'true',
-      bounds,
-      center: bounds
-        ? { x: Math.round((bounds.x1 + bounds.x2) / 2), y: Math.round((bounds.y1 + bounds.y2) / 2) }
-        : null,
-    });
-  }
-  return nodes;
-}
-
-export function findByResourceId(nodes, idSuffix) {
-  return nodes.find((n) => n.resourceId.endsWith(`/${idSuffix}`));
-}
-
-// ---- 날짜/시간 변환 (순수 함수) ----
-
-// scheduledAt(ISO, UTC)을 한국 표준시(UTC+9, DST 없음) 구성요소로 바꾼다.
-// 실행 환경(worker 서버)의 로컬 타임존에 의존하지 않도록 UTC 접근자만 쓴다.
-// 태블릿 자체가 한국 시간대로 설정돼 있다고 가정한다.
-export function toKstParts(scheduledAt) {
-  const instant = new Date(scheduledAt);
-  if (Number.isNaN(instant.getTime())) {
-    throw new ManualReviewError(`scheduledAt is not a valid date: ${scheduledAt}`, {
-      stage: 'validate_payload',
-    });
-  }
-  const kst = new Date(instant.getTime() + 9 * 60 * 60 * 1000);
-  return {
-    year: kst.getUTCFullYear(),
-    month: kst.getUTCMonth() + 1,
-    day: kst.getUTCDate(),
-    hour24: kst.getUTCHours(),
-    minute: kst.getUTCMinutes(),
-    weekday: kst.getUTCDay(),
-  };
-}
-
-// 서버는 모임 생성 시점에만 "30분 뒤" 최소 리드타임을 검사한다. worker가 job을
-// 집어들 때까지는 큐 대기·stale-claim 재시도(최악의 경우 900초 x 3회 = 45분)와
-// 호스트가 임의 시점에 누르는 재시도가 끼어들 수 있어, 그 사이 scheduledAt이 실제로
-// 지나가 버릴 수 있다. 지난 시각으로 화면을 채우려 들면(달력을 거꾸로 넘기는 등)
-// 결과를 예측할 수 없으니 시도 자체를 하지 않는다.
-export function assertScheduledAtIsFuture(scheduledAt, now = Date.now()) {
-  if (new Date(scheduledAt).getTime() <= now) {
-    throw new ManualReviewError(`scheduledAt has already passed: ${scheduledAt}`, {
-      stage: 'validate_payload',
-    });
-  }
-}
-
-export function to12Hour(hour24) {
-  const period = hour24 < 12 ? 'AM' : 'PM';
-  const hour12raw = hour24 % 12;
-  return { hour12: hour12raw === 0 ? 12 : hour12raw, period };
-}
-
-export function formatKoreanDate({ month, day, weekday }) {
-  return `${month}월 ${day}일 (${KO_WEEKDAYS[weekday]})`;
-}
-
-export function formatKoreanTime({ hour24, minute }) {
-  const { hour12, period } = to12Hour(hour24);
-  return `${period === 'AM' ? '오전' : '오후'} ${hour12}:${String(minute).padStart(2, '0')}`;
-}
-
-export function formatEnglishHeader({ year, month, day, weekday }) {
-  return {
-    yearText: String(year),
-    dateText: `${EN_WEEKDAYS[weekday]}, ${EN_MONTHS[month - 1]} ${day}`,
-  };
-}
-
-export function parseEnglishHeaderDate(text) {
-  const match = text.match(/^\w+,\s*(\w+)\s+(\d{1,2})$/);
-  if (!match) return null;
-  const month = EN_MONTHS.indexOf(match[1]) + 1;
-  if (month <= 0) return null;
-  return { month, day: Number(match[2]) };
-}
-
-export function monthsBetween(from, to) {
-  return (to.year * 12 + to.month) - (from.year * 12 + from.month);
-}
-
-// ---- 기기 조작 (adb 래퍼 위에 얇게) ----
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function tap(adb, deviceId, point) {
-  await adb.shell(deviceId, ['input', 'tap', String(point.x), String(point.y)]);
-}
-
-// adb shell은 여러 argv를 공백으로 이어붙여 원격 셸에 한 줄로 보낸다(로컬 따옴표가
-// 보존되지 않는다). 원격 셸이 다시 파싱하도록 명령 전체를 인자 하나로 넘긴다.
-function escapeForRemoteDoubleQuotes(value) {
-  return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`');
-}
-
-async function typeText(adb, deviceId, text) {
-  const escaped = escapeForRemoteDoubleQuotes(text);
-  await adb.shell(deviceId, [`am broadcast -a ADB_INPUT_TEXT --es msg "${escaped}"`]);
-}
-
-// ADBKeyBoard의 ADB_CLEAR_TEXT는 포커스된 입력창 전체를 지운다(공식 문서에 명시된
-// 표준 액션). 기존 글자 수를 세어 backspace를 보내는 것보다 안전하다.
-async function clearFocusedField(adb, deviceId) {
-  await adb.shell(deviceId, ['am broadcast -a ADB_CLEAR_TEXT']);
-}
-
-// 키보드를 내린다. IME 창은 uiautomator 덤프에 안 잡히면서 그 아래 버튼의 탭을
-// 삼킨다 — 시간 선택기의 OK가 이것 때문에 눌리지 않았다(실기기에서 확인).
-// 떠 있을 때만 BACK을 보낸다. 안 떠 있는데 보내면 화면이 뒤로 가버린다.
-async function hideKeyboardIfShown(adb, deviceId) {
-  const shown = /mInputShown=true/.test(await adb.shell(deviceId, ['dumpsys', 'input_method']));
-  if (!shown) return false;
-  await adb.shell(deviceId, ['input', 'keyevent', 'KEYCODE_BACK']);
-  await sleep(500);
-  return true;
-}
-
-async function readScreen(adb, deviceId, artifactDir) {
-  await mkdir(artifactDir, { recursive: true });
-  const dumpPath = path.join(artifactDir, 'ui-dump.xml');
-  await adb.dumpUi(deviceId, dumpPath);
-  const xml = await readFile(dumpPath, 'utf8');
-  return parseUiNodes(xml);
-}
-
-// 스크린샷은 job별 디렉터리에 남긴다. 반환하는 screenshotKey는 계약
-// (SOMOIM_AUTOMATION.md)이 정한 오브젝트 스토리지 키 모양이고, screenshotPath는
-// 지금 실제로 파일이 있는 worker 로컬 경로다. 스토리지를 붙이면 키는 그대로 두고
-// 업로드만 추가하면 된다.
-export function buildScreenshotKey(jobId, name) {
-  // job id 없이는 키를 만들 수 없다. `undefined`를 문자열에 박으면 job끼리 같은
-  // 키를 쓰게 되므로, 키가 없다는 사실을 그대로 null로 돌려준다.
-  return jobId ? `somoim-automation/${jobId}/${name}.png` : null;
-}
-
-async function captureEvidence(adb, deviceId, artifactDir, jobId, name) {
-  await mkdir(artifactDir, { recursive: true });
-  const screenshotPath = path.join(artifactDir, `${name}.png`);
-  await adb.captureScreenshot(deviceId, screenshotPath);
-  return {
-    screenshotKey: buildScreenshotKey(jobId, name),
-    screenshotPath,
-  };
-}
-
-// 기기 타임존이 KST가 아니면 정모가 조용히 다른 절대시각에 만들어진다.
-// getprop이 비어 오면(롬 차이) 확인할 수 없는 상태이므로 역시 사람에게 넘긴다.
-async function assertDeviceTimezone(adb, deviceId) {
-  const timezone = (await adb.shell(deviceId, ['getprop', 'persist.sys.timezone'])).trim();
-  if (timezone !== REQUIRED_TIMEZONE) {
-    throw new ManualReviewError(
-      `Device timezone must be ${REQUIRED_TIMEZONE} but is "${timezone || 'unknown'}"`,
-      { stage: 'validate_device', expected: REQUIRED_TIMEZONE, actual: timezone || null },
-    );
-  }
-}
-
-// ---- 화면 이동 ----
-
-// "내 지역" 확인 화면 처리. 콜드 스타트 직후와 "내모임" 탭 진입 시 둘 다 나타날 수
-// 있다(비결정적 — 실기기에서 두 자리 다 확인함). 이미 설정된 값을 그대로 저장해서
-// 넘어간다(값을 바꾸지 않는다). 그 뒤로 "직장(활동지역) 설정 권장" 안내가 이어질
-// 수 있어 "다음에하기"로 건너뛴다. nodes에 게이트가 없으면 아무것도 하지 않는다.
-async function dismissRegionGateIfPresent(adb, deviceId, artifactDir, nodes) {
-  const saveLocationButton = findByResourceId(nodes, 'btn_save_location');
-  if (!saveLocationButton) return false;
-
-  await tap(adb, deviceId, saveLocationButton.center);
-  await sleep(800);
-
-  const afterSave = await readScreen(adb, deviceId, artifactDir);
-  const skipWorkplace = afterSave.find(
-    (n) => n.resourceId.endsWith('/button2') && n.text === '다음에하기',
-  );
-  if (skipWorkplace) {
-    await tap(adb, deviceId, skipWorkplace.center);
-    await sleep(800);
-  }
-  return true;
-}
-
-// 매번 강제 종료 후 재실행해 알 수 없는 이전 화면 상태(뒤로가기 스택, 남은 다이얼로그
-// 등)에 의존하지 않는 결정적인 시작점을 만든다. 콜드 스타트는 웜 스타트보다 훨씬
-// 느릴 수 있어(수 초) 고정 sleep 대신 홈 화면이 뜰 때까지 폴링한다.
-async function launchApp(adb, deviceId, artifactDir) {
-  await adb.shell(deviceId, ['am', 'force-stop', APP_PACKAGE]);
-  await adb.shell(deviceId, ['monkey', '-p', APP_PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1']);
-
-  const attempts = 10;
-  let dismissedRegionGate = false;
-  for (let i = 0; i < attempts; i += 1) {
-    await sleep(1000);
-    const nodes = await readScreen(adb, deviceId, artifactDir);
-    if (findByResourceId(nodes, 'search_btn_layout')) return;
-
-    if (!dismissedRegionGate && (await dismissRegionGateIfPresent(adb, deviceId, artifactDir, nodes))) {
-      dismissedRegionGate = true;
-    }
-  }
-
-  if (dismissedRegionGate) {
-    // 이미 입력을 시도했는데도 홈에 닿지 못했다 — 애매하니 사람이 봐야 한다.
-    throw new ManualReviewError(
-      'App did not reach the home screen after dismissing the region-confirmation screen',
-      { stage: 'launch' },
-    );
-  }
-  // 아직 아무 입력도 하지 않은 상태의 순수한 앱 실행 지연이므로 TransientError다
-  // (SOMOIM_AUTOMATION.md의 needsManualReview 예외 케이스).
-  throw new TransientError('App did not reach the home screen before launch timeout', {
-    stage: 'launch',
-  });
-}
-
-// uiautomator dump는 같은 창을 두 벌 내보낼 때가 있다. 화면상 같은 위치의 노드는
-// 같은 요소이므로 bounds로 접는다. 이걸 하지 않으면 모임 하나가 둘로 세어진다.
-export function uniqueByBounds(nodes) {
-  const seen = new Set();
-  return nodes.filter((node) => {
-    const key = `${node.bounds?.x1},${node.bounds?.y1},${node.bounds?.x2},${node.bounds?.y2}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-// 검색으로 클럽을 찾지 않고 "내모임"에서 가입한 모임을 연다. 검색 경로는 한글
-// 입력·검색 제출·결과 정렬·이름 대조에 모두 의존하는데, 이 앱은 검색을 탭이나
-// 엔터로 제출할 수 없어 실제로 막혔다. bot 계정은 대상 클럽 하나에만 가입해
-// 있으므로 목록에서 바로 여는 편이 훨씬 짧고 안정적이다.
-//
-// 가입 모임은 `name_text`, 추천 카드는 `groupname_text`로 id가 갈려 있다. 다만
-// `name_text`는 홈 화면에서 정모 이름으로도 쓰이므로, 내모임 화면에 도착한 것을
-// 확인한 뒤에 세어야 한다. 그리고 엉뚱한 클럽에 들어가더라도 다음 단계
-// (openCreateMeetupForm)가 클럽 이름을 검증해 막는다.
-async function openJoinedGroup(adb, deviceId, artifactDir, targetGroupName) {
-  let nodes = [];
-  let tab;
-  // uiautomator는 화면이 정착하기 전에 노드를 통째로 빠뜨린다. 실제로 홈 화면이
-  // 다 로드된 덤프에 하단 탭 바가 하나도 없어서 job이 실패한 적이 있다.
-  // 여기서 한 번만 읽고 포기하면 그 순간을 그대로 실패로 만든다.
-  for (let i = 0; i < 10; i += 1) {
-    nodes = await readScreen(adb, deviceId, artifactDir);
-    tab = nodes.find((n) => n.resourceId.endsWith('/tab_text') && n.text === MY_GROUPS_TAB);
-    if (tab) break;
-    await sleep(1000);
-  }
-  if (!tab) {
-    throw new ManualReviewError(`"${MY_GROUPS_TAB}" tab not found on the home screen`, {
-      stage: 'open_my_groups',
-    });
-  }
-  await tap(adb, deviceId, tab.center);
-
-  let joined = [];
-  let dismissedRegionGate = false;
-  for (let i = 0; i < 10; i += 1) {
-    await sleep(1000);
-    nodes = await readScreen(adb, deviceId, artifactDir);
-    // "가입한 모임" 헤더가 보여야 내모임 화면이다. 이 확인 없이 name_text를 세면
-    // 아직 홈에 있을 때 남의 정모 이름을 가입 모임으로 착각한다.
-    if (nodes.some((n) => n.text === JOINED_SECTION_TITLE)) {
-      joined = uniqueByBounds(nodes.filter((n) => n.resourceId.endsWith('/name_text')));
-      if (joined.length > 0) break;
-    }
-
-    if (!dismissedRegionGate && (await dismissRegionGateIfPresent(adb, deviceId, artifactDir, nodes))) {
-      dismissedRegionGate = true;
-    }
-  }
-
-  if (joined.length === 0) {
-    throw new ManualReviewError('No joined group found on the 내모임 screen', {
-      stage: 'open_my_groups',
-    });
-  }
-
-  // 가입 모임이 하나면 모호함이 없다. 여러 개면 추측하지 않고 이름으로 고른다.
-  const target = joined.length === 1
-    ? joined[0]
-    : joined.find((n) => n.text === targetGroupName);
-  if (!target) {
-    throw new ManualReviewError(
-      `Target group "${targetGroupName}" not found among joined groups`,
-      { stage: 'open_my_groups', joinedGroups: joined.map((n) => n.text) },
-    );
-  }
-
-  await tap(adb, deviceId, target.center);
-  await sleep(800);
-  return target.text;
-}
 
 async function openCreateMeetupForm(adb, deviceId, artifactDir, targetGroupName) {
   let nodes = await readScreen(adb, deviceId, artifactDir);
@@ -614,17 +279,6 @@ async function setDateAndTime(adb, deviceId, artifactDir, target) {
   }
 }
 
-// 찾는 요소가 나올 때까지 아래로 스크롤하며 화면을 다시 읽는다. 정모 개설 폼은
-// 가로 화면에서 아래쪽(정모 공지, 저장 버튼)이 잘려 첫 덤프에 잡히지 않는다.
-async function scrollUntilFound(adb, deviceId, artifactDir, idSuffix, attempts = 5) {
-  let nodes = await readScreen(adb, deviceId, artifactDir);
-  for (let i = 0; i < attempts && !findByResourceId(nodes, idSuffix); i += 1) {
-    await adb.shell(deviceId, ['input', 'swipe', '1280', '1300', '1280', '500', '300']);
-    await sleep(800);
-    nodes = await readScreen(adb, deviceId, artifactDir);
-  }
-  return nodes;
-}
 
 // "정모 공지(전체 멤버 알림)" 체크박스를 원하는 상태로 맞춘다.
 //
@@ -834,6 +488,27 @@ export function isCreateFormPresent(nodes) {
 //
 // 그래서 부재가 아니라 존재로 판정한다: 생성된 정모 게시글이 보이고 그 제목이
 // payload와 같을 때만 성공이다.
+// 만들어진 정모 게시글의 제목과 일시 줄을 함께 확보한다. 가로 화면에서는 둘이 한
+// 화면에 같이 있지 않아, 한 번만 읽으면 둘 중 하나는 반드시 없다.
+async function collectPostNodes(adb, deviceId, artifactDir) {
+  const merged = [];
+  const seen = new Set();
+  const has = (id) => merged.some((n) => n.resourceId.endsWith(`/${id}`));
+
+  for (let i = 0; i < 4; i += 1) {
+    for (const node of await readScreen(adb, deviceId, artifactDir)) {
+      const key = `${node.resourceId}|${node.text}|${node.bounds?.y1}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(node);
+    }
+    if (has('event_info') && has('title_text')) break;
+    await adb.shell(deviceId, ['input', 'swipe', '1280', '1100', '1280', '700', '300']);
+    await sleep(700);
+  }
+  return merged;
+}
+
 export function evaluateSubmitOutcome(nodes, { title } = {}) {
   if (nodes.length === 0) return { ok: false, reason: 'empty_screen' };
 
@@ -941,14 +616,10 @@ export function createCreateMeetupHandler({
     let outcome = { ok: false, reason: 'not_checked' };
     for (let i = 0; i < 20 && !outcome.ok; i += 1) {
       await sleep(1000);
-      outcome = evaluateSubmitOutcome(await readScreen(adb, deviceId, jobArtifactDir), {
-        title: payload.title,
-      });
-      // 게시글 화면에 도착했지만 일시·장소 줄이 화면 밖일 수 있다(가로 화면).
-      // 그때만 조금 내려서 다시 본다.
-      if (outcome.reason === 'no_event_post') {
-        await adb.shell(deviceId, ['input', 'swipe', '1280', '1100', '1280', '700', '300']);
-      }
+      outcome = evaluateSubmitOutcome(
+        await collectPostNodes(adb, deviceId, jobArtifactDir),
+        { title: payload.title },
+      );
     }
 
     const evidence = await captureEvidence(adb, deviceId, jobArtifactDir, jobId, 'after-submit');

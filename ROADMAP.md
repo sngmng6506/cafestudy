@@ -22,13 +22,12 @@
 - 모임 생성 시 자동 등록 — 모임 카드에 등록 상태를 보여주고 실패 시 호스트가
   재시도할 수 있다. 상태 전이는 [DEVELOPMENT.md](./DEVELOPMENT.md)의 `meetups`,
   스위치 조합은 [SOMOIM_AUTOMATION.md](./SOMOIM_AUTOMATION.md)를 본다.
+- 정모 삭제(`delete_meetup`) — 실기기로 생성·삭제를 끝까지 검증했다.
 - 되돌릴 수 없는 제출의 안전장치 — `submit-attempt` 기록, 제출 후 폼 이탈 확인,
   기기 타임존 검증, worker 중복 실행 방지 락.
 
 남은 것:
 
-- 제출 경로 실기기 검증 — 위 안전장치들은 단위 테스트로만 확인했다. `submit`
-  모드로 태블릿에서 끝까지 돌려본 적이 아직 없다.
 - 관리자 화면 제출 토글 — 서버의 `allowSubmit` 여부를 클라이언트가 알 수 있어야
   한다. 지금은 환경변수로만 켜고 끈다.
 - job type 확장 — 모임 수정, 참석자 확인. 현재 DB CHECK가 `create_meetup`만 허용한다.

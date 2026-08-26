@@ -3,6 +3,7 @@ import { createSomoimAutomationQueries } from './somoim-automation.queries.js';
 import { SOMOIM_AUTOMATION_LIMITS } from '../../../shared/domain-constraints.js';
 
 const JOB_TYPE_CREATE_MEETUP = 'create_meetup';
+const JOB_TYPE_DELETE_MEETUP = 'delete_meetup';
 const JOB_STATUSES = Object.freeze([
   'pending',
   'claimed',
@@ -40,8 +41,25 @@ export function createSomoimAutomationService({
     return summarizeJob(await queries.createJob({ requestedBy, type: JOB_TYPE_CREATE_MEETUP, payload }));
   }
 
+  // 소모임에 이미 만들어진 정모를 지우는 job. worker는 제목과 일시로 대상을 찾고,
+  // 정모 수정 화면에서 둘 다 일치할 때만 지운다.
+  //
+  // 삭제도 create와 같은 이중 스위치를 쓴다. dryRun은 삭제 직전에 멈춘다.
+  async function deleteMeetupJob({ requestedBy, input }) {
+    assertUuid(requestedBy, 'requestedBy');
+    const title = normalizeText(input?.title, 'title', MAX_TITLE_LENGTH);
+    const scheduledAt = normalizeScheduledAt(input?.scheduledAt);
+    const submit = input?.submit === true;
+    if (submit && !allowSubmit) {
+      throwValidation('Final submit is disabled. Create a dry-run job first.');
+    }
+    const payload = { title, scheduledAt, dryRun: !submit, submit };
+    return summarizeJob(await queries.createJob({ requestedBy, type: JOB_TYPE_DELETE_MEETUP, payload }));
+  }
+
   return {
     createMeetupJob,
+    deleteMeetupJob,
 
     // 웹 모임 생성 훅이 부른다. 개설자를 요청자로 남겨 관리자 화면에서 추적할 수 있게 한다.
     // 입력이 소모임 쪽 제약(제목/장소 길이 등)을 넘으면 여기서 실패를 값으로 돌려준다 —

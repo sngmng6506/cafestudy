@@ -187,7 +187,7 @@ somoim_sync_logs              -- 크롤링 동기화 이력(성공/실패, 인�
   status, error_message, synced_at
 
 somoim_automation_jobs        -- 소모임 앱 자동화 요청 큐 (worker가 소비)
-- id, requested_by(FK users, SET NULL), type(현재 'create_meetup'만), payload(jsonb),
+- id, requested_by(FK users, SET NULL), type('create_meetup' | 'delete_meetup'), payload(jsonb),
   status(pending/claimed/succeeded/failed/needs_manual_review), attempts,
   claimed_at, completed_at, error_message, result(jsonb), submit_attempted_at,
   created_at, updated_at

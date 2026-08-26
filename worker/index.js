@@ -2,6 +2,7 @@ import { createAdb } from './adb.js';
 import { createApiClient } from './api-client.js';
 import { createWorkerConfig } from './config.js';
 import { createCreateMeetupHandler } from './handlers/create-meetup.js';
+import { createDeleteMeetupHandler } from './handlers/delete-meetup.js';
 import { runJob } from './job-runner.js';
 import { DEFAULT_LOCK_FILE, acquireWorkerLock } from './lock.js';
 
@@ -22,6 +23,11 @@ const handlers = {
     ...(config.targetGroupName ? { targetGroupName: config.targetGroupName } : {}),
     photoPath: config.meetupPhotoPath,
     notifyMembers: config.notifyMembers,
+  }),
+  delete_meetup: createDeleteMeetupHandler({
+    adb,
+    artifactDir: config.artifactDir,
+    ...(config.targetGroupName ? { targetGroupName: config.targetGroupName } : {}),
   }),
 };
 

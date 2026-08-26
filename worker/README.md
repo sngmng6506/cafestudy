@@ -10,8 +10,8 @@ worker 서버에서만 실행한다.
 
 ## 현재 상태
 
-배관과 `handlers/create-meetup.js`가 모두 구현돼 있고, `내모임` 경로는 실기기로
-end-to-end 검증했다. 제출 경로는 아직 실기기 검증 전이다.
+`create_meetup`(생성)과 `delete_meetup`(삭제) 모두 구현돼 있고, 실기기에서 정모를
+만들고 지우는 것까지 end-to-end 검증했다.
 
 ## 실행
 
@@ -90,6 +90,15 @@ ADBKeyBoard의 `ADB_EDITOR_CODE`(IME_ACTION_SEARCH) 셋 다 화면을 바꾸지 
 **AM/PM 스피너는 값이 다를 때만 연다.** 열어 둔 드롭다운이 다이얼로그를 덮어,
 뒤따르는 `OK` 탭이 드롭다운을 닫는 데 쓰인다.
 
+**정모 삭제는 카드의 `취소`가 아니다.** 정기모임 카드의 `취소`(join_text)를 누르면
+"정모 참석을 취소하시겠습니까?"가 뜬다 — 참석만 취소되고 정모는 남는다. 삭제는
+카드 우상단 편집(edit_text_layout) → 정모 수정 → `정모 삭제하기` → `삭제`다.
+게시글 쪽 `게시글 삭제`도 막혀 있다("정모와 연결된 게시글은 직접 삭제할 수 없습니다").
+
+**정모를 만들면 내모임 화면에 "참여중인 정모 채팅" 섹션이 생긴다.** 거기에도 같은
+클럽 이름이 `name_text`로 나와서, 위치를 안 따지고 고르면 클럽 대신 정모 채팅방이
+열린다. `가입한 모임` 헤더 아래의 것만 고른다(`joinedGroupsBelow`).
+
 **폼이 한 화면에 다 들어오지 않는다.** 가로 화면에서는 정모 공지 체크박스와 저장
 버튼이 아래로 밀려 첫 덤프에 없다. 요소를 찾을 때와 폼 값을 대조할 때 모두 스크롤하며
 읽는다(`scrollUntilFound`, `collectFormValues`). 화면 밖이라는 이유로 "값이 비었다"고
@@ -124,7 +133,8 @@ adb.js                # 기기 목록 파싱·선택, 자동 재연결, shell/sc
 lock.js               # worker 중복 실행 방지(락 파일 + PID 확인)
 placeholder-image.js  # 정모 사진용 단색 PNG 생성(의존성 없이)
 errors.js             # ManualReviewError / TransientError
-handlers/             # job type별 화면 자동화
+somoim-app.js         # 두 handler가 공유하는 앱 화면 이동·기기 조작
+handlers/             # job type별 화면 자동화 (create_meetup, delete_meetup)
 ```
 
 서버 통신(`api-client`)과 job 실행(`job-runner`)을 분리해서, 기기 없이도 안전장치와
