@@ -132,7 +132,10 @@ async function renderMap() {
     map.setView(center, 16);
     marker.setLatLng(center);
   }
+  // 스크롤되는 폼 안이라 컨테이너 크기가 한 박자 늦게 잡힌다. 그 전에 재면
+  // Leaflet이 0x0으로 알고 타일을 안 그린다.
   map.invalidateSize();
+  requestAnimationFrame(() => map?.invalidateSize());
 }
 
 onBeforeUnmount(() => {
@@ -261,7 +264,7 @@ function formatWhen(date) {
           </div>
 
           <template v-else>
-            <div class="flex items-center gap-2">
+            <div class="flex min-w-0 items-center gap-2">
               <input
                 ref="searchInput"
                 v-model="searchQuery"
@@ -345,6 +348,13 @@ function formatWhen(date) {
           </div>
         </div>
 
+
+        <!-- 고른 곳이 맞는지 눈으로 확인하는 용도. 장소를 고르기 전에는 자리를
+             차지하지 않는다. -->
+        <div v-if="lat != null" class="grid gap-1.5 text-[13px] font-medium text-[var(--ui-color-content)]">
+          위치
+          <div ref="mapEl" class="ui-border h-40 w-full overflow-hidden rounded-lg border"></div>
+        </div>
       </form>
 
       <!-- 확인 팝업 대신 요약 한 줄. 팝업 위에 팝업을 띄우지 않는다. -->
