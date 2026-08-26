@@ -249,12 +249,19 @@ cafe_places                   -- 카페 위치 문자열 → 좌표 지오코딩
   로컬에서 `npm run db:migrate`를 실행하지 않는다.
 - owner 초기 지정에는 부트스트랩 제약이 있다.
   변경 전 `app_owner`, `users.admin_role`, 비밀번호 상태를 함께 확인한다.
+- 카페 방문 통계가 소모임 정모를 두 번 센다. `listCafeVisits`는 `meetups`를
+  source_type 구분 없이 세는데, 여기엔 정산이 materialize한 `source_type='somoim'`
+  행이 들어 있다. 그 원본인 `somoim_events`는 `listSomoimCafeVisits`가 또 센다.
+  서비스가 둘을 location별로 합산하므로(`cafes.service.js`) 한 정모가 2회가 된다.
+  정산 화면을 한 번이라도 연 뒤부터 그렇다. 자동화와 무관하게 존재한다.
 - 자동 등록과 크롤링이 같은 모임을 두 번 만든다. 앱 모임을 소모임에 등록하면
-  다음 크롤링이 그걸 `somoim_events`로 가져오는데, 둘을 잇는 키가 없다.
+  다음 크롤링이 그걸 `somoim_events`로 가져오는데, 둘을 잇는 키가 없다. 정산이
+  소모임 참석자 기준으로 도는 것 자체는 의도된 설계이나(그쪽이 실제 참석 기록이다),
+  같은 모임이 앱 행과 소모임 행으로 갈라져 집계에 겹쳐 들어온다.
   - 예정 목록(`useUpcomingMeetups`)은 두 소스를 그대로 합쳐 같은 모임이 두 장 뜬다.
-  - 정산 화면은 크롤링된 일정을 `source_type='somoim'` 모임으로 materialize하므로,
-    참여·인증이 붙은 앱 모임과 정산이 붙은 모임이 갈라진다. 이때 host는 소모임
-    호스트(자동화 계정)로 잡힌다.
+  - `getMemberStats.meetupCount`는 `participants`를 source_type 구분 없이 세므로,
+    앱 모임 참여와 materialize된 행의 참석이 각각 1회로 잡힌다.
+  - 카페 방문 통계는 위 항목과 겹쳐 한 모임이 3회까지 올라간다.
   잇는다면 크롤러의 유니크 키와 같은 `(title, scheduled_at)`으로 `somoim_state`가
   `registered`인 앱 모임과 짝지어 크롤링 쪽을 숨기는 방향이다. 미구현.
 
