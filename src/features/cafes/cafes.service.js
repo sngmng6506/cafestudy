@@ -5,31 +5,32 @@ import { searchPlaces } from '../../shared/kakao-local.js';
 const RESOLVE_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 const RESOLVE_BATCH = 5;
 
+// 장소 문자열을 검색어 후보로 바꾼다.
+//
+// 괄호를 벗기는 것까지만 한다. 앱 모임은 "아비아채 서울홍대점 (서울 마포구 ...)"로
+// 저장되는데 주소가 붙은 통짜 문자열로는 검색이 안 되기 때문이다.
+//
+// 단어를 하나씩 떼며 재시도하지는 않는다. 그건 네이버 시절 보조 로직인데, 카카오와
+// 쓰면 오히려 해가 된다 — "아비아채 지하1층"에서 뒷단어를 떼면 "아비아채"가 되고,
+// 그건 전혀 다른 지점(아비아채 하사정1920)을 물어온다. 카카오가 확신 없을 때 빈
+// 결과를 주는 것이 이 용도의 장점인데, 깎아낸 검색어로 그 장점을 지워버린다.
+// 못 찾으면 못 찾은 채로 두는 편이 남의 카페에 이력을 붙이는 것보다 낫다.
 export function geocodeCandidates(location) {
   const candidates = [];
   const push = (value) => {
-    const v = value.replace(/\s+/g, ' ').trim();
+    // 괄호를 지우면 짝 없는 괄호 문자가 남을 수 있다("...(태평로1가))" 같은 중첩).
+    const v = value.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
     if (v.length >= 2 && !candidates.includes(v)) candidates.push(v);
   };
   push(location);
-  const withoutParens = location.replace(/\([^)]*\)/g, ' ');
-  push(withoutParens);
-  let words = withoutParens.replace(/\s+/g, ' ').trim().split(' ');
-  for (let i = 0; i < 2 && words.length > 1; i += 1) {
-    words = words.slice(0, -1);
-    push(words.join(' '));
-  }
+  push(location.replace(/\([^)]*\)/g, ' '));
+  // 앱 모임은 항상 "이름 (주소)" 형태라 첫 괄호 앞이 상호명이다. 위의 괄호 제거는
+  // 주소 안에 괄호가 또 있으면("...무교로 21 (무교동) 코오롱빌딩 1층") 짝이 어긋나
+  // 엉뚱한 조각이 남는다.
+  push(location.split('(')[0]);
   return candidates;
 }
 
-
-// 같은 장소 ID를 가리키는 항목을 하나로 합친다. 문자열로만 묶으면 같은 카페가
-// 출처마다 다르게 적혀 갈라진다 — 앱 모임은 "이름 (도로명주소)"로, 크롤링 정모는
-// 사람이 앱에 적은 대로("아비아채 지하1층") 들어오기 때문이다.
-//
-// 장소 ID가 없는 항목은 합치지 않는다. 카카오가 못 찾은 자유 입력인데, 억지로
-// 좌표를 붙여 합치면 엉뚱한 카페에 남의 이력이 섞인다(네이버는 "정기모임장소 근처"를
-// 고양시 스터디룸으로 자신 있게 돌려줬다). 갈라진 채 두는 편이 낫다.
 export function foldByPlaceId(cafes) {
   const merged = new Map();
 

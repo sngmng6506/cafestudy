@@ -97,29 +97,43 @@ test('listCafes: 검색 API 미설정이면 실패를 기록하지 않는다 (�
   assert.equal(calls.upserts.length, 0);
 });
 
-test('geocodeCandidates: 괄호 주소 제거·꼬리 단어 축소 순으로 후보를 만든다', () => {
+test('geocodeCandidates: 괄호를 벗기되 단어를 깎지는 않는다', () => {
+  // 앱 모임은 "이름 (주소)"로 저장되므로 괄호를 벗겨야 검색이 된다.
   assert.deepEqual(geocodeCandidates('스타벅스 무교동점 (서울특별시 중구 무교로 21)'), [
-    '스타벅스 무교동점 (서울특별시 중구 무교로 21)',
+    '스타벅스 무교동점 서울특별시 중구 무교로 21',
     '스타벅스 무교동점',
-    '스타벅스',
   ]);
-  assert.deepEqual(geocodeCandidates('아비아채 지하1층'), ['아비아채 지하1층', '아비아채']);
-  assert.deepEqual(geocodeCandidates('아비아채'), ['아비아채']);
+
+  // 주소 안에 괄호가 또 있으면 짝이 어긋나 엉뚱한 조각이 남는다. 첫 괄호 앞이
+  // 상호명이라는 사실로 보완한다.
+  assert.ok(
+    geocodeCandidates('스타벅스 무교동점 (서울 중구 무교로 21 (무교동) 코오롱빌딩)')
+      .includes('스타벅스 무교동점'),
+  );
 });
 
-test('listCafes: 원문 검색이 실패하면 후보 검색어로 재시도한다', async () => {
+test('geocodeCandidates: 꼬리 단어를 떼어내지 않는다', () => {
+  // 회귀 방지. 예전에는 단어를 하나씩 떼며 재시도했는데, "아비아채 지하1층"에서
+  // "지하1층"을 떼면 "아비아채"가 되고 그건 전혀 다른 지점(아비아채 하사정1920)을
+  // 물어왔다. 카카오가 확신 없을 때 빈 결과를 주는 것이 이 용도의 장점인데,
+  // 깎아낸 검색어가 그 장점을 지운다.
+  assert.deepEqual(geocodeCandidates('아비아채 지하1층'), ['아비아채 지하1층']);
+  assert.deepEqual(geocodeCandidates('카페미정 홍대근처'), ['카페미정 홍대근처']);
+});
+
+test('listCafes: 못 찾은 장소는 좌표 없이 그대로 남는다', async () => {
+  // 억지로 비슷한 이름을 붙이지 않는다. 남의 카페에 이력이 섞이는 것보다
+  // 갈라진 채 두는 편이 낫다.
   const { service, calls } = serviceWith({
     location: '아비아채 지하1층',
-    searchImpl: (query) =>
-      query === '아비아채'
-        ? [{ placeName: '아비아채', roadAddress: '서울 마포구', lat: 37.55, lng: 126.92 }]
-        : [],
+    searchImpl: () => [],
   });
 
   const cafes = await service.listCafes(USER_ID);
 
-  assert.deepEqual(calls.search, ['아비아채 지하1층', '아비아채']);
-  assert.equal(cafes[0].lat, 37.55);
+  assert.deepEqual(calls.search, ['아비아채 지하1층'], '깎은 검색어로 재시도하지 않는다');
+  assert.equal(cafes[0].lat, null);
+  assert.equal(cafes[0].placeId, null);
 });
 
 test('listCafes: 한 글자 위치는 지오코딩하지 않는다', async () => {
