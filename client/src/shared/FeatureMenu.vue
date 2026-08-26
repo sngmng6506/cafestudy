@@ -33,17 +33,16 @@ onBeforeUnmount(() => {
       role="menu"
       aria-label="더보기 기능"
     >
-      <div class="shrink-0 border-b border-[var(--ui-color-stroke-subtle)] px-3 py-2.5">
-        <div class="flex items-center justify-between gap-3">
-          <h2 class="text-[15px] font-bold text-[var(--ui-color-content)]">더보기</h2>
-          <button
-            class="focus-ring rounded px-1.5 py-1 text-[12px] font-semibold text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
-            type="button"
-            @click="emit('close')"
-          >
-            닫기
-          </button>
-        </div>
+      <!-- 제목은 두지 않는다. 방금 누른 버튼이 무엇을 열었는지는 이미 알고, 메뉴의
+           이름은 아래 section의 aria-label이 낭독기에 알린다. -->
+      <div class="flex shrink-0 justify-end border-b border-[var(--ui-color-stroke-subtle)] px-3 py-2">
+        <button
+          class="focus-ring rounded px-1.5 py-1 text-[12px] font-semibold text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+          type="button"
+          @click="emit('close')"
+        >
+          닫기
+        </button>
       </div>
 
       <div class="overflow-y-auto p-2">
