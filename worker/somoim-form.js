@@ -1,4 +1,4 @@
-import { APP_PACKAGE, findByResourceId, formatKoreanDate, formatKoreanTime } from './somoim-app.js';
+import { APP_PACKAGE, findByResourceId, formatKoreanDate, formatKoreanTime } from './somoim-screen.js';
 
 // 소모임 "정모 개설" 폼의 규칙만 모은다. 기기를 조작하지 않는 순수 함수라 태블릿
 // 없이 테스트할 수 있고, 핸들러는 "화면을 어떻게 조작하는가"에만 집중한다.

@@ -62,13 +62,6 @@ export function createConfig(env = {}) {
     kakao: {
       restApiKey: env.KAKAO_REST_API_KEY || '',
     },
-    // 네이버는 예전 장소 문자열을 좌표로 푸는 데만 남겨 둔다. 카카오가 못 찾는
-    // 자유 입력도 풀어내지만, 확신 없이 엉뚱한 곳을 돌려주기도 해서 카페를 합치는
-    // 기준으로는 쓰지 않는다.
-    naver: {
-      clientId: env.NAVER_SEARCH_CLIENT_ID || '',
-      clientSecret: env.NAVER_SEARCH_CLIENT_SECRET || '',
-    },
 
     somoimAutomation: {
       internalApiKey,

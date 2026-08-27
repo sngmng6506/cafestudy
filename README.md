@@ -64,7 +64,7 @@
 
 - 서버·DB: `NODE_ENV`, `PORT`, `DATABASE_URL`
 - 오브젝트 스토리지: `AWS_*`
-- 장소 검색: `KAKAO_REST_API_KEY` (`NAVER_SEARCH_*`는 좌표 폴백)
+- 장소 검색: `KAKAO_REST_API_KEY`
 - AI 뱃지 생성: `HF_*`
 - 소모임 동기화·자동 크롤링: `INTERNAL_API_KEY`, `SYNC_ENDPOINT`, `SOMOIM_URL`, `CRAWL_SCHEDULE`
 - Puppeteer 실행 환경: `PUPPETEER_*`
