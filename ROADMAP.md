@@ -15,7 +15,6 @@
 
 - job 큐 API — 생성, 목록·단건 조회, claim/complete/fail, stale claim 회수
 - worker 배관 — 폴링 루프, 기기 선택, dryRun/submit 이중 안전장치, 실패 분기
-- 관리자 화면 — 모임 만들기 요청 폼과 진행 상태 목록
 - ADB handler(`worker/handlers/create-meetup.js`) — `내모임` 탭 경로로 실기기
   end-to-end 검증을 마쳤다. 앱 동작 제약은 [worker/README.md](./worker/README.md)의
   "소모임 앱 자동화 노트"에 있다.
@@ -34,10 +33,6 @@
 - 스크린샷이 서버에 없다 — worker가 job별 PNG를 로컬 디스크에만 남긴다.
   `screenshotKey`는 계약 모양대로 만들지만 업로드하는 쪽도, 받는 엔드포인트도 없다.
   자동 등록은 아무도 지켜보지 않고 실행되므로 실패하면 로그로만 진단해야 한다.
-- 관리자 화면에 삭제 요청 폼이 없다 — `POST /meetups/delete`는 있지만 화면이
-  생성 폼만 있어, 손으로 지우려면 API를 직접 호출해야 한다.
-- 관리자 화면 제출 토글 — 서버의 `allowSubmit` 여부를 클라이언트가 알 수 없다.
-  지금은 환경변수로만 켜고 끈다.
 - job type 확장 — 모임 수정, 참석자 확인.
 - 이미 claim된 job은 취소해도 멈출 수 없다. 정모가 생성되지만 취소 시점 상태가
   `pending`이라 삭제 job으로 이어지지 않아 사람이 지운다.
