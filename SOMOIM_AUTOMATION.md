@@ -10,6 +10,9 @@ worker 구현과 실행 방법은 [worker/README.md](./worker/README.md)에 있�
 - 실제 제출은 서버와 worker 양쪽에서 모두 허용한 경우에만 가능하다.
 - `INTERNAL_API_KEY`, 세션 토큰, 개인정보가 담긴 화면은 로그에 남기지 않는다.
 - 화면 상태나 입력 결과가 불확실하면 추측하지 말고 `needsManualReview: true`로 실패 처리한다.
+- worker 로그는 JSON 한 줄로 정규화하고, 최종 실패만 Discord webhook으로 알린다.
+  재시도 중인 실패·정상 취소·중복 감지는 알림 대상이 아니며 webhook 장애는 job 결과를
+  바꾸지 않는다.
 
 ## 인증
 

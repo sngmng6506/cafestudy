@@ -32,6 +32,8 @@ export function createWorkerConfig(env = process.env) {
     notifyMembers: env.SOMOIM_NOTIFY_MEMBERS === 'true',
     // worker 두 개가 같은 태블릿을 동시에 조작하는 것을 막는 락 파일.
     lockFile: (env.WORKER_LOCK_FILE ?? '').trim(),
+    discordWebhookUrl: (env.DISCORD_AUTOMATION_WEBHOOK_URL ?? '').trim(),
+    discordAlertTimeoutMs: readPositiveInt(env.DISCORD_ALERT_TIMEOUT_MS, 5_000),
   };
 }
 

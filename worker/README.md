@@ -40,6 +40,8 @@ worker에 전달되지 않으니 설정은 그 기계의 `worker/.env`에 둔다
 | `MEETUP_PHOTO_PATH` | | (자동 생성) | 정모 사진으로 쓸 로컬 이미지. 비우면 단색 16:9 플레이스홀더를 만든다 |
 | `SOMOIM_NOTIFY_MEMBERS` | | `false` | 정모 생성 시 전체 멤버 알림. 되돌릴 수 없어 켤 때만 `true`로 명시한다 |
 | `WORKER_LOCK_FILE` | | (OS 임시폴더) | worker 중복 실행을 막는 락 파일 경로 |
+| `DISCORD_AUTOMATION_WEBHOOK_URL` | | — | 최종 실패 알림을 보낼 Discord webhook. 비우면 비활성 |
+| `DISCORD_ALERT_TIMEOUT_MS` | | `5000` | Discord 호출 제한 시간. 알림 실패는 job 결과에 영향을 주지 않는다 |
 
 `INTERNAL_API_KEY`는 헤더로만 쓰고 로그·에러 메시지에 남기지 않는다.
 
@@ -179,6 +181,15 @@ claim한 뒤 보고 없이 죽은 job은 서버가 다음 claim 때 회수해 �
 
 실패한 job이 마지막으로 본 화면은 `worker-artifacts/<job-id>/ui-dump.xml`에 남는다.
 어느 화면에서 막혔는지는 이 파일이 가장 확실한 증거다.
+
+worker 로그는 `timestamp`, `level`, `service`, `event`를 공통 필드로 갖는 JSON 한 줄이다.
+job 실패에는 `jobId`, `jobType`, `stage`, `attempt`, `errorCode`, `retryable`,
+`needsManualReview`, `submitAttempted`가 추가된다. Discord에는 서버가 더 재시도하지 않는
+최종 실패와 worker 시작 실패만 전송한다. webhook 호출이 실패해도 job 처리 결과는 바뀌지
+않으며, 같은 worker 프로세스에서는 `jobId:errorCode`가 같은 알림을 한 번만 보낸다.
+
+Webhook URL은 Discord 채널의 **연동 → 웹후크**에서 발급해 `worker/.env`에만 둔다.
+로그와 알림에는 내부 API 키, 전체 payload, 회원 정보, 화면 덤프를 넣지 않는다.
 
 ## 테스트
 

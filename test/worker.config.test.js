@@ -43,3 +43,17 @@ test('서버 주소와 내부 키가 없으면 뜨지 않는다', () => {
     /INTERNAL_API_KEY/,
   );
 });
+
+test('Discord 알림은 기본 비활성이고 timeout은 안전한 기본값을 쓴다', () => {
+  const defaults = createWorkerConfig(REQUIRED);
+  assert.equal(defaults.discordWebhookUrl, '');
+  assert.equal(defaults.discordAlertTimeoutMs, 5_000);
+
+  const configured = createWorkerConfig({
+    ...REQUIRED,
+    DISCORD_AUTOMATION_WEBHOOK_URL: ' https://discord.example/webhook ',
+    DISCORD_ALERT_TIMEOUT_MS: '2500',
+  });
+  assert.equal(configured.discordWebhookUrl, 'https://discord.example/webhook');
+  assert.equal(configured.discordAlertTimeoutMs, 2_500);
+});
