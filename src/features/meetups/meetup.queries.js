@@ -205,7 +205,8 @@ export function createMeetupQueries(db) {
         `UPDATE meetups
             SET somoim_state = 'registered'
           WHERE somoim_job_id = $1 AND somoim_state = 'pending'
-          RETURNING id, somoim_state AS "somoimState"`,
+          RETURNING id, host_id AS "hostId", title, scheduled_at AS "scheduledAt",
+                    status, somoim_state AS "somoimState", somoim_job_id AS "somoimJobId"`,
         [jobId],
       );
       return result.rows[0] ?? null;

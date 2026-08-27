@@ -46,6 +46,13 @@ async function tick() {
   if (!job) return false;
 
   log('job_claimed', { jobId: job.id, type: job.type, attempts: job.attempts });
+  if (job.type === 'create_meetup') {
+    const preflight = await client.preflightJob(job.id);
+    if (preflight?.action !== 'proceed') {
+      log('job_skipped', { jobId: job.id, reason: preflight?.action ?? 'unknown' });
+      return true;
+    }
+  }
   const outcome = await runJob({
     job,
     handlers,

@@ -39,6 +39,12 @@ test('claimJob: returns null when the queue is empty', async () => {
   assert.equal(await client.claimJob(), null);
 });
 
+test('preflightJob: checks cancellation and duplicates before touching the device', async () => {
+  const { client, calls } = clientWith(() => jsonResponse({ data: { action: 'proceed' }, error: null }));
+  assert.deepEqual(await client.preflightJob('job-1'), { action: 'proceed' });
+  assert.equal(calls[0].url, 'https://cafestudy.example.com/api/somoim-automation/jobs/job-1/preflight');
+});
+
 test('completeJob: posts the result to the job complete endpoint', async () => {
   const { client, calls } = clientWith(() => jsonResponse({ data: { status: 'succeeded' }, error: null }));
   await client.completeJob('job-1', { mode: 'dryRun', stoppedAt: 'before_submit' });

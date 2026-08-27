@@ -21,6 +21,9 @@ export function registerSomoimSuccessListener(ctx) {
 
   ctx.hooks.on('somoimRegistrationSucceeded', async ({ jobId }) => {
     if (!jobId) return;
-    await queries.markSomoimRegisteredByJob(jobId);
+    const meetup = await queries.markSomoimRegisteredByJob(jobId);
+    if (meetup?.status === 'closed') {
+      await ctx.hooks.emit('meetupRegisteredAfterCancellation', meetup);
+    }
   });
 }

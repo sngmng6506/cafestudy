@@ -27,6 +27,9 @@ function serviceWith({ allowSubmit = false, job = null, jobs = [], recovered = [
     requeued: [],
     jobRequeues: [],
     submitAttempts: [],
+    preflights: [],
+    stopped: [],
+    existing: [],
     order: [],
   };
   const queries = {
@@ -73,6 +76,18 @@ function serviceWith({ allowSubmit = false, job = null, jobs = [], recovered = [
       calls.submitAttempts.push(id);
       return job ? { id, submitAttemptedAt: '2026-08-25T00:00:00.000Z' } : null;
     },
+    async getSubmitPreflight(id) {
+      calls.preflights.push(id);
+      return options.preflight ?? { id, status: 'claimed', cancelled: false, existingEvent: false };
+    },
+    async stopClaimedJob(input) {
+      calls.stopped.push(input);
+      return { id: input.id, status: 'failed' };
+    },
+    async completeExistingEvent(id) {
+      calls.existing.push(id);
+      return { id, status: 'succeeded', result: { deduplicated: true } };
+    },
   };
 
   return {
@@ -80,6 +95,32 @@ function serviceWith({ allowSubmit = false, job = null, jobs = [], recovered = [
     calls,
   };
 }
+
+test('preflightJob: 취소된 모임은 기기를 만지기 전에 job을 중단한다', async () => {
+  const { service, calls } = serviceWith({
+    preflight: { id: JOB_ID, status: 'claimed', cancelled: true, existingEvent: false },
+  });
+
+  assert.deepEqual(await service.preflightJob(JOB_ID), { action: 'cancelled' });
+  assert.equal(calls.stopped.length, 1);
+  assert.deepEqual(calls.existing, []);
+});
+
+test('preflightJob: 동일 제목과 분 단위 일시의 정모가 있으면 생성 없이 성공 처리한다', async () => {
+  const { service, calls } = serviceWith({
+    preflight: { id: JOB_ID, status: 'claimed', cancelled: false, existingEvent: true },
+  });
+
+  const outcome = await service.preflightJob(JOB_ID);
+  assert.equal(outcome.action, 'existing_event');
+  assert.deepEqual(calls.existing, [JOB_ID]);
+  assert.deepEqual(calls.stopped, []);
+});
+
+test('preflightJob: 취소도 중복도 아니면 worker 실행을 허용한다', async () => {
+  const { service } = serviceWith();
+  assert.deepEqual(await service.preflightJob(JOB_ID), { action: 'proceed' });
+});
 
 test('createMeetupJob: normalizes payload as dry-run by default', async () => {
   const { service, calls } = serviceWith();

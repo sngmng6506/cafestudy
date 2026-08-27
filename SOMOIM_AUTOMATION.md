@@ -203,6 +203,8 @@ pending → claimed → succeeded
 ```
 
 - `pending`만 claim할 수 있다.
+- create job은 claim 직후 preflight에서 원본 모임 취소와 크롤링된 동일 제목·분 단위
+  일시의 정모를 확인한다. 취소됐으면 중단하고, 기존 정모가 있으면 새로 만들지 않는다.
 - claim한 job은 반드시 complete 또는 fail로 끝낸다.
 - 보고 없이 stale 상태로 남은 `claimed` job은 다음 claim 때 회수한다
   (재시도 여유가 있으면 `pending`, 다 썼으면 `needs_manual_review`).
@@ -212,9 +214,9 @@ pending → claimed → succeeded
   - `pending` — 아직 claim되지 않은 job은 `failed`가 되고 `error_message`에
     `모임이 취소되어 등록을 중단했어요`가 남는다.
   - `registered` — 앱에 정모가 이미 있으므로 `delete_meetup` job을 새로 만든다.
-  이미 claim된 job은 건드리지 않는다 — 기기를 조작하는 중이라 complete/fail 보고와
-  어긋난다. 그때는 정모가 생성되지만 취소 시점 상태가 `pending`이라 삭제 job으로도
-  이어지지 않으므로 사람이 정리한다.
+  이미 claim된 job은 취소 훅에서 상태를 강제로 바꾸지 않는다. worker가 제출 직전에
+  취소를 다시 확인하고, 마지막 확인과 제출 사이에 취소됐다면 완료 훅이 삭제 job을
+  자동 생성한다.
 - 삭제 job은 서버에서 일시의 미래 검증을 하지 않는다. 삭제에서 일시는 "언제 여는가"가
   아니라 "어느 정모인가"를 가리키는 키이기 때문이다. 다만 **worker는 지난 정모를 지우지
   못한다** — 정기모임 섹션에 지난 정모가 없고 다른 화면은 확인한 적이 없어,

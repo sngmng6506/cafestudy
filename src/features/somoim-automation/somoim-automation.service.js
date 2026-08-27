@@ -22,6 +22,7 @@ const STALE_CLAIM_MESSAGE = 'Worker stopped responding before reporting a result
 const SUBMIT_ATTEMPTED_MESSAGE =
   'Worker attempted the final submit but never reported the result — check the somoim app for a created event before retrying';
 const CANCELLED_MESSAGE = '모임이 취소되어 등록을 중단했어요';
+const EXISTING_EVENT_MESSAGE = '같은 제목과 일시의 소모임 정모가 이미 있어 새로 만들지 않았어요';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_TITLE_LENGTH = SOMOIM_AUTOMATION_LIMITS.meetupTitleMaxLength;
 const MAX_LOCATION_LENGTH = SOMOIM_AUTOMATION_LIMITS.locationMaxLength;
@@ -57,14 +58,17 @@ export function createSomoimAutomationService({
       throwValidation('Final submit is disabled. Create a dry-run job first.');
     }
     const payload = { title, scheduledAt, dryRun: !submit, submit };
-    return summarizeJob(await queries.createJob({ requestedBy, type: JOB_TYPE_DELETE_MEETUP, payload }));
+    const job = queries.createDeleteJobIfMissing
+      ? await queries.createDeleteJobIfMissing({ requestedBy, payload })
+      : await queries.createJob({ requestedBy, type: JOB_TYPE_DELETE_MEETUP, payload });
+    return summarizeJob(job);
   }
 
   return {
     createMeetupJob,
     deleteMeetupJob,
 
-    // 웹 모임 생성 훅이 부른다. 개설자를 요청자로 남겨 관리자 화면에서 추적할 수 있게 한다.
+    // 웹 모임 생성 훅이 부른다. 개설자를 requestedBy로 남겨 작업의 출처를 보존한다.
     // 입력이 소모임 쪽 제약(제목/장소 길이 등)을 넘으면 여기서 실패를 값으로 돌려준다 —
     // emit이 예외를 삼키므로, 던지면 meetups는 이 실패를 전혀 알지 못하고 'none'으로 끝난다.
     async createJobForMeetup(meetup) {
@@ -152,6 +156,22 @@ export function createSomoimAutomationService({
       if (!job) throwNotFound('JOB_NOT_FOUND', 'Automation job was not found');
       return job;
     },
+    async preflightJob(id) {
+      assertUuid(id, 'jobId');
+      const state = await queries.getSubmitPreflight(id);
+      if (!state || state.status !== 'claimed') {
+        throwConflict('JOB_NOT_CLAIMED', 'Only claimed jobs can run a preflight check');
+      }
+      if (state.cancelled) {
+        await queries.stopClaimedJob({ id, errorMessage: CANCELLED_MESSAGE });
+        return { action: 'cancelled' };
+      }
+      if (state.existingEvent) {
+        const job = await queries.completeExistingEvent(id);
+        return { action: 'existing_event', job, message: EXISTING_EVENT_MESSAGE };
+      }
+      return { action: 'proceed' };
+    },
     async claimNextJob() {
       // worker가 폴링할 때마다 회수한다. 별도 스케줄러 없이 필요한 시점에만 돈다.
       const recovered = await queries.requeueStaleJobs({
@@ -179,7 +199,14 @@ export function createSomoimAutomationService({
     async markSubmitAttempted(id) {
       assertUuid(id, 'jobId');
       const job = await queries.markSubmitAttempted(id);
-      if (!job) throwConflict('JOB_NOT_CLAIMED', 'Only claimed jobs can attempt a submit');
+      if (!job) {
+        const state = await queries.getSubmitPreflight(id);
+        if (state?.cancelled) {
+          await queries.stopClaimedJob({ id, errorMessage: CANCELLED_MESSAGE });
+          throwConflict('MEETUP_CANCELLED', CANCELLED_MESSAGE);
+        }
+        throwConflict('JOB_NOT_CLAIMED', 'Only claimed jobs can attempt a submit');
+      }
       return job;
     },
     async completeJob({ id, result }) {

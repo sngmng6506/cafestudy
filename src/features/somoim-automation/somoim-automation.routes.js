@@ -52,6 +52,15 @@ export function createSomoimAutomationRouter(ctx, service = createSomoimAutomati
       return sendOk(res, outcome);
     } catch (err) { return next(err); }
   });
+  router.post('/jobs/:id/preflight', requireInternalKey, async (req, res, next) => {
+    try {
+      const outcome = await service.preflightJob(req.params.id);
+      if (outcome.action === 'existing_event') {
+        await ctx.hooks?.emit?.('somoimRegistrationSucceeded', { jobId: req.params.id });
+      }
+      return sendOk(res, outcome);
+    } catch (err) { return next(err); }
+  });
   // worker가 되돌릴 수 없는 제출 직전에 부른다. 이 호출이 성공해야 worker가 버튼을
   // 누른다 — 실패하면 표시가 없어 중복을 막을 수 없으므로 제출하지 않고 물러난다.
   router.post('/jobs/:id/submit-attempt', requireInternalKey, async (req, res, next) => {

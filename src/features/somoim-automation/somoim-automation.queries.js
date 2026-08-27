@@ -13,6 +13,31 @@ export function createSomoimAutomationQueries(db) {
       return result.rows[0];
     },
 
+    async createDeleteJobIfMissing({ requestedBy, payload }) {
+      const result = await db.query(
+        `INSERT INTO somoim_automation_jobs (requested_by, type, payload)
+         VALUES ($1, 'delete_meetup', $2)
+         ON CONFLICT DO NOTHING
+         RETURNING id, requested_by AS "requestedBy", type, payload, status, attempts,
+                   created_at AS "createdAt"`,
+        [requestedBy, payload],
+      );
+      if (result.rows[0]) return result.rows[0];
+
+      const existing = await db.query(
+        `SELECT id, requested_by AS "requestedBy", type, payload, status, attempts,
+                created_at AS "createdAt"
+           FROM somoim_automation_jobs
+          WHERE type = 'delete_meetup'
+            AND status IN ('pending', 'claimed')
+            AND payload->>'title' = $1
+            AND payload->>'scheduledAt' = $2
+          LIMIT 1`,
+        [payload.title, payload.scheduledAt],
+      );
+      return existing.rows[0] ?? null;
+    },
+
     async getJob(id) {
       const result = await db.query(
         `SELECT id, requested_by AS "requestedBy", type, payload, status, attempts,
@@ -27,6 +52,52 @@ export function createSomoimAutomationQueries(db) {
       return result.rows[0] ?? null;
     },
 
+    async getSubmitPreflight(id) {
+      const result = await db.query(
+        `SELECT j.id, j.status,
+                EXISTS (
+                  SELECT 1 FROM meetups m
+                  WHERE m.somoim_job_id = j.id AND m.status = 'closed'
+                ) AS cancelled,
+                EXISTS (
+                  SELECT 1 FROM somoim_events e
+                  WHERE regexp_replace(btrim(e.title), '\\s+', ' ', 'g')
+                      = regexp_replace(btrim(j.payload->>'title'), '\\s+', ' ', 'g')
+                    AND date_trunc('minute', e.scheduled_at)
+                      = date_trunc('minute', (j.payload->>'scheduledAt')::timestamptz)
+                ) AS "existingEvent"
+           FROM somoim_automation_jobs j
+          WHERE j.id = $1`,
+        [id],
+      );
+      return result.rows[0] ?? null;
+    },
+
+    async stopClaimedJob({ id, errorMessage }) {
+      const result = await db.query(
+        `UPDATE somoim_automation_jobs
+            SET status = 'failed', error_message = $2,
+                completed_at = now(), updated_at = now()
+          WHERE id = $1 AND status = 'claimed'
+          RETURNING id, status`,
+        [id, errorMessage],
+      );
+      return result.rows[0] ?? null;
+    },
+
+    async completeExistingEvent(id) {
+      const result = await db.query(
+        `UPDATE somoim_automation_jobs
+            SET status = 'succeeded',
+                result = '{"deduplicated":true,"reason":"existing_event"}'::jsonb,
+                error_message = null, completed_at = now(), updated_at = now()
+          WHERE id = $1 AND status = 'claimed'
+          RETURNING id, status, result`,
+        [id],
+      );
+      return result.rows[0] ?? null;
+    },
+
     // worker가 되돌릴 수 없는 제출을 하기 직전에 부른다. 이 표시가 남은 job은
     // 다시 실행하지 않는다 — 앱에 정모가 이미 생겼을 수 있기 때문이다.
     async markSubmitAttempted(id) {
@@ -34,6 +105,11 @@ export function createSomoimAutomationQueries(db) {
         `UPDATE somoim_automation_jobs
             SET submit_attempted_at = now(), updated_at = now()
           WHERE id = $1 AND status = 'claimed'
+            AND NOT EXISTS (
+              SELECT 1 FROM meetups m
+              WHERE m.somoim_job_id = somoim_automation_jobs.id
+                AND m.status = 'closed'
+            )
           RETURNING id, submit_attempted_at AS "submitAttemptedAt"`,
         [id],
       );

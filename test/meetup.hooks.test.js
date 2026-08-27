@@ -115,3 +115,23 @@ test('registerSomoimSuccessListener: jobId가 없으면 쿼리를 실행하지 �
 
   assert.deepEqual(calls, []);
 });
+
+test('registerSomoimSuccessListener: 취소 뒤 완료된 등록은 자동 삭제 이벤트로 보낸다', async () => {
+  const emitted = [];
+  const onCalls = [];
+  const ctx = {
+    db: { query: async () => ({ rows: [{
+      id: 'm1', hostId: 'u1', title: '스터디', scheduledAt: '2026-09-01T10:00:00Z',
+      status: 'closed', somoimState: 'registered', somoimJobId: JOB_ID,
+    }] }) },
+    hooks: {
+      on(event, listener) { onCalls.push({ event, listener }); },
+      async emit(event, payload) { emitted.push({ event, payload }); },
+    },
+  };
+
+  registerSomoimSuccessListener(ctx);
+  await onCalls[0].listener({ jobId: JOB_ID });
+  assert.equal(emitted[0].event, 'meetupRegisteredAfterCancellation');
+  assert.equal(emitted[0].payload.status, 'closed');
+});

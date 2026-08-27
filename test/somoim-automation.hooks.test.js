@@ -74,7 +74,7 @@ test('제출만 켜면 자동 등록은 구독하지 않지만 재시도와 취�
 
   assert.deepEqual(
     onCalls.map((call) => call.event),
-    ['meetupSomoimRetryRequested', 'meetupCancelled'],
+    ['meetupSomoimRetryRequested', 'meetupRegisteredAfterCancellation', 'meetupCancelled'],
     '자동 등록은 꺼져도 호스트가 실패한 등록을 수동으로 재시도할 수는 있어야 한다',
   );
 });
@@ -86,7 +86,7 @@ test('둘 다 켜면 생성/재시도/취소를 모두 구독한다', () => {
 
   assert.deepEqual(
     onCalls.map((call) => call.event),
-    ['meetupCreated', 'meetupSomoimRetryRequested', 'meetupCancelled'],
+    ['meetupCreated', 'meetupSomoimRetryRequested', 'meetupRegisteredAfterCancellation', 'meetupCancelled'],
   );
 });
 
@@ -150,8 +150,8 @@ test('취소 리스너: 이미 등록됐으면 지우는 job을 만든다', asyn
 
   assert.equal(statements.length, 1);
   assert.match(statements[0].sql, /INSERT INTO somoim_automation_jobs/);
-  const [, type, payload] = statements[0].params;
-  assert.equal(type, 'delete_meetup');
+  const payload = statements[0].params[1];
+  assert.match(statements[0].sql, /'delete_meetup'/);
   assert.equal(payload.title, '토요일 카페 스터디');
   assert.equal(payload.submit, true);
 });
@@ -190,7 +190,7 @@ test('취소 리스너: 이미 집어간 job이 제출을 시도했으면 지우
 
   const insert = statements.find((s) => /INSERT INTO somoim_automation_jobs/.test(s.sql));
   assert.ok(insert, '삭제 job을 만들어야 한다');
-  assert.equal(insert.params[1], 'delete_meetup');
+  assert.match(insert.sql, /'delete_meetup'/);
 });
 
 test('취소 리스너: 제출을 시도하지 않았으면 지우러 가지 않는다', async () => {

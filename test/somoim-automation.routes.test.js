@@ -16,6 +16,10 @@ function stubService(calls, overrides = {}) {
       calls.push(['claimNextJob']);
       return overrides.claimNextJob ?? { job: null, recovered: 0, exhausted: [] };
     },
+    async preflightJob(id) {
+      calls.push(['preflightJob', id]);
+      return overrides.preflightJob ?? { action: 'proceed' };
+    },
     async completeJob(input) {
       calls.push(['completeJob', input]);
       return overrides.completeJob ?? { id: input.id };
@@ -86,9 +90,24 @@ async function harness(t, {
 
 const WORKER_ROUTES = [
   { path: '/jobs/claim', body: undefined },
+  { path: `/jobs/${JOB_ID}/preflight`, body: undefined },
   { path: `/jobs/${JOB_ID}/complete`, body: { result: {} } },
   { path: `/jobs/${JOB_ID}/fail`, body: { errorMessage: 'boom' } },
 ];
+
+test('/jobs/:id/preflight marks an existing event as registered without running the worker', async (t) => {
+  const emitted = [];
+  const { request } = await harness(t, {
+    serviceOverrides: { preflightJob: { action: 'existing_event' } },
+    hooks: recordingHooks(emitted),
+  });
+  const response = await request(`/jobs/${JOB_ID}/preflight`, {
+    method: 'POST', headers: { 'x-internal-key': INTERNAL_KEY },
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(emitted, [{ event: 'somoimRegistrationSucceeded', payload: { jobId: JOB_ID } }]);
+});
 
 test('worker routes reject a request without the internal key', async (t) => {
   const { request, calls } = await harness(t);

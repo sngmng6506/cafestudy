@@ -28,6 +28,10 @@ export function createApiClient({ baseUrl, internalKey, fetchImpl = fetch }) {
       return data?.job ?? null;
     },
 
+    async preflightJob(id) {
+      return post(`/api/somoim-automation/jobs/${id}/preflight`);
+    },
+
     // 되돌릴 수 없는 제출 직전에 부른다. 실패하면 호출부가 제출을 포기해야 한다 —
     // 표시를 남기지 못한 채 누르면 재시도가 정모를 하나 더 만든다.
     async markSubmitAttempted(id) {
