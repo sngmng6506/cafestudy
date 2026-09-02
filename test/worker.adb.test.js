@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createAdb, parseDeviceList, parseMdnsServices, selectDevice } from '../worker/adb.js';
+import {
+  createAdb,
+  parseDeviceList,
+  parseMdnsServices,
+  parseWirelessHost,
+  selectDevice,
+} from '../worker/adb.js';
 
 const DEVICE_LIST = `* daemon not running; starting now at tcp:5037
 * daemon started successfully
@@ -126,12 +132,24 @@ test('parseMdnsServices: returns an empty list when nothing is discovered', () =
 });
 
 // 각 adb 호출에 무엇을 돌려줄지 정해 두는 가짜 exec. 호출 순서를 그대로 기록한다.
-function fakeAdb({ devices = [], mdns = '', onConnect = () => {}, mdnsSupported = true, ...options } = {}) {
+// scanPorts는 기본이 스텁이다 — 실제 스캐너가 붙으면 테스트가 네트워크를 훑는다.
+function fakeAdb({
+  devices = [],
+  mdns = '',
+  onConnect = () => {},
+  mdnsSupported = true,
+  openPorts = [],
+  ...options
+} = {}) {
   const calls = [];
   const queue = Array.isArray(devices[0]) ? [...devices] : [devices];
 
   const adb = createAdb({
     ...options,
+    scanPorts: async ({ host }) => {
+      calls.push(`scan ${host}`);
+      return openPorts;
+    },
     exec: async (_path, args) => {
       calls.push(args.join(' '));
       if (args[0] === 'devices') {
@@ -241,4 +259,93 @@ test('resolveDevice: an unauthorized device is reported, not reconnected around'
   });
 
   await assert.rejects(() => adb.resolveDevice(), /unauthorized/);
+});
+
+test('selectDevice: accepts the same tablet on a different port', () => {
+  // 태블릿이 재부팅되면 무선 디버깅이 랜덤 포트로 다시 뜬다. 설정에 적힌 포트가
+  // 아니라고 사람을 부르면 자동 복구가 되지 않는다.
+  const devices = [{ serial: '192.168.200.147:41887', state: 'device' }];
+
+  assert.equal(
+    selectDevice(devices, { preferredSerial: '192.168.200.147:5555' }),
+    '192.168.200.147:41887',
+  );
+});
+
+test('selectDevice: prefers a live transport over a stale one on the same tablet', () => {
+  // `adb tcpip` 뒤에는 옛 주소가 offline으로 남는다. 쓸 수 있는 쪽을 골라야 한다.
+  const devices = [
+    { serial: '192.168.200.147:5555', state: 'offline' },
+    { serial: '192.168.200.147:41887', state: 'device' },
+  ];
+
+  assert.equal(
+    selectDevice(devices, { preferredSerial: '192.168.200.147:5555' }),
+    '192.168.200.147:41887',
+  );
+});
+
+test('selectDevice: a different tablet on the network is not accepted', () => {
+  assert.throws(
+    () => selectDevice(
+      [{ serial: '192.168.200.9:5555', state: 'device' }],
+      { preferredSerial: '192.168.200.147:5555' },
+    ),
+    /not connected/,
+  );
+});
+
+test('selectDevice: a USB serial still has to match exactly', () => {
+  assert.throws(
+    () => selectDevice(
+      [{ serial: 'R52N20OTHER', state: 'device' }],
+      { preferredSerial: 'R52N20ABCDE' },
+    ),
+    /not connected/,
+  );
+});
+
+test('parseWirelessHost: reads the host of a wireless address only', () => {
+  assert.equal(parseWirelessHost('192.168.200.147:5555'), '192.168.200.147');
+  assert.equal(parseWirelessHost('R52N20ABCDE'), '');
+  assert.equal(parseWirelessHost(''), '');
+});
+
+test('resolveDevice: scans the tablet ports when the address and mDNS both fail', async () => {
+  const { adb, calls } = fakeAdb({
+    connectAddress: '192.168.200.147:5555',
+    serial: '192.168.200.147:5555',
+    mdnsSupported: false,
+    openPorts: [5555, 41887],
+    devices: [[], [{ serial: '192.168.200.147:41887', state: 'device' }]],
+    onConnect: (address) => (address.endsWith(':41887')
+      ? `connected to ${address}\n`
+      : `failed to connect to ${address}\n`),
+  });
+
+  assert.equal(await adb.resolveDevice(), '192.168.200.147:41887');
+  assert.ok(calls.includes('scan 192.168.200.147'), '스캔까지 가야 랜덤 포트를 찾는다');
+  assert.deepEqual(calls.filter((call) => call.startsWith('connect')), [
+    // 고정 주소는 이미 시도했으므로 스캔 결과에서 다시 쏘지 않는다.
+    'connect 192.168.200.147:5555',
+    'connect 192.168.200.147:41887',
+  ]);
+});
+
+test('resolveDevice: does not scan when the fixed address works', async () => {
+  const { adb, calls } = fakeAdb({
+    connectAddress: '192.168.200.147:5555',
+    devices: [[], [{ serial: '192.168.200.147:5555', state: 'device' }]],
+  });
+
+  assert.equal(await adb.resolveDevice(), '192.168.200.147:5555');
+  assert.ok(!calls.some((call) => call.startsWith('scan')), '앞이 성공하면 몇 초를 더 쓰지 않는다');
+});
+
+test('resolveDevice: does not scan for a USB serial', async () => {
+  // USB 시리얼에는 훑을 IP가 없다. 엉뚱한 호스트를 스캔하지 않아야 한다.
+  const { adb, calls } = fakeAdb({ serial: 'R52N20ABCDE', devices: [[], []] });
+
+  await assert.rejects(() => adb.resolveDevice(), /not connected/);
+  assert.ok(!calls.some((call) => call.startsWith('scan')));
 });

@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { ManualReviewError } from './errors.js';
+import { scanOpenPorts } from './port-scan.js';
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -39,17 +40,44 @@ export function parseMdnsServices(stdout = '') {
     .filter((address) => /^[\w.-]+:\d+$/.test(address ?? ''));
 }
 
+// `192.168.0.15:37000`처럼 무선 주소면 IP를, USB 시리얼이면 빈 문자열을 준다.
+export function parseWirelessHost(serial = '') {
+  return /^(?<host>[\w.-]+):\d+$/.exec(serial)?.groups.host ?? '';
+}
+
+// 무선 주소에서 포트는 정체성이 아니다. 무선 디버깅은 켤 때마다 포트가 바뀌고,
+// 재부팅하면 `adb tcpip`으로 고정한 포트까지 풀린다. 같은 IP에 붙은 기기는 같은
+// 태블릿이므로 포트가 달라도 받아들인다 — 포트를 정체성으로 보면 스스로 다시
+// 붙어 놓고도 "그 기기가 아니다"라며 사람을 부르게 된다.
+// USB 시리얼(`R52N20ABCDE`)은 그대로 정확 일치다.
+function matchPreferred(devices, preferredSerial) {
+  const exact = devices.filter((device) => device.serial === preferredSerial);
+  const host = parseWirelessHost(preferredSerial);
+  if (!host) return exact;
+
+  // 설정된 주소를 먼저 보고, 같은 IP의 다른 포트를 그다음 후보로 둔다.
+  return [
+    ...exact,
+    ...devices.filter(
+      (device) => device.serial !== preferredSerial && parseWirelessHost(device.serial) === host,
+    ),
+  ];
+}
+
 // 기기를 확정할 수 없으면 추측하지 않고 사람에게 넘긴다.
 export function selectDevice(devices = [], { preferredSerial = '' } = {}) {
   if (preferredSerial) {
-    const match = devices.find((device) => device.serial === preferredSerial);
-    if (!match) {
+    const candidates = matchPreferred(devices, preferredSerial);
+    if (candidates.length === 0) {
       throw new ManualReviewError(`Device ${preferredSerial} is not connected`);
     }
-    if (match.state !== 'device') {
-      throw new ManualReviewError(`Device ${preferredSerial} is ${match.state}`);
+    // 같은 기기로 가는 transport가 여럿 남아 있을 수 있다(고정 포트가 offline으로
+    // 남고 무선 디버깅 포트만 살아 있는 경우). 쓸 수 있는 쪽을 고른다.
+    const ready = candidates.find((device) => device.state === 'device');
+    if (!ready) {
+      throw new ManualReviewError(`Device ${candidates[0].serial} is ${candidates[0].state}`);
     }
-    return match.serial;
+    return ready.serial;
   }
 
   const ready = devices.filter((device) => device.state === 'device');
@@ -71,6 +99,7 @@ export function createAdb({
   connectAddress = '',
   timeoutMs = DEFAULT_TIMEOUT_MS,
   exec = execFileAsync,
+  scanPorts = scanOpenPorts,
 } = {}) {
   async function run(args) {
     const { stdout } = await exec(adbPath, args, { timeout: timeoutMs });
@@ -81,8 +110,9 @@ export function createAdb({
     return parseDeviceList(await run(['devices', '-l']));
   }
 
-  // 알려진 주소와 mDNS로 찾은 주소를 차례로 시도한다. 실패는 삼킨다 —
-  // 붙었는지는 호출부가 listDevices로 다시 확인한다.
+  // 알려진 주소 → mDNS → 포트 스캔 순으로 시도한다. 뒤로 갈수록 느리고 덜
+  // 정확하므로 앞이 성공하면 거기서 멈춘다. 실패는 삼킨다 — 붙었는지는 호출부가
+  // listDevices로 다시 확인한다.
   async function reconnect() {
     const attempted = [];
 
@@ -103,10 +133,25 @@ export function createAdb({
 
     try {
       for (const address of parseMdnsServices(await run(['mdns', 'services']))) {
-        if (await tryAddress(address)) break;
+        if (await tryAddress(address)) return attempted;
       }
     } catch {
       // mDNS를 지원하지 않는 adb 빌드(데비안 패키지 등)에서는 여기서 끝난다.
+    }
+
+    // 마지막 수단. 태블릿이 재부팅되면 무선 디버깅이 랜덤 포트로 다시 뜨는데,
+    // mDNS 백엔드가 빠진 빌드에서는 그 포트를 알아낼 다른 길이 없다. 몇 초를
+    // 쓰더라도 사람을 부르는 것보다는 낫다.
+    const host = parseWirelessHost(connectAddress) || parseWirelessHost(serial);
+    if (host) {
+      try {
+        for (const port of await scanPorts({ host })) {
+          if (await tryAddress(`${host}:${port}`)) break;
+        }
+      } catch {
+        // 스캔이 실패해도(네트워크가 내려갔거나 소켓이 모자라거나) 재연결 자체는
+        // 여기서 끝난다. 판정은 호출부가 listDevices로 한다.
+      }
     }
 
     return attempted;
