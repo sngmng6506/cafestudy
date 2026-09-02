@@ -85,6 +85,9 @@ Tailwind radius 단계를 감각적으로 고르지 말고 역할 token을 사�
 - Secondary: surface 배경, content 텍스트, stroke 테두리
 - Danger: destructive 계열, 실제 위험 행동에만 사용
 - radius는 control token 사용
+- 누르는 동안 `scale(0.97)` 정도의 짧은 피드백을 줄 수 있다. 색 변화와 함께 써도
+  반응이 과장되지 않게 유지한다
+- press 피드백은 `--ui-duration-press`와 `--ui-ease-out`을 사용한다
 
 버튼 문구 규칙은 `WRITING_GUIDE.md`를 따른다.
 
@@ -176,6 +179,94 @@ stroke 테두리, placeholder는 content-disabled, focus 시 brand 테두리다.
 확인 팝업은 가운데(`items-center`)에 띄운다. 아래에 붙이면 탭바와 같은 자리에서
 겹친다. 목록을 훑는 선택 시트만 바텀시트로 둔다.
 
+## 모션과 인터랙션
+
+모션은 장식이 아니라 상태 변화와 공간 관계를 설명하고, 입력이 전달됐음을 확인하는
+수단이다. 목적을 한 문장으로 설명할 수 없으면 추가하지 않는다. 사용 빈도가 높을수록
+짧게 줄이고, 키보드로 반복 실행하는 동작에는 모션을 넣지 않는다.
+
+### 적용 여부
+
+| 사용 빈도·상황 | 기준 |
+|---|---|
+| 하루 수십 번 이상 반복하는 탐색·토글 | 없애거나 press/color 피드백만 사용 |
+| 모달·시트·팝오버·토스트 | 상태와 출처를 설명하는 짧은 모션 허용 |
+| 정산 차수·인증 사진처럼 목록이 변함 | 레이아웃 점프를 줄이는 모션 허용 |
+| 온보딩·완료 축하·깨부수기처럼 드문 경험 | 기능을 방해하지 않는 범위에서 표현력 허용 |
+| 로딩·제출 중 | 실제 처리를 늦추거나 완료된 것처럼 보이게 하는 연출 금지 |
+
+애니메이션을 넣기 전에 목적을 **공간 연결**, **상태 표시**, **입력 피드백**,
+**갑작스러운 변화 완화** 중 하나로 분류한다. 단지 재미있어 보인다는 이유는
+반복되는 운영 화면에서 충분하지 않다.
+
+### 시간과 easing
+
+컴포넌트에 duration과 cubic-bezier를 직접 반복하지 않고 semantic token을 사용한다.
+
+| 토큰 | 값 | 용도 |
+|---|---:|---|
+| `--ui-duration-press` | 120ms | 버튼·카드의 누름 피드백 |
+| `--ui-duration-fast` | 160ms | tooltip·작은 popover·색 변화 |
+| `--ui-duration-normal` | 220ms | 메뉴·toast·일반 상태 전환 |
+| `--ui-duration-overlay` | 280ms | modal·bottom sheet |
+| `--ui-ease-out` | `cubic-bezier(0.23, 1, 0.32, 1)` | 진입·퇴장과 즉각 반응해야 하는 전환 |
+| `--ui-ease-in-out` | `cubic-bezier(0.77, 0, 0.175, 1)` | 화면 안에서 위치·크기가 변하는 요소 |
+| `--ui-ease-drawer` | `cubic-bezier(0.32, 0.72, 0, 1)` | bottom sheet·drawer |
+
+일반 UI 모션은 300ms를 넘기지 않는다. 사용자 입력 직후 천천히 출발하는
+`ease-in`은 사용하지 않는다. 일정한 진행 표시만 `linear`를 쓴다.
+
+### 컴포넌트별 기준
+
+- 버튼·누를 수 있는 카드: 누르는 동안만 `scale(0.97)` 정도로 줄인다. 비활성 상태와
+  loading 상태에는 적용하지 않는다.
+- 더보기 메뉴·알림 팝오버: trigger 위치에서 열리는 것처럼 `transform-origin`을
+  trigger 쪽에 둔다. 화면 중앙 modal은 예외로 center를 유지한다.
+- modal: opacity와 `scale(0.95~0.98)`를 조합한다. `scale(0)`에서 시작하지 않는다.
+- bottom sheet: 자기 높이를 기준으로 `translateY(100%)`에서 들어오며
+  `--ui-ease-drawer`를 쓴다.
+- toast: 나타난 방향과 사라지는 방향을 일치시킨다. 알림을 읽을 시간을 애니메이션
+  duration으로 대신하지 않는다.
+- 목록 추가·삭제: opacity와 작은 이동 또는 높이 변화를 함께 사용하되, stagger는
+  첫 진입처럼 드문 장면에서만 30~80ms 간격으로 쓴다. 재정렬을 기다리게 하지 않는다.
+- loading spinner: 회전은 `linear`로 유지하고, 화면 전체가 완료된 것처럼 먼저
+  전환하지 않는다.
+- 깨부수기: 의도적으로 과장할 수 있지만 복구 버튼은 즉시 조작 가능해야 한다.
+
+### 구현 원칙
+
+- 빠르게 다시 실행하거나 중간에 방향이 바뀔 수 있는 UI는 keyframe보다 중단·재지정이
+  쉬운 CSS transition을 우선한다.
+- `transition: all`을 쓰지 않고 `transform`, `opacity`, `background-color`처럼
+  바뀌는 속성을 명시한다.
+- 레이아웃을 계속 다시 계산하는 `top`, `left`, `width`, `height` 애니메이션보다
+  `transform`과 `opacity`를 우선한다. 목록 높이 변화처럼 필요한 예외는 실제
+  모바일 기기에서 끊김을 확인한다.
+- blur는 두 상태가 겹치는 짧은 crossfade를 다듬을 때만 작게 사용한다. 큰 blur와
+  장시간 filter 애니메이션은 특히 모바일 Safari에서 피한다.
+- 애니메이션이 끝날 때까지 클릭·스크롤·뒤로 가기를 막지 않는다.
+- hover 모션은 `@media (hover: hover) and (pointer: fine)` 안에 둬 터치의 가짜
+  hover를 막는다.
+
+### Reduced motion
+
+`prefers-reduced-motion: reduce`에서는 위치 이동, 확대·축소, 회전, stagger를 제거한다.
+상태 이해에 필요한 짧은 opacity·색상 전환은 유지할 수 있다. reduced motion을
+`transition: none` 하나로 처리해 상태 변화까지 갑자기 끊기게 하지 않는다.
+
+### 모션 리뷰 형식
+
+모션을 추가하거나 수정한 PR은 판단을 비교할 수 있도록 필요할 때 아래 표로 남긴다.
+
+| Before | After | Why |
+|---|---|---|
+| `transition: all 300ms` | `transform var(--ui-duration-fast) var(--ui-ease-out)` | 바뀌는 속성을 제한하고 반응을 빠르게 한다 |
+| `scale(0)`에서 modal 진입 | opacity + `scale(0.96)` | 요소가 무에서 튀어나오는 느낌을 피한다 |
+| reduced motion 처리 없음 | 위치 이동 제거, opacity 유지 | 움직임 민감도를 존중하면서 상태 변화는 전달한다 |
+
+DevTools에서 2~5배 느리게 재생해 방향, origin, 속성 간 timing을 확인한 뒤 실제
+모바일 기기에서도 터치·스크롤·뒤로 가기를 방해하지 않는지 확인한다.
+
 ## 접근성
 
 - 모든 인터랙티브 요소에 키보드 포커스 표시
@@ -196,5 +287,8 @@ stroke 테두리, placeholder는 content-disabled, focus 시 brand 테두리다.
 
 - 새 원시 색상이나 임의 radius를 추가하지 않았는가
 - 동일 역할에 같은 token과 타이포 위계를 사용했는가
+- 모션의 목적과 사용 빈도를 설명할 수 있고 300ms 이내인가
+- `transition: all`, `ease-in`, `scale(0)` 같은 금지 패턴을 추가하지 않았는가
 - 터치 크기, 포커스, ARIA, reduced motion을 지켰는가
+- 실제 모바일 기기에서 모션 중에도 조작과 스크롤이 가능한가
 - 실제 디자인 규칙을 바꿨다면 이 문서도 함께 갱신했는가
