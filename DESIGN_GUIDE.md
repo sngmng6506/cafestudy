@@ -230,7 +230,8 @@ stroke 테두리, placeholder는 content-disabled, focus 시 brand 테두리다.
 - 목록 추가·삭제: opacity와 작은 이동 또는 높이 변화를 함께 사용하되, stagger는
   첫 진입처럼 드문 장면에서만 30~80ms 간격으로 쓴다. 재정렬을 기다리게 하지 않는다.
 - loading spinner: 회전은 `linear`로 유지하고, 화면 전체가 완료된 것처럼 먼저
-  전환하지 않는다.
+  전환하지 않는다. reduced motion에서는 회전 대신 정적 아이콘과 `불러오는 중`
+  텍스트 또는 짧은 opacity 변화로 진행 상태를 전달한다.
 - 깨부수기: 의도적으로 과장할 수 있지만 복구 버튼은 즉시 조작 가능해야 한다.
 
 ### 구현 원칙
