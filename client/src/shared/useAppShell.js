@@ -160,6 +160,7 @@ export function useAppShell() {
     loginReason,
     isLocked,
     startBrowsing,
+    requireLogin,
     closeLoginPrompt,
     selectFeature,
     openMenuSearch,

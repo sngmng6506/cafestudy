@@ -63,3 +63,9 @@ test('일반 UI에 금지된 transition-all과 고정 높이 accordion이 없다
   assert.doesNotMatch(combined, /maxHeight:\s*infoOpen|900px/);
   assert.match(source('client/src/features/home/HomePage.vue'), /aria-expanded="infoOpen"/);
 });
+
+test('셸은 모임 만들기 게이트가 사용하는 로그인 안내 함수를 노출한다', () => {
+  const appShell = source('client/src/shared/useAppShell.js');
+  const returnBlock = [...appShell.matchAll(/return \{([\s\S]*?)\n  \};/g)].at(-1)?.[1] ?? '';
+  assert.match(returnBlock, /\brequireLogin,/, '게스트가 모임 만들기를 누를 때 로그인 모달을 열 수 있어야 한다');
+});
