@@ -263,7 +263,9 @@ pending → claimed → succeeded
 
 다음은 `true`로 처리한다.
 
-- 기기가 없거나 여러 대이며 대상 기기를 확정할 수 없음
+- 기기가 없거나 여러 대이며 대상 기기를 확정할 수 없음 — 재연결까지 시도한 뒤의
+  판단이다. 같은 IP로 가는 transport가 여럿인 것은 태블릿 한 대이므로 여기 해당하지
+  않는다
 - unauthorized, offline, 잠금, 로그아웃 또는 보안 확인 화면
 - 예상한 화면·버튼·입력창이 없음
 - 날짜·시간·장소 선택 결과를 검증할 수 없음
@@ -284,7 +286,11 @@ pending → claimed → succeeded
 ## Worker 처리 순서
 
 1. job을 claim한다.
-2. Android 기기가 정확히 한 대이며 authorized 상태인지 확인한다.
+2. 대상 Android 기기를 확정하고 authorized 상태인지 확인한다. 기기가 보이지 않으면
+   설정된 주소 → mDNS → 기기 IP 포트 스캔 순으로 스스로 다시 붙어 본다. 무선 주소는
+   같은 IP면 같은 태블릿으로 보므로, 태블릿 재부팅으로 포트가 바뀌어도 사람을
+   부르지 않는다([worker/TABLET_SETUP.md](./worker/TABLET_SETUP.md) "자동 재연결이
+   안 될 때").
 3. job type에 맞는 handler를 실행한다.
 4. 폼을 채운 뒤 화면 값이 payload와 일치하는지 검증한다.
 5. dry-run이면 제출 전 멈추고 complete한다.
