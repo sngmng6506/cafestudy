@@ -48,6 +48,15 @@
   --ui-font-body-size: var(--text-body);
   --ui-font-caption-size: var(--text-caption);
 
+  /* Motion: 목적과 빈도에 맞는 가장 짧은 토큰을 고른다. 일반 UI는 300ms를 넘기지 않는다. */
+  --ui-duration-press: 120ms;
+  --ui-duration-fast: 160ms;
+  --ui-duration-normal: 220ms;
+  --ui-duration-overlay: 280ms;
+  --ui-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ui-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ui-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
   /* 쌓임 순서. 셸 크롬(고정 탭바)과 오버레이가 같은 값을 쓰면 DOM 순서가 이기는데,
      셸이 페이지보다 나중에 그려져 화면 안에서 띄운 팝업의 버튼을 덮는다. 값을
      직접 적지 말고 이 토큰을 쓴다. */
