@@ -344,6 +344,7 @@ test('claimNextJob: honours configured stale window and attempt budget', async (
 
 test('createJobForMeetup: 웹 모임을 그대로 payload로 옮긴다', async () => {
   const { service, calls } = serviceWith({ allowSubmit: true });
+  const scheduledAt = futureScheduledAt();
 
   const result = await service.createJobForMeetup({
     id: 'meetup-1',
@@ -351,7 +352,7 @@ test('createJobForMeetup: 웹 모임을 그대로 payload로 옮긴다', async (
     title: '토요일 카페 스터디',
     description: '각자 할 일 가져오기',
     location: '강남역 스타벅스',
-    scheduledAt: '2026-08-29T01:00:00.000Z',
+    scheduledAt: scheduledAt.input,
     capacity: 6,
   });
 
@@ -437,6 +438,7 @@ test('createMeetupJob: 지난 일시는 여전히 거부한다', async () => {
 
 test('createJobForMeetup: 설명이 없으면 빈 문자열로 보낸다', async () => {
   const { service, calls } = serviceWith({ allowSubmit: true });
+  const scheduledAt = futureScheduledAt();
 
   await service.createJobForMeetup({
     id: 'meetup-1',
@@ -444,7 +446,7 @@ test('createJobForMeetup: 설명이 없으면 빈 문자열로 보낸다', async
     title: '제목',
     description: null,
     location: '장소',
-    scheduledAt: '2026-08-29T01:00:00.000Z',
+    scheduledAt: scheduledAt.input,
     capacity: 6,
   });
 
@@ -453,6 +455,7 @@ test('createJobForMeetup: 설명이 없으면 빈 문자열로 보낸다', async
 
 test('createJobForMeetup: 제목이 소모임 길이 제한을 넘으면 예외 대신 failed를 돌려준다', async () => {
   const { service, calls } = serviceWith({ allowSubmit: true });
+  const scheduledAt = futureScheduledAt();
 
   const result = await service.createJobForMeetup({
     id: 'meetup-1',
@@ -460,7 +463,7 @@ test('createJobForMeetup: 제목이 소모임 길이 제한을 넘으면 예외 
     title: '가'.repeat(81),
     description: null,
     location: '장소',
-    scheduledAt: '2026-08-29T01:00:00.000Z',
+    scheduledAt: scheduledAt.input,
     capacity: 6,
   });
 
@@ -715,10 +718,11 @@ test('createMeetupJob: 카카오 장소 URL만 지도 링크로 담는다', asyn
 
 test('createJobForMeetup: 모임의 장소 상세페이지를 지도 링크로 넘긴다', async () => {
   const { service, calls } = serviceWith({ allowSubmit: true });
+  const scheduledAt = futureScheduledAt();
 
   await service.createJobForMeetup({
     id: 'meetup-1', hostId: USER_ID, title: '스터디', description: null,
-    location: '아비아채 서울홍대점 (서울 마포구 와우산로37길 52)', scheduledAt: '2026-08-29T01:00:00.000Z',
+    location: '아비아채 서울홍대점 (서울 마포구 와우산로37길 52)', scheduledAt: scheduledAt.input,
     capacity: 6, placeUrl: 'https://place.map.kakao.com/1095339694',
   });
 

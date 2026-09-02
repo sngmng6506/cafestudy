@@ -102,7 +102,6 @@ function closeLogin() {
       </h1>
 
       <div class="flex shrink-0 items-center gap-1">
-        <NotificationBell v-if="currentToken" @open-notices="selectFeature('notices')" />
         <button
           v-if="currentUserId"
           class="focus-ring ui-text-muted ui-radius-pill flex max-w-[9rem] items-center gap-2 py-1 pl-2 pr-3 text-[13px] font-medium ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
@@ -124,6 +123,9 @@ function closeLogin() {
         >
           멤버 선택
         </button>
+        <!-- 알림을 헤더 액션의 맨 오른쪽에 둔다. 팝오버의 right: 0 기준이
+             화면 안쪽 여백과 맞아 모바일에서도 왼쪽으로 밀려나지 않는다. -->
+        <NotificationBell v-if="currentToken" @open-notices="selectFeature('notices')" />
       </div>
     </header>
 

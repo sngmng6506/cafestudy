@@ -83,3 +83,11 @@ test('핵심 아이콘 버튼은 44px보다 작은 터치 영역을 사용하지
 
   assert.doesNotMatch(touchCritical, /focus-ring[^\n]*h-(?:8|9|10) w-(?:8|9|10)/);
 });
+
+test('알림 팝오버 기준점은 모바일 헤더의 오른쪽 끝에 있다', () => {
+  const app = source('client/src/App.vue');
+  const notification = app.indexOf('<NotificationBell');
+  const memberActionsEnd = app.lastIndexOf('@click="memberSelectOpen = true"');
+
+  assert.ok(notification > memberActionsEnd, '알림 버튼이 사용자 액션보다 오른쪽에 있어야 팝오버가 화면 안에 열린다');
+});
