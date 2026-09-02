@@ -204,3 +204,120 @@
 .ui-layer-shell { z-index: var(--ui-layer-shell); }
 .ui-layer-overlay { z-index: var(--ui-layer-overlay); }
 .ui-layer-toast { z-index: var(--ui-layer-toast); }
+
+
+/* 공통 상태 전환. 바뀌는 속성만 명시해 예상하지 못한 레이아웃 애니메이션을 막는다. */
+.ui-transition-colors {
+  transition:
+    color var(--ui-duration-fast) var(--ui-ease-out),
+    background-color var(--ui-duration-fast) var(--ui-ease-out),
+    border-color var(--ui-duration-fast) var(--ui-ease-out),
+    opacity var(--ui-duration-fast) var(--ui-ease-out);
+}
+
+.ui-pressable {
+  transition: transform var(--ui-duration-press) var(--ui-ease-out);
+  transform-origin: center;
+}
+
+.ui-pressable:not(:disabled):not([aria-disabled='true']):active {
+  transform: scale(0.97);
+}
+
+/* Vue Transition: backdrop는 opacity, 실제 패널만 transform을 움직인다. */
+.ui-modal-enter-active,
+.ui-modal-leave-active {
+  transition: opacity var(--ui-duration-overlay) var(--ui-ease-out);
+}
+
+.ui-modal-enter-active .ui-modal-panel,
+.ui-modal-leave-active .ui-modal-panel {
+  transition: transform var(--ui-duration-overlay) var(--ui-ease-out);
+}
+
+.ui-modal-enter-from,
+.ui-modal-leave-to {
+  opacity: 0;
+}
+
+.ui-modal-enter-from .ui-modal-panel,
+.ui-modal-leave-to .ui-modal-panel {
+  transform: scale(0.96);
+}
+
+.ui-sheet-enter-active,
+.ui-sheet-leave-active {
+  transition: opacity var(--ui-duration-normal) var(--ui-ease-out);
+}
+
+.ui-sheet-enter-active .ui-sheet-panel,
+.ui-sheet-leave-active .ui-sheet-panel {
+  transition: transform var(--ui-duration-overlay) var(--ui-ease-drawer);
+}
+
+.ui-sheet-enter-from,
+.ui-sheet-leave-to {
+  opacity: 0;
+}
+
+.ui-sheet-enter-from .ui-sheet-panel,
+.ui-sheet-leave-to .ui-sheet-panel {
+  transform: translateY(100%);
+}
+
+.ui-popover-enter-active,
+.ui-popover-leave-active {
+  transition: opacity var(--ui-duration-fast) var(--ui-ease-out);
+}
+
+.ui-popover-enter-active .ui-popover-panel,
+.ui-popover-leave-active .ui-popover-panel {
+  transition: transform var(--ui-duration-fast) var(--ui-ease-out);
+}
+
+.ui-popover-enter-from,
+.ui-popover-leave-to {
+  opacity: 0;
+}
+
+.ui-popover-enter-from .ui-popover-panel,
+.ui-popover-leave-to .ui-popover-panel {
+  transform: translateY(4px) scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-pressable {
+    transition: none;
+  }
+
+  .ui-pressable:not(:disabled):not([aria-disabled='true']):active {
+    transform: none;
+  }
+
+  .ui-modal-enter-active,
+  .ui-modal-leave-active,
+  .ui-sheet-enter-active,
+  .ui-sheet-leave-active,
+  .ui-popover-enter-active,
+  .ui-popover-leave-active {
+    transition: opacity var(--ui-duration-fast) var(--ui-ease-out);
+  }
+
+  .ui-modal-enter-active .ui-modal-panel,
+  .ui-modal-leave-active .ui-modal-panel,
+  .ui-sheet-enter-active .ui-sheet-panel,
+  .ui-sheet-leave-active .ui-sheet-panel,
+  .ui-popover-enter-active .ui-popover-panel,
+  .ui-popover-leave-active .ui-popover-panel {
+    transition: none;
+  }
+
+  .ui-modal-enter-from .ui-modal-panel,
+  .ui-modal-leave-to .ui-modal-panel,
+  .ui-sheet-enter-from .ui-sheet-panel,
+  .ui-sheet-leave-to .ui-sheet-panel,
+  .ui-popover-enter-from .ui-popover-panel,
+  .ui-popover-leave-to .ui-popover-panel {
+    transform: none;
+  }
+}
