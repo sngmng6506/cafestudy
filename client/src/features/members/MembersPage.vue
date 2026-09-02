@@ -180,11 +180,13 @@ function highlight(text) {
     </section>
 
     <!-- 멤버 프로필 카드 -->
-    <MemberProfileCard
-      v-if="selectedMember"
-      :member="selectedMember"
-      :rank="rankData[selectedMember.id] ?? null"
-      @close="selectedMember = null"
-    />
+    <Transition name="ui-modal">
+      <MemberProfileCard
+        v-if="selectedMember"
+        :member="selectedMember"
+        :rank="rankData[selectedMember.id] ?? null"
+        @close="selectedMember = null"
+      />
+    </Transition>
   </section>
 </template>

@@ -191,29 +191,35 @@ function closeLogin() {
 
     <ToastContainer />
 
-    <MemberSelectModal
-      v-if="memberSelectOpen || loginPromptOpen"
-      :dismissable="!!currentToken || loginPromptOpen"
-      :reason="loginReason"
-      @close="closeLogin"
-      @browse="browseAsGuest"
-    />
+    <Transition name="ui-modal">
+      <MemberSelectModal
+        v-if="memberSelectOpen || loginPromptOpen"
+        :dismissable="!!currentToken || loginPromptOpen"
+        :reason="loginReason"
+        @close="closeLogin"
+        @browse="browseAsGuest"
+      />
+    </Transition>
 
-    <MenuSearchSheet
-      v-if="menuSearchOpen"
-      :features="visibleFeatures"
-      @select="selectFeature"
-      @close="menuSearchOpen = false"
-    />
+    <Transition name="ui-sheet">
+      <MenuSearchSheet
+        v-if="menuSearchOpen"
+        :features="visibleFeatures"
+        @select="selectFeature"
+        @close="menuSearchOpen = false"
+      />
+    </Transition>
 
-    <FeatureMenu
-      v-if="moreOpen && hasOverflow"
-      :features="moreItems"
-      :active-name="activeFeatureName"
-      :is-locked="isLocked"
-      @select="selectFeature"
-      @close="moreOpen = false"
-    />
+    <Transition name="ui-popover">
+      <FeatureMenu
+        v-if="moreOpen && hasOverflow"
+        :features="moreItems"
+        :active-name="activeFeatureName"
+        :is-locked="isLocked"
+        @select="selectFeature"
+        @close="moreOpen = false"
+      />
+    </Transition>
   </main>
 </template>
 

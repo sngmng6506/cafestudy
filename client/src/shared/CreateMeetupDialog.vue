@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { Calendar, MapPin, Search, X } from '@lucide/vue';
 import { apiFetch } from './api.js';
 import { useToast } from './useToast.js';
+import { useOverlay } from './useOverlay.js';
 import { MEETUP_LIMITS } from '../../../shared/domain-constraints.js';
 
 const props = defineProps({ open: { type: Boolean, default: false } });
@@ -29,6 +30,14 @@ const searchResults = ref([]);
 const searching = ref(false);
 const searchError = ref('');
 const searchInput = ref(null);
+const dialogRef = ref(null);
+
+useOverlay({
+  containerRef: dialogRef,
+  enabled: computed(() => props.open),
+  onClose: () => emit('close'),
+  initialFocusSelector: 'input[type="datetime-local"]',
+});
 
 const minScheduledAt = computed(() => toLocalInputValue(new Date(Date.now() + MEETUP_LIMITS.minLeadMs)));
 
@@ -223,21 +232,26 @@ function formatWhen(date) {
 </script>
 
 <template>
-  <div
-    v-if="open"
-    class="fixed inset-0 ui-layer-overlay flex items-center justify-center px-4"
-    role="dialog"
-    aria-modal="true"
-    aria-label="모임 만들기"
-    @click.self="emit('close')"
-  >
-    <div class="absolute inset-0 bg-[var(--ui-color-content)]/30" @click="emit('close')"></div>
+  <Transition name="ui-modal">
+    <div
+      v-if="open"
+      class="fixed inset-0 ui-layer-overlay flex items-center justify-center px-4"
+      @click.self="emit('close')"
+    >
+      <div class="absolute inset-0 bg-[var(--ui-color-content)]/30" @click="emit('close')"></div>
 
-    <div class="ui-bg-surface relative z-10 flex max-h-[85vh] w-full max-w-md flex-col rounded-xl shadow-sm">
+      <div
+        ref="dialogRef"
+        class="ui-modal-panel ui-bg-surface ui-radius-overlay relative z-10 flex max-h-[85vh] w-full max-w-md flex-col shadow-sm"
+        role="dialog"
+        aria-modal="true"
+        aria-label="모임 만들기"
+        tabindex="-1"
+      >
       <div class="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--ui-color-stroke-subtle)] px-5 py-4">
         <h2 class="text-[17px] font-bold text-[var(--ui-color-content)]">모임 만들기</h2>
         <button
-          class="focus-ring rounded p-1 text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)]"
+          class="focus-ring ui-transition-colors flex h-11 w-11 items-center justify-center rounded-full text-[var(--ui-color-content-muted)] hover:bg-[var(--ui-color-surface-subtle)]"
           type="button"
           aria-label="닫기"
           @click="emit('close')"
@@ -382,6 +396,7 @@ function formatWhen(date) {
           {{ creating ? '만드는 중…' : '모임 만들기' }}
         </button>
       </div>
+      </div>
     </div>
-  </div>
+  </Transition>
 </template>

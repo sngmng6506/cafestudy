@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { ArrowLeft, Check, Search, X } from '@lucide/vue';
 import { apiFetch } from './api.js';
 import { useCurrentUser } from './useCurrentUser.js';
 import { avatarColor, initials } from './useAvatar.js';
+import { useOverlay } from './useOverlay.js';
 
 const props = defineProps({
   dismissable: { type: Boolean, default: false },
@@ -25,6 +26,14 @@ const passwordConfirm = ref('');
 const setupToken = ref('');
 const authError = ref('');
 const submitting = ref(false);
+const dialogRef = ref(null);
+
+useOverlay({
+  containerRef: dialogRef,
+  onClose: () => emit('close'),
+  closeOnEscape: computed(() => props.dismissable),
+  initialFocusSelector: 'input[type="search"]',
+});
 
 const isSetup = computed(() => selectedMember.value && !selectedMember.value.hasPassword);
 
@@ -46,18 +55,8 @@ async function loadMembers() {
   }
 }
 
-// 로그인 전(닫을 수 없는 상태)에는 Escape로도 닫지 않는다.
-function onKeydown(event) {
-  if (event.key === 'Escape' && props.dismissable) emit('close');
-}
-
 onMounted(() => {
-  window.addEventListener('keydown', onKeydown);
   void loadMembers();
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKeydown);
 });
 
 function pick(member) {
@@ -115,10 +114,17 @@ async function submitAuth() {
       @click="dismissable ? emit('close') : undefined"
     ></div>
 
-    <div class="relative z-10 w-full max-w-sm rounded-xl bg-white px-5 pb-6 pt-5 shadow-lg">
+    <div
+      ref="dialogRef"
+      class="ui-modal-panel ui-radius-overlay relative z-10 w-full max-w-sm bg-white px-5 pb-6 pt-5 shadow-lg"
+      role="dialog"
+      aria-modal="true"
+      aria-label="멤버 선택 및 로그인"
+      tabindex="-1"
+    >
       <button
         v-if="dismissable"
-        class="focus-ring absolute right-4 top-4 rounded p-1 text-[var(--ui-color-content-muted)] transition hover:text-[var(--ui-color-content)]"
+        class="focus-ring ui-transition-colors absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full text-[var(--ui-color-content-muted)] hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
         type="button"
         aria-label="닫기"
         @click="emit('close')"

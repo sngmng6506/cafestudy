@@ -309,7 +309,9 @@ async function saveComment(cafe) {
     </section>
 
     <!-- 카페 상세 시트 -->
-    <CafeDetailSheet v-if="selectedCafe" :cafe="selectedCafe" @close="selectedCafe = null" />
+    <Transition name="ui-modal">
+      <CafeDetailSheet v-if="selectedCafe" :cafe="selectedCafe" @close="selectedCafe = null" />
+    </Transition>
   </section>
 </template>
 

@@ -5,6 +5,7 @@ import { onMounted, ref } from 'vue';
 import { Camera, MapPin, MessageSquare, X } from '@lucide/vue';
 import { apiFetch } from '../../shared/api.js';
 import { formatDate } from '../../shared/useMeetups.js';
+import { useOverlay } from '../../shared/useOverlay.js';
 
 const props = defineProps({
   cafe: { type: Object, required: true },
@@ -14,6 +15,12 @@ const emit = defineEmits(['close']);
 
 const photos = ref([]);
 const photosLoading = ref(true);
+const dialogRef = ref(null);
+
+useOverlay({
+  containerRef: dialogRef,
+  onClose: () => emit('close'),
+});
 
 onMounted(async () => {
   try {
@@ -33,9 +40,16 @@ onMounted(async () => {
   <div class="fixed inset-0 ui-layer-overlay flex items-center justify-center px-4">
     <div class="absolute inset-0 bg-black/30" @click="emit('close')"></div>
 
-    <div class="relative z-10 max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-xl bg-white px-5 pb-6 pt-5 shadow-lg">
+    <div
+      ref="dialogRef"
+      class="ui-modal-panel ui-radius-overlay relative z-10 max-h-[80vh] w-full max-w-sm overflow-y-auto bg-white px-5 pb-6 pt-5 shadow-lg"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cafe-detail-title"
+      tabindex="-1"
+    >
       <button
-        class="focus-ring absolute right-4 top-4 rounded p-1 text-[var(--ui-color-content-muted)] transition hover:text-[var(--ui-color-content)]"
+        class="focus-ring ui-transition-colors absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full text-[var(--ui-color-content-muted)] hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
         type="button"
         aria-label="닫기"
         @click="emit('close')"
@@ -43,7 +57,7 @@ onMounted(async () => {
         <X :size="20" />
       </button>
 
-      <h2 class="pr-8 text-[18px] font-bold text-[var(--ui-color-content)]">{{ cafe.placeName ?? cafe.location }}</h2>
+      <h2 id="cafe-detail-title" class="pr-8 text-[18px] font-bold text-[var(--ui-color-content)]">{{ cafe.placeName ?? cafe.location }}</h2>
       <p v-if="cafe.roadAddress" class="mt-1 flex items-center gap-1 text-[13px] text-[var(--ui-color-content-muted)]">
         <MapPin :size="13" class="shrink-0" /> {{ cafe.roadAddress }}
       </p>

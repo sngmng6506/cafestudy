@@ -1,7 +1,8 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { ArrowRight, LoaderCircle, Search, X } from '@lucide/vue';
 import { searchMenus } from './menu-search.service.js';
+import { useOverlay } from '../../shared/useOverlay.js';
 
 const props = defineProps({
   features: {
@@ -18,6 +19,7 @@ const searched = ref(false);
 const mode = ref('hybrid');
 const results = ref([]);
 const inputRef = ref(null);
+const dialogRef = ref(null);
 let requestId = 0;
 
 const featureByName = computed(() => new Map(props.features.map((feature) => [feature.name, feature])));
@@ -25,18 +27,10 @@ const displayResults = computed(() => results.value
   .map((result) => ({ ...result, feature: featureByName.value.get(result.featureName) }))
   .filter((result) => result.feature));
 
-function onKeydown(event) {
-  if (event.key === 'Escape') emit('close');
-}
-
-onMounted(async () => {
-  window.addEventListener('keydown', onKeydown);
-  await nextTick();
-  inputRef.value?.focus();
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKeydown);
+useOverlay({
+  containerRef: dialogRef,
+  initialFocusRef: inputRef,
+  onClose: () => emit('close'),
 });
 
 async function submitSearch() {
@@ -78,10 +72,12 @@ function selectResult(name) {
     @click.self="emit('close')"
   >
     <section
-      class="w-full max-w-md rounded-t-[24px] bg-white px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-4px_24px_rgba(0,0,0,0.12)]"
+      ref="dialogRef"
+      class="ui-sheet-panel w-full max-w-md rounded-t-[var(--ui-radius-overlay)] bg-white px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-4px_24px_rgba(0,0,0,0.12)]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="menu-search-title"
+      tabindex="-1"
     >
       <div class="mx-auto mb-4 h-1 w-10 rounded-full bg-[var(--ui-color-stroke)]" />
 
@@ -91,7 +87,7 @@ function selectResult(name) {
           <p class="mt-1 text-[13px] text-[var(--ui-color-content-caption)]">하고 싶은 일을 자연어로 입력해 보세요.</p>
         </div>
         <button
-          class="focus-ring flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)]"
+          class="focus-ring ui-transition-colors flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--ui-color-content-muted)] hover:bg-[var(--ui-color-surface-subtle)]"
           type="button"
           aria-label="기능 검색 닫기"
           @click="emit('close')"

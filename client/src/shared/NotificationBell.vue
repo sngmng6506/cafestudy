@@ -4,9 +4,11 @@ import { Bell, CheckCheck, X } from '@lucide/vue';
 import { useCurrentUser } from './useCurrentUser.js';
 import { useNotices } from './useNotices.js';
 import { useToast } from './useToast.js';
+import { useOverlay } from './useOverlay.js';
 
 const emit = defineEmits(['open-notices']);
 const open = ref(false);
+const popoverRef = ref(null);
 const { currentToken, currentUserId } = useCurrentUser();
 const {
   recentNotices,
@@ -19,6 +21,16 @@ const {
   resetNotices,
 } = useNotices();
 const toast = useToast();
+
+useOverlay({
+  containerRef: popoverRef,
+  enabled: open,
+  onClose: () => { open.value = false; },
+  initialFocusSelector: '[aria-label="알림 닫기"]',
+  trapFocus: false,
+  lockScroll: false,
+});
+
 let timer;
 
 async function refresh() {
@@ -81,18 +93,21 @@ async function readAll() {
       </span>
     </button>
 
-    <div
-      v-if="open"
-      class="ui-bg-surface ui-radius-overlay absolute right-0 top-11 z-50 w-[min(22rem,calc(100vw-2.5rem))] overflow-hidden border border-[var(--ui-color-stroke)] shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
-      role="dialog"
-      aria-label="공지 알림"
-    >
+    <Transition name="ui-popover">
+      <div
+        v-if="open"
+        ref="popoverRef"
+        class="ui-popover-panel ui-bg-surface ui-radius-overlay absolute right-0 top-11 z-50 w-[min(22rem,calc(100vw-2.5rem))] origin-top-right overflow-hidden border border-[var(--ui-color-stroke)] shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+        role="dialog"
+        aria-label="공지 알림"
+        tabindex="-1"
+      >
       <div class="ui-border-subtle flex items-center justify-between border-b px-4 py-3">
         <div>
           <h2 class="ui-section-title">알림</h2>
           <p class="ui-text-caption mt-0.5">새 공지를 확인할 수 있어요.</p>
         </div>
-        <button class="focus-ring ui-text-muted p-1" type="button" aria-label="알림 닫기" @click="open = false">
+        <button class="focus-ring ui-transition-colors ui-text-muted flex h-11 w-11 items-center justify-center rounded-full hover:bg-[var(--ui-color-surface-subtle)]" type="button" aria-label="알림 닫기" @click="open = false">
           <X :size="18" />
         </button>
       </div>
@@ -133,6 +148,7 @@ async function readAll() {
           공지 전체 보기
         </button>
       </div>
-    </div>
+      </div>
+    </Transition>
   </div>
 </template>

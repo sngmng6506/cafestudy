@@ -1,6 +1,7 @@
 <script setup>
-import { onBeforeUnmount, onMounted } from 'vue';
+import { ref } from 'vue';
 import { Lock } from '@lucide/vue';
+import { useOverlay } from './useOverlay.js';
 
 const props = defineProps({
   features: { type: Array, required: true },
@@ -9,18 +10,32 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['select', 'close']);
+const menuRef = ref(null);
 
-function onKeydown(event) {
-  if (event.key === 'Escape') emit('close');
+useOverlay({
+  containerRef: menuRef,
+  onClose: () => emit('close'),
+  initialFocusSelector: '[role="menuitem"]',
+  trapFocus: false,
+  lockScroll: false,
+});
+
+function onMenuKeydown(event) {
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+
+  const items = [...menuRef.value.querySelectorAll('[role="menuitem"]')];
+  if (!items.length) return;
+
+  event.preventDefault();
+  const currentIndex = items.indexOf(document.activeElement);
+  let nextIndex;
+  if (event.key === 'Home') nextIndex = 0;
+  else if (event.key === 'End') nextIndex = items.length - 1;
+  else if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % items.length;
+  else nextIndex = (currentIndex <= 0 ? items.length : currentIndex) - 1;
+
+  items[nextIndex].focus();
 }
-
-onMounted(() => {
-  window.addEventListener('keydown', onKeydown);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKeydown);
-});
 </script>
 
 <template>
@@ -29,15 +44,18 @@ onBeforeUnmount(() => {
     <div class="absolute inset-0 bottom-[var(--ui-bottom-bar-height,4.25rem)] bg-[var(--ui-color-content)]/20" @click="emit('close')"></div>
 
     <section
-      class="absolute bottom-[calc(var(--ui-bottom-bar-height,4.25rem)+0.5rem)] right-[max(0.75rem,calc((100vw-28rem)/2+0.75rem))] flex max-h-[52vh] w-[min(9rem,calc(100vw-1.5rem))] flex-col rounded-2xl bg-white shadow-[0_8px_28px_rgba(0,0,0,0.16)]"
+      ref="menuRef"
+      class="ui-popover-panel absolute bottom-[calc(var(--ui-bottom-bar-height,4.25rem)+0.5rem)] right-[max(0.75rem,calc((100vw-28rem)/2+0.75rem))] flex max-h-[52vh] w-[min(9rem,calc(100vw-1.5rem))] origin-bottom-right flex-col rounded-2xl bg-white shadow-[0_8px_28px_rgba(0,0,0,0.16)]"
       role="menu"
       aria-label="더보기 기능"
+      tabindex="-1"
+      @keydown="onMenuKeydown"
     >
       <!-- 제목은 두지 않는다. 방금 누른 버튼이 무엇을 열었는지는 이미 알고, 메뉴의
            이름은 아래 section의 aria-label이 낭독기에 알린다. -->
       <div class="flex shrink-0 justify-end border-b border-[var(--ui-color-stroke-subtle)] px-3 py-2">
         <button
-          class="focus-ring rounded px-1.5 py-1 text-[12px] font-semibold text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+          class="focus-ring ui-transition-colors flex h-11 items-center rounded px-3 text-[12px] font-semibold text-[var(--ui-color-content-muted)] hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
           type="button"
           @click="emit('close')"
         >
