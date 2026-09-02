@@ -184,7 +184,7 @@ async function loadRanking() {
 
       <div v-if="showsMonthNav" class="mb-5 flex items-center justify-center gap-2">
         <button
-          class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+          class="focus-ring flex h-11 w-11 items-center justify-center rounded text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
           type="button"
           aria-label="이전 달"
           @click="shiftMonth(-1)"
@@ -193,7 +193,7 @@ async function loadRanking() {
         </button>
         <span class="min-w-[100px] text-center text-[15px] font-semibold text-[var(--ui-color-content)]">{{ monthLabel }}</span>
         <button
-          class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-color-content-muted)]"
+          class="focus-ring flex h-11 w-11 items-center justify-center rounded text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-color-content-muted)]"
           type="button"
           aria-label="다음 달"
           :disabled="isCurrentMonth"

@@ -87,7 +87,7 @@ onUnmounted(stopTicker);
   <div class="flex flex-col items-end gap-1">
     <button
       type="button"
-      class="focus-ring ui-radius-control inline-flex h-9 w-9 items-center justify-center border border-[var(--ui-color-stroke)] bg-white text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
+      class="focus-ring ui-radius-control inline-flex h-11 w-11 items-center justify-center border border-[var(--ui-color-stroke)] bg-white text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
       :disabled="disabled"
       :aria-label="label"
       @click="refresh"

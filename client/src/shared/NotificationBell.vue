@@ -78,7 +78,7 @@ async function readAll() {
 <template>
   <div class="relative">
     <button
-      class="focus-ring ui-text-muted ui-radius-pill relative flex h-9 w-9 items-center justify-center ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+      class="focus-ring ui-text-muted ui-radius-pill relative flex h-11 w-11 items-center justify-center ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
       type="button"
       aria-label="알림 보기"
       :aria-expanded="open"

@@ -174,7 +174,7 @@ function closeLogin() {
 
         <button
           v-if="hasOverflow"
-          class="focus-ring ui-radius-item ui-border flex h-10 w-10 shrink-0 items-center justify-center border ui-transition-colors"
+          class="focus-ring ui-radius-item ui-border flex h-11 w-11 shrink-0 items-center justify-center border ui-transition-colors"
           :class="moreOpen ? 'ui-nav-item-active' : 'ui-nav-item'"
           type="button"
           aria-label="더보기"

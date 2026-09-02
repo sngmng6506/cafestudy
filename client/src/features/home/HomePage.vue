@@ -132,7 +132,7 @@ function calendarAttendeeStack(meetup) {
         <h3 class="text-lg font-semibold text-[var(--ui-color-content)]">모임 캘린더</h3>
         <div class="flex items-center gap-1">
           <button
-            class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+            class="focus-ring flex h-11 w-11 items-center justify-center rounded text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
             type="button"
             aria-label="이전 달"
             @click="shiftMonth(-1)"
@@ -141,7 +141,7 @@ function calendarAttendeeStack(meetup) {
           </button>
           <span class="min-w-[88px] text-center text-[15px] font-semibold text-[var(--ui-color-content)]">{{ monthLabel }}</span>
           <button
-            class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+            class="focus-ring flex h-11 w-11 items-center justify-center rounded text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
             type="button"
             aria-label="다음 달"
             @click="shiftMonth(1)"
@@ -300,7 +300,7 @@ function calendarAttendeeStack(meetup) {
                  목록 아래 따로 놓으면 아이콘만 한 줄 내려가 어긋나 보인다. -->
             <template v-if="index === previewMeetups.length - 1" #trailing-action>
               <button
-                class="focus-ring ui-radius-control ui-border inline-flex h-9 w-9 items-center justify-center border text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+                class="focus-ring ui-radius-control ui-border inline-flex h-11 w-11 items-center justify-center border text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
                 type="button"
                 aria-label="모임 전체 보기"
                 title="모임 전체 보기"

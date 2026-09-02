@@ -67,7 +67,7 @@ function onMenuKeydown(event) {
         <button
           v-for="feature in props.features"
           :key="feature.name"
-          class="focus-ring flex min-h-10 w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left ui-transition-colors"
+          class="focus-ring flex min-h-11 w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left ui-transition-colors"
           :class="[
             feature.name === activeName ? 'ui-bg-success ui-text-brand' : 'ui-text hover:bg-[var(--ui-color-surface-subtle)]',
             props.isLocked(feature) ? 'opacity-45' : '',

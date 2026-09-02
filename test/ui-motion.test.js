@@ -69,3 +69,17 @@ test('셸은 모임 만들기 게이트가 사용하는 로그인 안내 함수�
   const returnBlock = [...appShell.matchAll(/return \{([\s\S]*?)\n  \};/g)].at(-1)?.[1] ?? '';
   assert.match(returnBlock, /\brequireLogin,/, '게스트가 모임 만들기를 누를 때 로그인 모달을 열 수 있어야 한다');
 });
+
+test('핵심 아이콘 버튼은 44px보다 작은 터치 영역을 사용하지 않는다', () => {
+  const touchCritical = [
+    'client/src/App.vue',
+    'client/src/shared/NotificationBell.vue',
+    'client/src/shared/RefreshSomoimButton.vue',
+    'client/src/shared/MeetupCard.vue',
+    'client/src/features/home/HomePage.vue',
+    'client/src/features/ranking/RankingPage.vue',
+    'client/src/features/badges/BadgesPage.vue',
+  ].map(source).join('\n');
+
+  assert.doesNotMatch(touchCritical, /focus-ring[^\n]*h-(?:8|9|10) w-(?:8|9|10)/);
+});

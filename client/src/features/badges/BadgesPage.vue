@@ -217,7 +217,7 @@ async function activateBadge(badge) {
           </span>
           <button
             v-else
-            class="focus-ring ui-radius-control h-8 shrink-0 border border-[var(--ui-color-stroke)] px-2 text-[12px] font-semibold text-[var(--ui-color-content)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] disabled:opacity-50"
+            class="focus-ring ui-radius-control h-11 shrink-0 border border-[var(--ui-color-stroke)] px-2 text-[12px] font-semibold text-[var(--ui-color-content)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] disabled:opacity-50"
             type="button"
             :disabled="!!activatingId"
             @click="activateBadge(badge)"
@@ -225,7 +225,7 @@ async function activateBadge(badge) {
             {{ activatingId === badge.id ? '변경중' : '적용' }}
           </button>
           <button
-            class="focus-ring ui-radius-control flex h-8 w-8 shrink-0 items-center justify-center border border-[var(--ui-color-stroke)] text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-destructive)] disabled:opacity-50"
+            class="focus-ring ui-radius-control flex h-11 w-11 shrink-0 items-center justify-center border border-[var(--ui-color-stroke)] text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-destructive)] disabled:opacity-50"
             type="button"
             :disabled="!!deletingId"
             :aria-label="`${badge.title} 뱃지 삭제`"
