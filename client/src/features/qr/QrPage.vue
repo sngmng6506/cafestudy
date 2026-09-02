@@ -54,7 +54,7 @@ async function copyUrl() {
         <p class="break-all text-center text-[14px] font-medium text-[var(--ui-color-content-muted)]">{{ url }}</p>
 
         <button
-          class="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-[var(--ui-color-stroke)] text-[15px] font-semibold text-[var(--ui-color-content)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
+          class="focus-ring ui-radius-control flex h-11 w-full items-center justify-center gap-2 border border-[var(--ui-color-stroke)] text-[15px] font-semibold text-[var(--ui-color-content)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
           type="button"
           @click="copyUrl"
         >

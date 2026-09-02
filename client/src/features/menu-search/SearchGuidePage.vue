@@ -24,7 +24,7 @@ const limitations = [
 
     <article class="surface-card">
       <div class="mb-3 flex items-center justify-between gap-3">
-        <h2 class="text-[16px] font-semibold text-[#222222]">Ternlight란?</h2>
+        <h2 class="text-[16px] font-semibold text-[var(--ui-color-content)]">Ternlight란?</h2>
         <span class="ui-badge-success ui-radius-pill px-2.5 py-1 text-[11px] font-semibold">
           브라우저 실행
         </span>
@@ -37,7 +37,7 @@ const limitations = [
     </article>
 
     <article class="surface-card">
-      <h2 class="mb-3 text-[16px] font-semibold text-[#222222]">현재 검색 파이프라인</h2>
+      <h2 class="mb-3 text-[16px] font-semibold text-[var(--ui-color-content)]">현재 검색 파이프라인</h2>
       <ol class="grid gap-3">
         <li v-for="(step, index) in pipeline" :key="step" class="flex gap-3">
           <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--ui-color-brand)] text-[11px] font-bold text-white">
@@ -49,7 +49,7 @@ const limitations = [
     </article>
 
     <article class="surface-card">
-      <h2 class="mb-3 text-[16px] font-semibold text-[#222222]">현재 한계와 잠재 이슈</h2>
+      <h2 class="mb-3 text-[16px] font-semibold text-[var(--ui-color-content)]">현재 한계와 잠재 이슈</h2>
       <ul class="grid gap-2.5">
         <li v-for="item in limitations" :key="item" class="flex gap-2.5 text-[14px] leading-relaxed text-[var(--ui-color-content-muted)]">
           <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--ui-color-content-disabled)]" />
@@ -58,7 +58,7 @@ const limitations = [
       </ul>
     </article>
 
-    <article class="rounded-2xl border border-[#dcefe4] bg-[#f5fcf8] p-4">
+    <article class="ui-radius-card border border-[var(--ui-color-success-stroke)] bg-[var(--ui-color-success-surface)] p-4">
       <h2 class="ui-text-success text-[14px] font-semibold">예시</h2>
       <p class="mt-2 text-[14px] leading-relaxed text-[var(--ui-color-content-muted)]">
         “지난번 스터디 사진 보고 싶어” → 모임 이력<br />

@@ -75,7 +75,7 @@ function highlight(text) {
   const escaped = escapeHtml(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return safe.replace(
     new RegExp(`(${escaped})`, 'gi'),
-    '<mark class="bg-[#DFF5E7] text-[var(--ui-color-content)]">$1</mark>',
+    '<mark class="bg-[var(--ui-color-success-surface)] text-[var(--ui-color-content)]">$1</mark>',
   );
 }
 </script>

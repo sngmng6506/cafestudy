@@ -241,7 +241,7 @@ async function saveComment(cafe) {
                 {{ comment.authorName }}
                 <span
                   v-if="comment.isMine && comment.isAnonymous"
-                  class="rounded bg-[#EDE7FB] px-1.5 py-0.5 text-[10px] font-semibold text-[#7C3AED]"
+                  class="ui-radius-badge bg-[var(--ui-color-planned-surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--ui-color-planned-content)]"
                 >
                   익명
                 </span>
@@ -292,7 +292,7 @@ async function saveComment(cafe) {
                 <input
                   v-model="anonymousInputs[cafe.location]"
                   type="checkbox"
-                  class="h-4 w-4 accent-[#7C3AED]"
+                  class="h-4 w-4 accent-[var(--ui-color-planned-content)]"
                 />
                 익명으로 남기기
               </label>
@@ -324,10 +324,10 @@ async function saveComment(cafe) {
   width: 36px;
   height: 36px;
   border-radius: 9999px;
-  background: #03c75a;
-  border: 2px solid #ffffff;
+  background: var(--ui-color-brand);
+  border: 2px solid var(--ui-color-surface);
   box-shadow: 0 1px 4px rgba(51, 51, 51, 0.3);
-  color: #ffffff;
+  color: var(--ui-color-surface);
   font-size: 13px;
   font-weight: 700;
 }

@@ -94,7 +94,7 @@ function cellClass(date) {
 
   const classes = ['hover:bg-[var(--ui-color-surface-subtle)]'];
   if (!isCurrentMonth(date)) {
-    classes.push('text-[#C4CAD2]');
+    classes.push('text-[var(--ui-color-calendar-outside)]');
   } else if (date.getDay() === 0) {
     classes.push('text-[var(--ui-color-destructive)]');
   } else if (date.getDay() === 6) {

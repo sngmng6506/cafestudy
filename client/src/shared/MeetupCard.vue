@@ -158,7 +158,7 @@ const somoimLink = somoimAppLink();
     <div class="mt-auto flex flex-wrap items-center gap-2">
       <!-- 지도: 기본 네이버 버튼 + 구글 아이콘 버튼으로 압축 -->
       <a
-        class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--ui-color-stroke)] text-[var(--ui-color-brand)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
+        class="focus-ring ui-radius-control inline-flex h-9 w-9 items-center justify-center border border-[var(--ui-color-stroke)] text-[var(--ui-color-brand)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
         :href="naverMapUrl(meetup)"
         target="_blank"
         rel="noreferrer"
@@ -167,7 +167,7 @@ const somoimLink = somoimAppLink();
         <MapPin :size="16" />
       </a>
       <a
-        class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--ui-color-stroke)] text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
+        class="focus-ring ui-radius-control inline-flex h-9 w-9 items-center justify-center border border-[var(--ui-color-stroke)] text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
         :href="googleMapUrl(meetup)"
         target="_blank"
         rel="noreferrer"
@@ -222,7 +222,7 @@ const somoimLink = somoimAppLink();
         </div>
         <button
           v-else-if="meetup.joined"
-          class="focus-ring h-9 shrink-0 rounded-[10px] border border-[var(--ui-color-stroke)] px-4 text-sm font-semibold text-[var(--ui-color-content)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] disabled:opacity-50"
+          class="focus-ring ui-radius-control h-9 shrink-0 border border-[var(--ui-color-stroke)] px-4 text-sm font-semibold text-[var(--ui-color-content)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] disabled:opacity-50"
           type="button"
           :disabled="pendingId === meetup.id"
           @click="emit('toggle-join', meetup)"
@@ -232,7 +232,7 @@ const somoimLink = somoimAppLink();
         <!-- 마감: 버튼이 아니라 배지로 (누를 수 없음을 명확히) -->
         <span
           v-else-if="isFull"
-          class="inline-flex h-9 items-center rounded-[10px] bg-[var(--ui-color-surface-subtle)] px-4 text-sm font-semibold text-[var(--ui-color-content-muted)]"
+          class="ui-radius-control inline-flex h-9 items-center bg-[var(--ui-color-surface-subtle)] px-4 text-sm font-semibold text-[var(--ui-color-content-muted)]"
         >
           마감
         </span>

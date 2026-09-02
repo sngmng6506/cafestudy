@@ -21,6 +21,14 @@
   /* 긍정·활성 상태 tint: 모집중, 인증 완료, 진행 중, 최고 점수 등 */
   --ui-color-success-surface: var(--color-green-50);
   --ui-color-success-content: var(--color-green-800);
+  --ui-color-success-stroke: var(--color-green-300);
+
+  /* 아직 출시되지 않은 개선 항목 */
+  --ui-color-planned-surface: var(--color-purple-50);
+  --ui-color-planned-content: var(--color-purple-600);
+
+  /* 달력의 현재 월 밖 날짜 */
+  --ui-color-calendar-outside: var(--color-gray-400);
 
   /* 외부 출처(소모임) 표시. 브랜드 그린과 구분되는 색이므로 별도 역할이다. */
   --ui-color-external: var(--color-emerald-500);
@@ -191,7 +199,7 @@
 
 .ui-button-external {
   background-color: var(--ui-color-external-strong);
-  color: #fff;
+  color: var(--color-white);
 }
 
 .ui-button-external:hover {

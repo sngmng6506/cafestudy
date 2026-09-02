@@ -315,7 +315,7 @@ async function loadRanking() {
           >
             <span
               class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold"
-              :class="user.rank === 1 ? 'bg-[var(--ui-color-brand)] text-white' : user.rank <= 3 ? 'bg-[#03C75A]/15 text-[var(--ui-color-brand-hover)]' : 'bg-[var(--ui-color-surface-subtle)] text-[var(--ui-color-content-muted)]'"
+              :class="user.rank === 1 ? 'bg-[var(--ui-color-brand)] text-white' : user.rank <= 3 ? 'bg-[var(--ui-color-success-surface)] text-[var(--ui-color-brand-hover)]' : 'bg-[var(--ui-color-surface-subtle)] text-[var(--ui-color-content-muted)]'"
             >
               <Crown v-if="user.rank === 1" :size="14" />
               <template v-else>{{ user.rank }}</template>

@@ -102,7 +102,7 @@ function selectResult(name) {
           <input
             ref="inputRef"
             v-model="query"
-            class="focus-ring h-11 w-full rounded-[10px] border border-[var(--ui-color-stroke)] bg-white pl-10 pr-3 text-[14px] outline-none placeholder:text-[var(--ui-color-content-disabled)] focus:border-[var(--ui-color-brand)]"
+            class="focus-ring ui-radius-control h-11 w-full border border-[var(--ui-color-stroke)] bg-white pl-10 pr-3 text-[14px] outline-none placeholder:text-[var(--ui-color-content-disabled)] focus:border-[var(--ui-color-brand)]"
             type="search"
             maxlength="120"
             autocomplete="off"
@@ -139,7 +139,7 @@ function selectResult(name) {
             <button
               v-for="result in displayResults"
               :key="result.featureName"
-              class="focus-ring flex w-full items-center gap-3 border-b border-[var(--ui-color-stroke-subtle)] px-4 py-3.5 text-left ui-transition-colors last:border-b-0 hover:bg-[#eef0f2]"
+              class="focus-ring flex w-full items-center gap-3 border-b border-[var(--ui-color-stroke-subtle)] px-4 py-3.5 text-left ui-transition-colors last:border-b-0 hover:bg-[var(--ui-color-surface-hover)]"
               type="button"
               @click="selectResult(result.featureName)"
             >

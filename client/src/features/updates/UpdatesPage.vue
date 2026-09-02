@@ -20,7 +20,7 @@ const knownIssues = [
 ];
 
 const statusMeta = {
-  planned: { label: '개선 예정', cls: 'bg-[#EDE7FB] text-[#7C3AED]' },
+  planned: { label: '개선 예정', cls: 'bg-[var(--ui-color-planned-surface)] text-[var(--ui-color-planned-content)]' },
   'in-progress': { label: '진행 중', cls: 'ui-badge-success' },
   done: { label: '완료', cls: 'bg-[var(--ui-color-surface-subtle)] text-[var(--ui-color-content-muted)]' },
 };
@@ -31,7 +31,7 @@ const statusMeta = {
     <ul class="grid gap-3">
       <li v-for="issue in knownIssues" :key="issue.title" class="surface-card">
         <div class="mb-3 flex items-start justify-between gap-3">
-          <h2 class="text-[16px] font-semibold text-[#222222]">{{ issue.title }}</h2>
+          <h2 class="text-[16px] font-semibold text-[var(--ui-color-content)]">{{ issue.title }}</h2>
           <span
             class="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold"
             :class="statusMeta[issue.status].cls"
