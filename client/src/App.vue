@@ -105,7 +105,7 @@ function closeLogin() {
         <NotificationBell v-if="currentToken" @open-notices="selectFeature('notices')" />
         <button
           v-if="currentUserId"
-          class="focus-ring ui-text-muted ui-radius-pill flex max-w-[9rem] items-center gap-2 py-1 pl-2 pr-3 text-[13px] font-medium transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+          class="focus-ring ui-text-muted ui-radius-pill flex max-w-[9rem] items-center gap-2 py-1 pl-2 pr-3 text-[13px] font-medium ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
           type="button"
           @click="memberSelectOpen = true"
         >
@@ -118,7 +118,7 @@ function closeLogin() {
         </button>
         <button
           v-else
-          class="focus-ring ui-text-brand ui-radius-pill px-3 py-1 text-[13px] font-medium transition hover:bg-[var(--ui-color-surface-subtle)]"
+          class="focus-ring ui-text-brand ui-radius-pill px-3 py-1 text-[13px] font-medium ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
           type="button"
           @click="memberSelectOpen = true"
         >
@@ -144,7 +144,7 @@ function closeLogin() {
            섞으면 셋이 같은 무게로 보인다. -->
       <div class="border-b border-[var(--ui-color-stroke-subtle)] px-3 py-2.5">
         <button
-          class="focus-ring ui-radius-control flex h-11 w-full items-center justify-center gap-1.5 bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)]"
+          class="focus-ring ui-pressable ui-radius-control flex h-11 w-full items-center justify-center gap-1.5 bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white ui-transition-colors hover:bg-[var(--ui-color-brand-hover)]"
           type="button"
           @click="openCreateMeetup"
         >
@@ -157,7 +157,7 @@ function closeLogin() {
       <div class="flex items-center gap-2 px-3 pb-[calc(0.625rem+env(safe-area-inset-bottom))] pt-2.5">
         <button
           v-if="showBottomSearch"
-          class="focus-ring ui-search-trigger flex h-10 min-w-0 flex-1 items-center gap-2.5 px-3.5 text-left transition"
+          class="focus-ring ui-pressable ui-search-trigger flex h-10 min-w-0 flex-1 items-center gap-2.5 px-3.5 text-left ui-transition-colors"
           type="button"
           aria-label="자연어로 기능 찾기"
           @click="openMenuSearch"
@@ -174,7 +174,7 @@ function closeLogin() {
 
         <button
           v-if="hasOverflow"
-          class="focus-ring ui-radius-item ui-border flex h-10 w-10 shrink-0 items-center justify-center border transition"
+          class="focus-ring ui-radius-item ui-border flex h-10 w-10 shrink-0 items-center justify-center border ui-transition-colors"
           :class="moreOpen ? 'ui-nav-item-active' : 'ui-nav-item'"
           type="button"
           aria-label="더보기"

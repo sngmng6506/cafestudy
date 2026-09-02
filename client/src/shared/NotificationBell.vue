@@ -78,7 +78,7 @@ async function readAll() {
 <template>
   <div class="relative">
     <button
-      class="focus-ring ui-text-muted ui-radius-pill relative flex h-9 w-9 items-center justify-center transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+      class="focus-ring ui-text-muted ui-radius-pill relative flex h-9 w-9 items-center justify-center ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
       type="button"
       aria-label="알림 보기"
       :aria-expanded="open"
@@ -124,7 +124,7 @@ async function readAll() {
       <ul v-else class="max-h-80 overflow-y-auto">
         <li v-for="notice in recentNotices" :key="notice.id" class="ui-border-subtle border-b last:border-0">
           <button
-            class="focus-ring w-full px-4 py-3 text-left transition hover:bg-[var(--ui-color-surface-hover)]"
+            class="focus-ring w-full px-4 py-3 text-left ui-transition-colors hover:bg-[var(--ui-color-surface-hover)]"
             type="button"
             @click="openNotice(notice)"
           >

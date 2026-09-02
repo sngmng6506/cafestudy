@@ -30,7 +30,7 @@ const STACK = [
         공개 저장소예요. 코드를 보거나, 버그를 알려주거나, 직접 고쳐서 보내주셔도 좋아요.
       </p>
       <a
-        class="focus-ring ui-radius-control ui-border mt-4 flex h-12 items-center justify-center gap-2 border text-[15px] font-semibold transition hover:bg-[var(--ui-color-surface-subtle)]"
+        class="focus-ring ui-radius-control ui-border mt-4 flex h-12 items-center justify-center gap-2 border text-[15px] font-semibold ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
         :href="REPOSITORY_URL"
         target="_blank"
         rel="noopener noreferrer"

@@ -137,14 +137,14 @@ async function activateBadge(badge) {
         프롬프트
         <textarea
           v-model="prompt"
-          class="min-h-[92px] rounded-lg border border-[var(--ui-color-stroke)] px-4 py-3 text-[15px] outline-none transition placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
+          class="min-h-[92px] rounded-lg border border-[var(--ui-color-stroke)] px-4 py-3 text-[15px] outline-none ui-transition-colors placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
           :maxlength="MAX_PROMPT_LENGTH"
           placeholder="예: 주말마다 카페에서 코딩하는 사람"
         ></textarea>
       </label>
 
       <button
-        class="focus-ring mt-4 flex h-11 w-full items-center justify-center gap-2 rounded bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
+        class="focus-ring mt-4 flex h-11 w-full items-center justify-center gap-2 rounded bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white ui-transition-colors hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
         type="button"
         :disabled="generating || atLimit"
         @click="generateBadge"
@@ -170,12 +170,12 @@ async function activateBadge(badge) {
           뱃지 이름
           <input
             v-model="title"
-            class="h-11 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] outline-none transition focus:border-[var(--ui-color-brand)]"
+            class="h-11 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] outline-none ui-transition-colors focus:border-[var(--ui-color-brand)]"
             :maxlength="MAX_TITLE_LENGTH"
           />
         </label>
         <button
-          class="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded bg-[var(--ui-color-content)] text-[15px] font-semibold text-white transition hover:bg-[#111111] disabled:opacity-50"
+          class="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded bg-[var(--ui-color-content)] text-[15px] font-semibold text-white ui-transition-colors hover:bg-[#111111] disabled:opacity-50"
           type="button"
           :disabled="applying"
           @click="applyBadge"
@@ -217,7 +217,7 @@ async function activateBadge(badge) {
           </span>
           <button
             v-else
-            class="focus-ring h-8 shrink-0 rounded-[10px] border border-[var(--ui-color-stroke)] px-2 text-[12px] font-semibold text-[var(--ui-color-content)] transition hover:bg-[var(--ui-color-surface-subtle)] disabled:opacity-50"
+            class="focus-ring h-8 shrink-0 rounded-[10px] border border-[var(--ui-color-stroke)] px-2 text-[12px] font-semibold text-[var(--ui-color-content)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] disabled:opacity-50"
             type="button"
             :disabled="!!activatingId"
             @click="activateBadge(badge)"
@@ -225,7 +225,7 @@ async function activateBadge(badge) {
             {{ activatingId === badge.id ? '변경중' : '적용' }}
           </button>
           <button
-            class="focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[var(--ui-color-stroke)] text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-destructive)] disabled:opacity-50"
+            class="focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[var(--ui-color-stroke)] text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-destructive)] disabled:opacity-50"
             type="button"
             :disabled="!!deletingId"
             :aria-label="`${badge.title} 뱃지 삭제`"

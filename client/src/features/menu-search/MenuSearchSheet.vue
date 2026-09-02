@@ -110,7 +110,7 @@ function selectResult(name) {
           />
         </label>
         <button
-          class="focus-ring flex h-11 min-w-[64px] items-center justify-center rounded-[10px] bg-[var(--ui-color-brand)] px-4 text-[14px] font-medium text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+          class="focus-ring ui-pressable ui-radius-control flex h-11 min-w-[64px] items-center justify-center bg-[var(--ui-color-brand)] px-4 text-[14px] font-medium text-white ui-transition-colors hover:bg-[var(--ui-color-brand-hover)] disabled:cursor-not-allowed disabled:opacity-50"
           type="submit"
           :disabled="!query.trim() || loading"
         >
@@ -139,7 +139,7 @@ function selectResult(name) {
             <button
               v-for="result in displayResults"
               :key="result.featureName"
-              class="focus-ring flex w-full items-center gap-3 border-b border-[var(--ui-color-stroke-subtle)] px-4 py-3.5 text-left transition last:border-b-0 hover:bg-[#eef0f2]"
+              class="focus-ring flex w-full items-center gap-3 border-b border-[var(--ui-color-stroke-subtle)] px-4 py-3.5 text-left ui-transition-colors last:border-b-0 hover:bg-[#eef0f2]"
               type="button"
               @click="selectResult(result.featureName)"
             >

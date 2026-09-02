@@ -132,7 +132,7 @@ function calendarAttendeeStack(meetup) {
         <h3 class="text-lg font-semibold text-[var(--ui-color-content)]">모임 캘린더</h3>
         <div class="flex items-center gap-1">
           <button
-            class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+            class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
             type="button"
             aria-label="이전 달"
             @click="shiftMonth(-1)"
@@ -141,7 +141,7 @@ function calendarAttendeeStack(meetup) {
           </button>
           <span class="min-w-[88px] text-center text-[15px] font-semibold text-[var(--ui-color-content)]">{{ monthLabel }}</span>
           <button
-            class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+            class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
             type="button"
             aria-label="다음 달"
             @click="shiftMonth(1)"
@@ -166,7 +166,7 @@ function calendarAttendeeStack(meetup) {
           v-for="date in calendarDays"
           :key="date.toISOString()"
           type="button"
-          class="focus-ring relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm font-semibold transition"
+          class="focus-ring relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm font-semibold ui-transition-colors"
           :class="cellClass(date)"
           :aria-label="dayAriaLabel(date)"
           :aria-pressed="isSelected(date)"
@@ -300,7 +300,7 @@ function calendarAttendeeStack(meetup) {
                  목록 아래 따로 놓으면 아이콘만 한 줄 내려가 어긋나 보인다. -->
             <template v-if="index === previewMeetups.length - 1" #trailing-action>
               <button
-                class="focus-ring ui-radius-control ui-border inline-flex h-9 w-9 items-center justify-center border text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+                class="focus-ring ui-radius-control ui-border inline-flex h-9 w-9 items-center justify-center border text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
                 type="button"
                 aria-label="모임 전체 보기"
                 title="모임 전체 보기"
@@ -320,8 +320,10 @@ function calendarAttendeeStack(meetup) {
          모임 설정(meetup_config 등)에서 불러오도록 분리 필요. -->
     <section class="surface-card surface-card--flush">
       <button
-        class="flex w-full items-center justify-between px-5 py-4 text-left transition"
+        class="focus-ring ui-transition-colors flex w-full items-center justify-between px-5 py-4 text-left"
         type="button"
+        :aria-expanded="infoOpen"
+        aria-controls="meetup-info-content"
         @click="infoOpen = !infoOpen"
       >
         <h3 class="text-[15px] font-bold text-[var(--ui-color-content)]">모임 안내</h3>
@@ -329,8 +331,9 @@ function calendarAttendeeStack(meetup) {
         <ChevronDown v-else :size="18" class="shrink-0 text-[var(--ui-color-content-muted)]" />
       </button>
       <div
-        class="overflow-hidden"
-        :style="{ maxHeight: infoOpen ? '900px' : '0px', transition: 'max-height 0.3s ease-in-out' }"
+        id="meetup-info-content"
+        class="ui-disclosure-grid"
+        :class="{ 'ui-disclosure-grid--open': infoOpen }"
       >
         <div class="grid gap-3.5 px-5 pb-5">
           <div>

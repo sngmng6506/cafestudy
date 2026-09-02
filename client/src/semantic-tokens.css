@@ -220,8 +220,38 @@
   transform-origin: center;
 }
 
+.ui-transition-colors.ui-pressable {
+  transition:
+    color var(--ui-duration-fast) var(--ui-ease-out),
+    background-color var(--ui-duration-fast) var(--ui-ease-out),
+    border-color var(--ui-duration-fast) var(--ui-ease-out),
+    opacity var(--ui-duration-fast) var(--ui-ease-out),
+    transform var(--ui-duration-press) var(--ui-ease-out);
+}
+
 .ui-pressable:not(:disabled):not([aria-disabled='true']):active {
   transform: scale(0.97);
+}
+
+.ui-indicator-transition {
+  transition:
+    width var(--ui-duration-normal) var(--ui-ease-in-out),
+    background-color var(--ui-duration-fast) var(--ui-ease-out);
+}
+
+.ui-disclosure-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--ui-duration-normal) var(--ui-ease-in-out);
+}
+
+.ui-disclosure-grid--open {
+  grid-template-rows: 1fr;
+}
+
+.ui-disclosure-grid > * {
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Vue Transition: backdrop는 opacity, 실제 패널만 transform을 움직인다. */
@@ -292,6 +322,11 @@
 
   .ui-pressable:not(:disabled):not([aria-disabled='true']):active {
     transform: none;
+  }
+
+  .ui-indicator-transition,
+  .ui-disclosure-grid {
+    transition: none;
   }
 
   .ui-modal-enter-active,

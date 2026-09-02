@@ -132,7 +132,7 @@ function highlight(text) {
         <li
           v-for="member in filtered"
           :key="member.id"
-          class="member-row flex cursor-pointer items-center gap-3 px-4 py-3 transition first:pt-4 last:pb-4 hover:bg-[var(--ui-color-surface-subtle)]"
+          class="member-row flex cursor-pointer items-center gap-3 px-4 py-3 ui-transition-colors first:pt-4 last:pb-4 hover:bg-[var(--ui-color-surface-subtle)]"
           role="button"
           tabindex="0"
           :aria-label="`${member.name} 프로필 보기`"

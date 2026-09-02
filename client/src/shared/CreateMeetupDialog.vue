@@ -266,7 +266,7 @@ function formatWhen(date) {
           <span class="flex items-center gap-1.5"><Calendar :size="14" class="ui-text-brand" /> 언제</span>
           <input
             v-model="scheduledAt"
-            class="h-12 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] font-medium outline-none transition focus:border-[var(--ui-color-brand)]"
+            class="h-12 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] font-medium outline-none ui-transition-colors focus:border-[var(--ui-color-brand)]"
             type="datetime-local"
             :min="minScheduledAt"
             required
@@ -280,7 +280,7 @@ function formatWhen(date) {
           <div v-if="location" class="flex items-center justify-between gap-2 rounded-lg border border-[var(--ui-color-brand)] px-4 py-3">
             <span class="min-w-0 flex-1 break-keep text-[15px] font-medium text-[var(--ui-color-content)]">{{ location }}</span>
             <button
-              class="focus-ring shrink-0 rounded px-2 py-1 text-[12px] font-semibold text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)]"
+              class="focus-ring shrink-0 rounded px-2 py-1 text-[12px] font-semibold text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
               type="button"
               @click="clearPlace"
             >
@@ -293,12 +293,12 @@ function formatWhen(date) {
               <input
                 ref="searchInput"
                 v-model="searchQuery"
-                class="h-12 min-w-0 flex-1 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
+                class="h-12 min-w-0 flex-1 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] font-medium outline-none ui-transition-colors placeholder:text-[14px] placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
                 placeholder="카페 이름"
                 @keydown.enter.prevent="runPlaceSearch"
               />
               <button
-                class="focus-ring ui-radius-control flex h-12 shrink-0 items-center gap-1.5 bg-[var(--ui-color-brand)] px-4 text-[14px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-60"
+                class="focus-ring ui-pressable ui-radius-control flex h-12 shrink-0 items-center gap-1.5 bg-[var(--ui-color-brand)] px-4 text-[14px] font-semibold text-white ui-transition-colors hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-60"
                 type="button"
                 :disabled="searching || !searchQuery.trim()"
                 @click="runPlaceSearch"
@@ -312,7 +312,7 @@ function formatWhen(date) {
             <ul v-else-if="searchResults.length" class="max-h-52 overflow-y-auto rounded-lg border border-[var(--ui-color-stroke)]">
               <li v-for="place in searchResults" :key="place.placeId ?? `${place.placeName}-${place.roadAddress}`" class="border-b border-[var(--ui-color-stroke-subtle)] last:border-b-0">
                 <button
-                  class="focus-ring w-full px-4 py-3 text-left transition hover:bg-[var(--ui-color-surface-subtle)]"
+                  class="focus-ring w-full px-4 py-3 text-left ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
                   type="button"
                   @click="selectPlace(place)"
                 >
@@ -329,7 +329,7 @@ function formatWhen(date) {
           제목
           <input
             v-model="title"
-            class="h-12 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] font-medium outline-none transition placeholder:text-[14px] placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
+            class="h-12 rounded-lg border border-[var(--ui-color-stroke)] px-4 text-[15px] font-medium outline-none ui-transition-colors placeholder:text-[14px] placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
             placeholder="예: 모여서 각자 코딩"
             required
             @input="titleTouched = true"
@@ -342,7 +342,7 @@ function formatWhen(date) {
             <button
               v-for="size in CAPACITY_CHIPS"
               :key="size"
-              class="focus-ring ui-radius-pill h-10 min-w-[3.25rem] border px-3 text-[14px] font-semibold transition"
+              class="focus-ring ui-radius-pill h-10 min-w-[3.25rem] border px-3 text-[14px] font-semibold ui-transition-colors"
               :class="!customCapacity && capacity === size
                 ? 'ui-border-brand ui-bg-success ui-text-success'
                 : 'ui-border ui-text-muted hover:bg-[var(--ui-color-surface-subtle)]'"
@@ -352,7 +352,7 @@ function formatWhen(date) {
               {{ size }}명
             </button>
             <button
-              class="focus-ring ui-radius-pill h-10 border px-3 text-[14px] font-semibold transition"
+              class="focus-ring ui-radius-pill h-10 border px-3 text-[14px] font-semibold ui-transition-colors"
               :class="customCapacity
                 ? 'ui-border-brand ui-bg-success ui-text-success'
                 : 'ui-border ui-text-muted hover:bg-[var(--ui-color-surface-subtle)]'"
@@ -388,7 +388,7 @@ function formatWhen(date) {
           {{ summary }}
         </p>
         <button
-          class="focus-ring ui-radius-control h-12 w-full bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-60"
+          class="focus-ring ui-pressable ui-radius-control h-12 w-full bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white ui-transition-colors hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-60"
           type="button"
           :disabled="creating || !canSubmit"
           @click="submit"

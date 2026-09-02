@@ -466,7 +466,7 @@ function emptyPaymentMethod() {
         </fieldset>
 
         <div class="grid grid-cols-[1fr_auto] gap-2">
-          <button class="focus-ring ui-radius-control h-11 bg-[var(--ui-color-brand)] font-medium text-white disabled:opacity-50" type="submit" :disabled="saving || selectedIds.length === 0">
+          <button class="focus-ring ui-pressable ui-transition-colors ui-radius-control h-11 bg-[var(--ui-color-brand)] font-medium text-white disabled:opacity-50" type="submit" :disabled="saving || selectedIds.length === 0">
             {{ editingRoundId ? '정산 수정하기' : `${meetup.settlements.length + 1}차 정산 추가하기` }}
           </button>
           <button v-if="editingRoundId" class="focus-ring ui-radius-control ui-border h-11 border bg-[var(--ui-color-surface)] px-4 font-medium" type="button" @click="cancelEdit">

@@ -302,7 +302,7 @@ const displayBest = computed(() => best.value.toLocaleString());
         </div>
         <button
           type="button"
-          class="focus-ring inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-[var(--ui-color-stroke)] bg-white px-3 text-[13px] font-semibold text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)]"
+          class="focus-ring inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-[var(--ui-color-stroke)] bg-white px-3 text-[13px] font-semibold text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
           @click="startNewGame"
         >
           <RotateCcw :size="15" /> 새 게임
@@ -341,7 +341,7 @@ const displayBest = computed(() => best.value.toLocaleString());
           </p>
           <button
             type="button"
-            class="focus-ring rounded-[10px] bg-[var(--ui-color-brand)] px-5 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)]"
+            class="focus-ring rounded-[10px] bg-[var(--ui-color-brand)] px-5 py-2.5 text-[14px] font-semibold text-white ui-transition-colors hover:bg-[var(--ui-color-brand-hover)]"
             @click="reset"
           >
             다시 하기
@@ -375,5 +375,16 @@ const displayBest = computed(() => best.value.toLocaleString());
   100% {
     transform: scale(1);
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile-pop {
+    animation: tile-fade var(--ui-duration-press) var(--ui-ease-out);
+  }
+}
+
+@keyframes tile-fade {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }
 </style>

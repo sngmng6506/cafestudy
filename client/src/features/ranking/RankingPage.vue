@@ -157,7 +157,7 @@ async function loadRanking() {
 
       <div class="mb-5 grid grid-cols-3 rounded-xl border border-[var(--ui-color-stroke)] bg-[var(--ui-color-surface-subtle)] p-1">
         <button
-          class="focus-ring h-11 rounded text-[15px] font-semibold transition"
+          class="focus-ring h-11 rounded text-[15px] font-semibold ui-transition-colors"
           :class="mode === 'monthly' ? 'bg-[var(--ui-color-brand)] text-white shadow-sm' : 'text-[var(--ui-color-content-muted)]'"
           type="button"
           @click="switchMode('monthly')"
@@ -165,7 +165,7 @@ async function loadRanking() {
           월간
         </button>
         <button
-          class="focus-ring h-11 rounded text-[15px] font-semibold transition"
+          class="focus-ring h-11 rounded text-[15px] font-semibold ui-transition-colors"
           :class="mode === 'all-time' ? 'bg-[var(--ui-color-brand)] text-white shadow-sm' : 'text-[var(--ui-color-content-muted)]'"
           type="button"
           @click="switchMode('all-time')"
@@ -173,7 +173,7 @@ async function loadRanking() {
           누적
         </button>
         <button
-          class="focus-ring h-11 rounded text-[15px] font-semibold transition"
+          class="focus-ring h-11 rounded text-[15px] font-semibold ui-transition-colors"
           :class="mode === 'attendance' ? 'bg-[var(--ui-color-brand)] text-white shadow-sm' : 'text-[var(--ui-color-content-muted)]'"
           type="button"
           @click="switchMode('attendance')"
@@ -184,7 +184,7 @@ async function loadRanking() {
 
       <div v-if="showsMonthNav" class="mb-5 flex items-center justify-center gap-2">
         <button
-          class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+          class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
           type="button"
           aria-label="이전 달"
           @click="shiftMonth(-1)"
@@ -193,7 +193,7 @@ async function loadRanking() {
         </button>
         <span class="min-w-[100px] text-center text-[15px] font-semibold text-[var(--ui-color-content)]">{{ monthLabel }}</span>
         <button
-          class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-color-content-muted)]"
+          class="focus-ring flex h-9 w-9 items-center justify-center rounded text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-color-content-muted)]"
           type="button"
           aria-label="다음 달"
           :disabled="isCurrentMonth"
@@ -285,7 +285,7 @@ async function loadRanking() {
             v-for="(g, i) in miniGames"
             :key="g"
             type="button"
-            class="h-2 rounded-full transition-all"
+            class="ui-indicator-transition h-2 rounded-full"
             :class="i === miniIndex ? 'w-5 bg-[var(--ui-color-brand)]' : 'w-2 bg-[var(--ui-color-stroke)]'"
             :aria-label="`${i + 1}번째 랭킹`"
             @click="goMini(i)"

@@ -267,12 +267,12 @@ async function saveComment(cafe) {
             <div class="flex gap-2">
               <input
                 v-model="commentInputs[cafe.location]"
-                class="h-10 min-w-0 flex-1 rounded-lg border border-[var(--ui-color-stroke)] px-3 text-[14px] outline-none transition placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
+                class="h-10 min-w-0 flex-1 rounded-lg border border-[var(--ui-color-stroke)] px-3 text-[14px] outline-none ui-transition-colors placeholder:text-[var(--ui-color-content-muted)] focus:border-[var(--ui-color-brand)]"
                 maxlength="120"
                 placeholder="이 카페에 대한 한줄 코멘트"
               />
               <button
-                class="focus-ring h-10 shrink-0 rounded bg-[var(--ui-color-brand)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
+                class="focus-ring h-10 shrink-0 rounded bg-[var(--ui-color-brand)] px-3 text-sm font-semibold text-white ui-transition-colors hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
                 type="submit"
                 :disabled="pendingLocation === cafe.location"
               >
@@ -280,7 +280,7 @@ async function saveComment(cafe) {
               </button>
               <button
                 v-if="editing[cafe.location]"
-                class="focus-ring h-10 shrink-0 rounded border border-[var(--ui-color-stroke)] px-3 text-sm font-semibold text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)]"
+                class="focus-ring h-10 shrink-0 rounded border border-[var(--ui-color-stroke)] px-3 text-sm font-semibold text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
                 type="button"
                 @click="cancelEdit(cafe)"
               >

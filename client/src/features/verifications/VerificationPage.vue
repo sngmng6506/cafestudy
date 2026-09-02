@@ -281,7 +281,7 @@ function formatBytes(bytes) {
       <ul v-else class="grid gap-2">
         <li v-for="meetup in pendingMeetups" :key="meetup.id">
           <button
-            class="focus-ring flex w-full items-center gap-3 rounded-lg border p-3 text-left transition hover:bg-[var(--ui-color-surface-subtle)]"
+            class="focus-ring flex w-full items-center gap-3 rounded-lg border p-3 text-left ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
             :class="
               meetup.id === selectedMeetupId
                 ? 'ui-bg-success ui-border-brand'
@@ -346,7 +346,7 @@ function formatBytes(bytes) {
                 </div>
 
                 <button
-                  class="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-[var(--ui-color-stroke)] bg-white text-[15px] font-semibold text-[var(--ui-color-content)] transition hover:bg-[var(--ui-color-surface-subtle)]"
+                  class="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-[var(--ui-color-stroke)] bg-white text-[15px] font-semibold text-[var(--ui-color-content)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
                   type="button"
                   @click="openCamera"
                 >
@@ -356,7 +356,7 @@ function formatBytes(bytes) {
               </div>
 
               <button
-                class="focus-ring flex h-12 w-full items-center justify-center rounded bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                class="focus-ring ui-pressable ui-radius-control flex h-12 w-full items-center justify-center bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white ui-transition-colors hover:bg-[var(--ui-color-brand-hover)] disabled:cursor-not-allowed disabled:opacity-50"
                 type="button"
                 :disabled="submitting || !compressedFile"
                 @click="submitVerification"

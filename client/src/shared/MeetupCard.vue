@@ -132,7 +132,7 @@ const somoimLink = somoimAppLink();
         </div>
         <button
           v-if="attendees.length > 1"
-          class="focus-ring inline-flex h-7 items-center gap-0.5 rounded-full px-2 text-[12px] font-semibold text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
+          class="focus-ring inline-flex h-7 items-center gap-0.5 rounded-full px-2 text-[12px] font-semibold text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] hover:text-[var(--ui-color-content)]"
           type="button"
           :aria-expanded="attendeesExpanded"
           @click="attendeesExpanded = !attendeesExpanded"
@@ -158,7 +158,7 @@ const somoimLink = somoimAppLink();
     <div class="mt-auto flex flex-wrap items-center gap-2">
       <!-- 지도: 기본 네이버 버튼 + 구글 아이콘 버튼으로 압축 -->
       <a
-        class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--ui-color-stroke)] text-[var(--ui-color-brand)] transition hover:bg-[var(--ui-color-surface-subtle)]"
+        class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--ui-color-stroke)] text-[var(--ui-color-brand)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
         :href="naverMapUrl(meetup)"
         target="_blank"
         rel="noreferrer"
@@ -167,7 +167,7 @@ const somoimLink = somoimAppLink();
         <MapPin :size="16" />
       </a>
       <a
-        class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--ui-color-stroke)] text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)]"
+        class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--ui-color-stroke)] text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
         :href="googleMapUrl(meetup)"
         target="_blank"
         rel="noreferrer"
@@ -180,7 +180,7 @@ const somoimLink = somoimAppLink();
       <div class="ml-auto flex items-center gap-2">
         <a
           v-if="meetup.readonly"
-          class="ui-button-external focus-ring ui-radius-control inline-flex h-9 w-9 items-center justify-center transition"
+          class="ui-button-external focus-ring ui-radius-control inline-flex h-9 w-9 items-center justify-center ui-transition-colors"
           :href="somoimLink.href"
           :target="somoimLink.target"
           rel="noreferrer"
@@ -212,7 +212,7 @@ const somoimLink = somoimAppLink();
         <div v-else-if="meetup.isHost" class="flex items-center gap-2">
           <span class="text-sm font-semibold text-[var(--ui-color-content-muted)]">만든 사람</span>
           <button
-            class="focus-ring h-9 shrink-0 rounded-[10px] border border-[var(--ui-color-destructive)] px-3 text-sm font-semibold text-[var(--ui-color-destructive)] transition hover:bg-[var(--ui-color-surface-subtle)] disabled:opacity-50"
+            class="focus-ring ui-pressable ui-radius-control h-9 shrink-0 border border-[var(--ui-color-destructive)] px-3 text-sm font-semibold text-[var(--ui-color-destructive)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] disabled:opacity-50"
             type="button"
             :disabled="pendingId === meetup.id"
             @click="emit('cancel', meetup)"
@@ -222,7 +222,7 @@ const somoimLink = somoimAppLink();
         </div>
         <button
           v-else-if="meetup.joined"
-          class="focus-ring h-9 shrink-0 rounded-[10px] border border-[var(--ui-color-stroke)] px-4 text-sm font-semibold text-[var(--ui-color-content)] transition hover:bg-[var(--ui-color-surface-subtle)] disabled:opacity-50"
+          class="focus-ring h-9 shrink-0 rounded-[10px] border border-[var(--ui-color-stroke)] px-4 text-sm font-semibold text-[var(--ui-color-content)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)] disabled:opacity-50"
           type="button"
           :disabled="pendingId === meetup.id"
           @click="emit('toggle-join', meetup)"
@@ -238,7 +238,7 @@ const somoimLink = somoimAppLink();
         </span>
         <button
           v-else
-          class="focus-ring h-9 shrink-0 rounded-[10px] bg-[var(--ui-color-brand)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
+          class="focus-ring ui-pressable ui-radius-control h-9 shrink-0 bg-[var(--ui-color-brand)] px-4 text-sm font-semibold text-white ui-transition-colors hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
           type="button"
           :disabled="pendingId === meetup.id || !canJoin(meetup.somoimState)"
           @click="emit('toggle-join', meetup)"

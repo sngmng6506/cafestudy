@@ -171,7 +171,7 @@ async function submitAuth() {
         <ul v-else class="max-h-64 divide-y divide-[var(--ui-color-stroke)] overflow-y-auto">
           <li v-for="member in filtered" :key="member.id" class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
             <div
-              class="focus-ring flex flex-1 cursor-pointer items-center gap-3 rounded transition hover:bg-[var(--ui-color-surface-subtle)]"
+              class="focus-ring flex flex-1 cursor-pointer items-center gap-3 rounded ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
               tabindex="0"
               role="button"
               @click="pick(member)"
@@ -196,7 +196,7 @@ async function submitAuth() {
         </ul>
 
         <button
-          class="focus-ring ui-radius-control mt-4 h-11 w-full border border-[var(--ui-color-stroke)] text-[14px] font-semibold text-[var(--ui-color-content-muted)] transition hover:bg-[var(--ui-color-surface-subtle)]"
+          class="focus-ring ui-radius-control mt-4 h-11 w-full border border-[var(--ui-color-stroke)] text-[14px] font-semibold text-[var(--ui-color-content-muted)] ui-transition-colors hover:bg-[var(--ui-color-surface-subtle)]"
           type="button"
           @click="emit('browse')"
         >
@@ -206,7 +206,7 @@ async function submitAuth() {
 
       <template v-else>
         <button
-          class="focus-ring -ml-1 mb-2 flex items-center gap-1 rounded p-1 text-[13px] text-[var(--ui-color-content-muted)] transition hover:text-[var(--ui-color-content)]"
+          class="focus-ring -ml-1 mb-2 flex items-center gap-1 rounded p-1 text-[13px] text-[var(--ui-color-content-muted)] ui-transition-colors hover:text-[var(--ui-color-content)]"
           type="button"
           @click="backToSelect"
         >
@@ -262,7 +262,7 @@ async function submitAuth() {
           <button
             type="submit"
             :disabled="submitting"
-            class="focus-ring ui-radius-control h-10 w-full bg-[var(--ui-color-brand)] text-[15px] font-bold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
+            class="focus-ring ui-pressable ui-radius-control h-11 w-full bg-[var(--ui-color-brand)] text-[15px] font-bold text-white ui-transition-colors hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
           >
             {{ submitting ? '처리 중…' : isSetup ? '비밀번호 설정하고 시작하기' : '로그인' }}
           </button>

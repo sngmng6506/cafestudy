@@ -233,6 +233,16 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .success-burst span {
+    transform: translate(calc(-50% + var(--x)), var(--y));
+    animation: success-burst-fade var(--ui-duration-normal) var(--ui-ease-out) forwards;
+  }
+
   .smashed { animation: none; }
   .smashed * { transition: none !important; }
+}
+
+@keyframes success-burst-fade {
+  0%, 100% { opacity: 0; }
+  40% { opacity: 1; }
 }

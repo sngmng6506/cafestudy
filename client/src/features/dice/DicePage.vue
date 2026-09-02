@@ -153,7 +153,7 @@ function isFilled(value, slot) {
         </div>
 
         <button
-          class="focus-ring flex h-12 w-full items-center justify-center gap-2 rounded bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white transition hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
+          class="focus-ring flex h-12 w-full items-center justify-center gap-2 rounded bg-[var(--ui-color-brand)] text-[15px] font-semibold text-white ui-transition-colors hover:bg-[var(--ui-color-brand-hover)] disabled:opacity-50"
           type="button"
           :disabled="rolling || apiPending"
           @click="roll"
@@ -232,6 +232,10 @@ function isFilled(value, slot) {
 @media (prefers-reduced-motion: reduce) {
   .cube {
     transition: none;
+  }
+
+  .floor-shadow {
+    transition: opacity var(--ui-duration-fast) var(--ui-ease-out);
   }
 }
 </style>
