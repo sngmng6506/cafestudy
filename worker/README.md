@@ -34,7 +34,7 @@ worker에 전달되지 않으니 설정은 그 기계의 `worker/.env`에 둔다
 | `POLL_INTERVAL_MS` | | `5000` | 큐가 비었을 때 대기 시간 |
 | `ADB_PATH` | | `adb` | adb 실행 파일 경로 |
 | `ADB_SERIAL` | | (자동) | 기기를 명시 지정. 비우면 연결된 기기가 정확히 한 대일 때만 진행한다 |
-| `ADB_CONNECT_ADDRESS` | | — | 기기가 사라졌을 때 다시 붙을 주소(`IP:포트`). 비워도 mDNS로 찾는다 |
+| `ADB_CONNECT_ADDRESS` | | — | 기기가 사라졌을 때 다시 붙을 주소(`IP:포트`). 비워도 mDNS와 포트 스캔으로 찾는다 |
 | `ARTIFACT_DIR` | | `./worker-artifacts` | 스크린샷·UI dump 저장 위치. job id별 하위 폴더에 남는다 |
 | `SOMOIM_TARGET_GROUP_NAME` | | `[홍대] it&ai 스터디` | 정모를 만들 클럽 이름. 클럽장이 이름을 바꾸면 여기서 맞춘다 |
 | `MEETUP_PHOTO_PATH` | | (자동 생성) | 정모 사진으로 쓸 로컬 이미지. 비우면 단색 16:9 플레이스홀더를 만든다 |
@@ -136,6 +136,7 @@ config.js             # 환경변수 → worker 설정
 api-client.js         # 서버 job endpoint 호출 (x-internal-key)
 job-runner.js         # job 하나 실행. dryRun/submit 안전장치와 실패 분기
 adb.js                # 기기 목록 파싱·선택, 자동 재연결, shell/screenshot/uiautomator 래퍼
+port-scan.js          # 재연결 마지막 수단: 기기 IP의 열린 포트 찾기
 lock.js               # worker 중복 실행 방지(락 파일 + PID 확인)
 placeholder-image.js  # 정모 사진용 단색 PNG 생성(의존성 없이)
 errors.js             # ManualReviewError / TransientError
