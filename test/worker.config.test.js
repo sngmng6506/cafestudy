@@ -57,3 +57,19 @@ test('Discord 알림은 기본 비활성이고 timeout은 안전한 기본값을
   assert.equal(configured.discordWebhookUrl, 'https://discord.example/webhook');
   assert.equal(configured.discordAlertTimeoutMs, 2_500);
 });
+
+test('기기 확인 간격은 기본 10분이고 이상한 값은 무시한다', () => {
+  // 기기가 없을 때는 확인마다 재연결(포트 스캔 포함)까지 시도한다. 폴링 간격만큼
+  // 자주 돌리면 없는 태블릿을 향해 계속 스캔하게 된다.
+  assert.equal(createWorkerConfig(REQUIRED).deviceCheckIntervalMs, 600_000);
+  for (const value of ['0', '-1', 'abc', '']) {
+    assert.equal(
+      createWorkerConfig({ ...REQUIRED, DEVICE_CHECK_INTERVAL_MS: value }).deviceCheckIntervalMs,
+      600_000,
+    );
+  }
+  assert.equal(
+    createWorkerConfig({ ...REQUIRED, DEVICE_CHECK_INTERVAL_MS: '60000' }).deviceCheckIntervalMs,
+    60_000,
+  );
+});

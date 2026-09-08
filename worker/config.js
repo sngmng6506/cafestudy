@@ -1,4 +1,5 @@
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
+const DEFAULT_DEVICE_CHECK_INTERVAL_MS = 10 * 60_000;
 
 export function createWorkerConfig(env = process.env) {
   const serverUrl = (env.CAFESTUDY_SERVER_URL ?? '').trim().replace(/\/+$/, '');
@@ -33,6 +34,12 @@ export function createWorkerConfig(env = process.env) {
     // worker 두 개가 같은 태블릿을 동시에 조작하는 것을 막는 락 파일.
     lockFile: (env.WORKER_LOCK_FILE ?? '').trim(),
     discordWebhookUrl: (env.DISCORD_AUTOMATION_WEBHOOK_URL ?? '').trim(),
+    // 기기 상태를 확인하는 간격. 기기가 없을 때는 재연결(포트 스캔 포함)까지
+    // 시도하므로 폴링 간격만큼 자주 돌리지 않는다.
+    deviceCheckIntervalMs: readPositiveInt(
+      env.DEVICE_CHECK_INTERVAL_MS,
+      DEFAULT_DEVICE_CHECK_INTERVAL_MS,
+    ),
     discordAlertTimeoutMs: readPositiveInt(env.DISCORD_ALERT_TIMEOUT_MS, 5_000),
   };
 }

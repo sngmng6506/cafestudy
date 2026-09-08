@@ -40,7 +40,8 @@ worker에 전달되지 않으니 설정은 그 기계의 `worker/.env`에 둔다
 | `MEETUP_PHOTO_PATH` | | (자동 생성) | 정모 사진으로 쓸 로컬 이미지. 비우면 단색 16:9 플레이스홀더를 만든다 |
 | `SOMOIM_NOTIFY_MEMBERS` | | `false` | 정모 생성 시 전체 멤버 알림. 되돌릴 수 없어 켤 때만 `true`로 명시한다 |
 | `WORKER_LOCK_FILE` | | (OS 임시폴더) | worker 중복 실행을 막는 락 파일 경로 |
-| `DISCORD_AUTOMATION_WEBHOOK_URL` | | — | 최종 실패 알림을 보낼 Discord webhook. 비우면 비활성 |
+| `DISCORD_AUTOMATION_WEBHOOK_URL` | | — | 최종 실패와 태블릿 연결 상태 알림을 보낼 Discord webhook. 비우면 비활성 |
+| `DEVICE_CHECK_INTERVAL_MS` | | `600000` | 한가할 때 태블릿 상태를 확인하는 간격 |
 | `DISCORD_ALERT_TIMEOUT_MS` | | `5000` | Discord 호출 제한 시간. 알림 실패는 job 결과에 영향을 주지 않는다 |
 
 `INTERNAL_API_KEY`는 헤더로만 쓰고 로그·에러 메시지에 남기지 않는다.
