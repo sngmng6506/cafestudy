@@ -20,6 +20,12 @@ export function createWorkerConfig(env = process.env) {
     // 기기가 사라졌을 때 다시 붙일 주소. `adb tcpip 5555`로 고정한 경우에 쓴다.
     // 비워 두면 mDNS 탐색만으로 재연결을 시도한다.
     adbConnectAddress: (env.ADB_CONNECT_ADDRESS ?? '').trim(),
+    // DHCP가 태블릿에 다른 IP를 주면 고정 주소·mDNS·포트 스캔이 모두 빗나간다.
+    // 셋 다 기기의 IP를 이미 안다고 전제하기 때문이다. 이 값이 있으면 같은 대역을
+    // 훑어 `ro.serialno`가 일치하는 기기를 찾아낸다. 비우면 대역 스캔을 하지 않는다
+    // — 시리얼을 모르면 찾은 기기가 우리 태블릿인지 확인할 수 없고, 남의 기기에
+    // 붙는 편이 못 붙는 것보다 나쁘다. `adb shell getprop ro.serialno`로 확인한다.
+    adbDeviceSerialNo: (env.ADB_DEVICE_SERIALNO ?? '').trim(),
     artifactDir: (env.ARTIFACT_DIR ?? './worker-artifacts').trim() || './worker-artifacts',
     // 클럽 이름은 화면에서 정확히 일치 비교한다. 클럽장이 이름을 바꾸면 코드 수정
     // 없이 여기서 맞춰줄 수 있어야 한다. 비우면 handler의 기본값을 쓴다.

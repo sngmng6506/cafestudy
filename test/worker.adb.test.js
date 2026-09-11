@@ -349,3 +349,75 @@ test('resolveDevice: does not scan for a USB serial', async () => {
   await assert.rejects(() => adb.resolveDevice(), /not connected/);
   assert.ok(!calls.some((call) => call.startsWith('scan')));
 });
+
+// 고정 주소·mDNS·포트 스캔은 모두 기기의 IP를 안다고 전제한다. 주소가 바뀌면 셋 다
+// 빗나가므로 같은 대역을 훑는다. 실제로 .147 → .155로 바뀌어 워커가 사흘 동안
+// 기기를 못 찾은 적이 있다.
+const LOST = '192.168.200.147:5555';
+
+function adbForLostHost({ serials = {}, hosts = [], devices = '' } = {}) {
+  const calls = [];
+  const exec = async (_path, args) => {
+    calls.push(args.join(' '));
+    const [first, second] = args;
+    if (first === 'devices') return { stdout: devices };
+    // 옛 주소는 더 이상 이 기기가 아니다. 붙지 않아야 대역 스캔까지 간다.
+    if (first === 'connect') {
+      return { stdout: second === LOST ? 'failed to connect' : `connected to ${second}` };
+    }
+    if (first === '-s' && args[2] === 'shell') {
+      const found = serials[second];
+      if (!found) throw new Error('offline');
+      return { stdout: `${found}\n` };
+    }
+    return { stdout: '' };
+  };
+  return {
+    calls,
+    adb: createAdb({
+      serial: LOST, connectAddress: LOST, deviceSerialNo: 'HA2DPWL2', exec,
+      scanPorts: async () => [],
+      scanHosts: async () => hosts,
+    }),
+  };
+}
+
+test('IP가 바뀌면 대역을 훑어 시리얼이 맞는 기기에 붙는다', async () => {
+  const { adb, calls } = adbForLostHost({
+    hosts: ['192.168.200.155'], serials: { '192.168.200.155:5555': 'HA2DPWL2' },
+  });
+  const attempted = await adb.reconnect();
+  assert.ok(attempted.includes('192.168.200.155:5555'));
+  assert.ok(!calls.some((c) => c.startsWith('disconnect')), '맞는 기기는 끊지 않는다');
+});
+
+test('시리얼이 다른 기기에는 붙어 있지 않는다', async () => {
+  // 대역에는 남의 안드로이드도 있다. adb 목록에 남겨두면 selectDevice가 헷갈린다.
+  const { adb, calls } = adbForLostHost({
+    hosts: ['192.168.200.30'], serials: { '192.168.200.30:5555': 'SOMEONEELSE' },
+  });
+  await adb.reconnect();
+  assert.ok(calls.includes('disconnect 192.168.200.30:5555'), '남의 기기는 즉시 끊는다');
+});
+
+test('시리얼을 모르면 대역을 훑지 않는다', async () => {
+  // 찾아낸 기기가 우리 것인지 확인할 방법이 없다. 못 붙는 편이 낫다.
+  let scanned = false;
+  const adb = createAdb({
+    serial: LOST, connectAddress: LOST, deviceSerialNo: '',
+    exec: async (_p, args) => ({ stdout: args[0] === 'connect' ? 'failed' : '' }),
+    scanPorts: async () => [],
+    scanHosts: async () => { scanned = true; return ['192.168.200.155']; },
+  });
+  await adb.reconnect();
+  assert.equal(scanned, false);
+});
+
+test('찾아낸 새 주소로 기기를 고른다', async () => {
+  // 설정의 옛 주소로 고르면 방금 붙여 놓고도 못 찾는다.
+  const { adb } = adbForLostHost({
+    hosts: ['192.168.200.155'], serials: { '192.168.200.155:5555': 'HA2DPWL2' },
+    devices: 'List of devices attached\n192.168.200.155:5555\tdevice\n',
+  });
+  assert.equal(await adb.resolveDevice(), '192.168.200.155:5555');
+});

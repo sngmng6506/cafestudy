@@ -22,6 +22,7 @@ const adb = createAdb({
   adbPath: config.adbPath,
   serial: config.adbSerial,
   connectAddress: config.adbConnectAddress,
+  deviceSerialNo: config.adbDeviceSerialNo,
 });
 const log = createWorkerLogger();
 const notifyDiscord = createDiscordNotifier({

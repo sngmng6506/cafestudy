@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { ManualReviewError } from './errors.js';
 import { scanOpenPorts } from './port-scan.js';
+import { scanAdbHosts, subnetOf } from './host-scan.js';
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -98,8 +99,13 @@ export function createAdb({
   serial = '',
   connectAddress = '',
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  // DHCP가 IP를 바꿨을 때 같은 대역에서 기기를 다시 찾기 위한 값이다. 비워 두면
+  // 대역 스캔을 하지 않는다 — 시리얼을 모르면 찾아낸 기기가 우리 태블릿인지
+  // 확인할 방법이 없고, LAN의 남의 안드로이드에 붙는 편이 못 붙는 것보다 나쁘다.
+  deviceSerialNo = '',
   exec = execFileAsync,
   scanPorts = scanOpenPorts,
+  scanHosts = scanAdbHosts,
 } = {}) {
   async function run(args) {
     const { stdout } = await exec(adbPath, args, { timeout: timeoutMs });
@@ -113,8 +119,50 @@ export function createAdb({
   // 알려진 주소 → mDNS → 포트 스캔 순으로 시도한다. 뒤로 갈수록 느리고 덜
   // 정확하므로 앞이 성공하면 거기서 멈춘다. 실패는 삼킨다 — 붙었는지는 호출부가
   // listDevices로 다시 확인한다.
+  // 대역 스캔으로 찾아낸 주소. IP가 바뀌면 설정의 주소는 더 이상 이 기기를
+  // 가리키지 않으므로, 확인된 주소를 기억해 그다음부터 그것으로 고른다.
+  let confirmedAddress = '';
+
+  // 붙은 기기가 우리 태블릿인지 시리얼로 확인한다. IP는 정체성이 아니다 —
+  // DHCP는 같은 주소를 다른 기기에 줄 수 있고, 대역에는 남의 기기도 있다.
+  async function isExpectedDevice(address) {
+    try {
+      const found = (await run(['-s', address, 'shell', 'getprop', 'ro.serialno'])).trim();
+      return found !== '' && found === deviceSerialNo;
+    } catch {
+      return false;
+    }
+  }
+
   async function reconnect() {
     const attempted = [];
+
+    // 대역에서 adb 포트가 열린 호스트를 찾아 우리 태블릿만 남긴다. 아닌 기기는
+    // 즉시 끊는다 — 남의 기기를 adb 목록에 남겨두면 selectDevice가 헷갈린다.
+    async function tryLostHost(previousHost) {
+      const subnet = subnetOf(previousHost);
+      const port = Number(/:(\d+)$/.exec(connectAddress || serial)?.[1]);
+      if (!deviceSerialNo || !subnet || !Number.isInteger(port)) return false;
+
+      let hosts = [];
+      try {
+        hosts = await scanHosts({ subnet, port, preferHost: previousHost });
+      } catch {
+        return false;
+      }
+
+      for (const candidate of hosts) {
+        const address = `${candidate}:${port}`;
+        if (!(await tryAddress(address))) continue;
+        if (await isExpectedDevice(address)) {
+          confirmedAddress = address;
+          return true;
+        }
+        // 남의 기기였다. 흔적을 남기지 않는다.
+        try { await run(['disconnect', address]); } catch { /* 이미 끊겼다 */ }
+      }
+      return false;
+    }
 
     // adb connect는 실패해도 exit 0인 빌드가 있어서 출력으로 판단한다.
     // "connected to"는 "already connected to"도 함께 잡는다.
@@ -129,7 +177,10 @@ export function createAdb({
       }
     }
 
-    if (await tryAddress(connectAddress)) return attempted;
+    if (await tryAddress(connectAddress)) {
+      confirmedAddress = '';
+      return attempted;
+    }
 
     try {
       for (const address of parseMdnsServices(await run(['mdns', 'services']))) {
@@ -154,6 +205,10 @@ export function createAdb({
       }
     }
 
+    // 여기까지 모두 기기의 IP를 안다고 전제한다. DHCP가 주소를 바꾸면 셋 다
+    // 빗나가므로 마지막으로 같은 대역을 훑는다.
+    if (await tryLostHost(host)) return attempted;
+
     return attempted;
   }
 
@@ -166,11 +221,13 @@ export function createAdb({
     // 무인 운영이 되지 않는다.
     async resolveDevice() {
       try {
-        return selectDevice(await listDevices(), { preferredSerial: serial });
+        return selectDevice(await listDevices(), { preferredSerial: confirmedAddress || serial });
       } catch (error) {
         const attempted = await reconnect();
         if (attempted.length === 0) throw error;
-        return selectDevice(await listDevices(), { preferredSerial: serial });
+        // 대역 스캔이 새 주소를 확인했으면 설정값 대신 그것으로 고른다. IP가
+        // 바뀐 상황에서 설정의 옛 주소로 고르면 방금 붙여 놓고도 못 찾는다.
+        return selectDevice(await listDevices(), { preferredSerial: confirmedAddress || serial });
       }
     },
 
