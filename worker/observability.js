@@ -42,6 +42,17 @@ const STAGE_CODES = Object.freeze({
 
 // stage가 없는 실패도 있다. adb 명령 자체가 깨지거나 기기가 사라진 경우인데,
 // 그때는 남는 단서가 메시지뿐이라 여기서만 문장을 본다.
+// 코드 버그는 도메인 오류보다 먼저 가른다. `REQUIRED_TIMEZONE is not defined`가
+// /timezone/에 걸려 DEVICE_TIMEZONE_INVALID로 보고된 적이 있다 — 알람을 받은
+// 사람이 태블릿 설정을 들여다보게 만들었고, 실제 원인은 빠진 export였다.
+// 기기를 고쳐서 해결되지 않는 실패는 기기 문제로 부르면 안 된다.
+const BUG_PATTERNS = Object.freeze([
+  / is not defined\b/,
+  / is not a function\b/,
+  /cannot read (?:property|properties)(?: .*?)? of (?:undefined|null)/,
+  /cannot access .* before initialization/,
+]);
+
 const MESSAGE_CODES = Object.freeze([
   ['DEVICE_UNAUTHORIZED', /unauthori[sz]ed/],
   ['DEVICE_TIMEZONE_INVALID', /timezone|time zone/],
@@ -82,5 +93,8 @@ export function classifyError({ stage, message = '' }) {
   if (fromStage) return fromStage;
 
   const text = message.toLowerCase();
+  // stage가 있어도 코드 버그는 코드 버그다. stage 분류보다 먼저 볼 수는 없지만
+  // (stage가 있으면 그 단계에서 난 것이 맞다), 메시지 분류에서는 가장 앞이다.
+  if (BUG_PATTERNS.some((pattern) => pattern.test(text))) return 'WORKER_BUG';
   return MESSAGE_CODES.find(([, pattern]) => pattern.test(text))?.[0] ?? 'WORKER_JOB_FAILED';
 }

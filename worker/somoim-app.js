@@ -8,6 +8,7 @@ import {
   DEFAULT_TARGET_GROUP_NAME,
   JOINED_SECTION_TITLE,
   MY_GROUPS_TAB,
+  REQUIRED_TIMEZONE,
   buildScreenshotKey,
   findByResourceId,
   findCrashDialogButton,

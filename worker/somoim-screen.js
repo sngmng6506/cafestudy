@@ -17,7 +17,7 @@ const KO_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 // 앱은 기기의 벽시계 기준으로 정모 시각을 해석한다. 기기 타임존이 KST가 아니면
 // 화면에 찍힌 값은 맞는데 실제 정모 시각이 어긋나고, verifyForm은 같은 문자열끼리
 // 비교하므로 이 어긋남을 잡지 못한다 — 조용히 틀리는 것보다 실패가 낫다.
-const REQUIRED_TIMEZONE = 'Asia/Seoul';
+export const REQUIRED_TIMEZONE = 'Asia/Seoul';
 
 // 소모임 앱(com.friendscube.somoim) 자동화 상수.
 //

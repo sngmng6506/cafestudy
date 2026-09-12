@@ -113,3 +113,33 @@ test('stage가 없으면 메시지에서 기기 문제만 가려낸다', () => {
   assert.equal(classifyError({ message: 'Device X is unauthorized' }), 'DEVICE_UNAUTHORIZED');
   assert.equal(classifyError({ message: '알 수 없는 실패' }), 'WORKER_JOB_FAILED');
 });
+
+// 코드 버그가 도메인 오류로 둔갑하면 알람을 받은 사람이 엉뚱한 곳을 본다.
+// 실제로 `REQUIRED_TIMEZONE is not defined`가 /timezone/에 걸려
+// DEVICE_TIMEZONE_INVALID로 보고돼, 원인이 빠진 export인데 태블릿 설정을
+// 들여다보게 만들었다.
+test('코드 버그는 기기 문제로 분류하지 않는다', () => {
+  const bugs = [
+    'REQUIRED_TIMEZONE is not defined',
+    'adb.shell is not a function',
+    "Cannot read properties of undefined (reading 'stdout')",
+    'Cannot read property foo of null',
+    'Cannot access deviceId before initialization',
+  ];
+  for (const message of bugs) {
+    assert.equal(classifyError({ stage: 'unknown', message }), 'WORKER_BUG', message);
+  }
+});
+
+test('진짜 기기 문제는 그대로 분류한다', () => {
+  // WORKER_BUG가 앞에 선다고 도메인 분류를 잡아먹으면 안 된다.
+  assert.equal(
+    classifyError({ stage: 'unknown', message: 'Device timezone must be Asia/Seoul but is "UTC"' }),
+    'DEVICE_TIMEZONE_INVALID',
+  );
+  assert.equal(
+    classifyError({ stage: 'unknown', message: 'device is unauthorized' }),
+    'DEVICE_UNAUTHORIZED',
+  );
+  assert.equal(classifyError({ stage: 'unknown', message: '알 수 없는 실패' }), 'WORKER_JOB_FAILED');
+});
