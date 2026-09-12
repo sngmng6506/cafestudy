@@ -96,6 +96,9 @@ Decision: <판단이 개입된 경우만>
 
 ## 테스트
 
+- 커밋 전에 `npm run lint`와 `npm test`를 돌린다. lint는 실행해봐야 아는 실수를
+  잡는 것이 목적이고 포맷팅 규칙은 두지 않는다 — `no-undef` 하나가 실기기 경로에
+  숨어 있던 `REQUIRED_TIMEZONE is not defined`를 잡는다. 테스트만으로는 못 잡는다.
 - 순수 로직은 `node:test` 단위 테스트를 추가한다.
 - DB 통합 테스트는 `DATABASE_URL`이 없으면 skip한다.
 - 버그 수정에는 회귀 방지 테스트를 추가한다.

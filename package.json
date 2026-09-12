@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build --config client/vite.config.js",
-    "check:js": "node scripts/check-js.js",
+    "lint": "eslint .",
     "dev": "node --watch-path=src src/server.js",
     "dev:web": "vite --config client/vite.config.js",
     "start": "node src/server.js",
@@ -39,5 +39,10 @@
   "optionalDependencies": {
     "@tailwindcss/oxide-win32-x64-msvc": "^4.3.2",
     "lightningcss": "^1.32.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0"
   }
 }

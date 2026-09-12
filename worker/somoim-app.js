@@ -3,9 +3,7 @@ import path from 'node:path';
 import { ManualReviewError, TransientError } from './errors.js';
 // 화면 파싱·포맷은 순수 모듈이 갖는다. 이 파일은 기기를 만지는 일만 한다.
 import {
-  ADB_KEYBOARD_IME,
   APP_PACKAGE,
-  DEFAULT_TARGET_GROUP_NAME,
   JOINED_SECTION_TITLE,
   MY_GROUPS_TAB,
   REQUIRED_TIMEZONE,
@@ -212,7 +210,7 @@ export async function launchApp(adb, deviceId, artifactDir) {
 
 
 export async function openJoinedGroup(adb, deviceId, artifactDir, targetGroupName) {
-  let nodes = [];
+  let nodes;
   let tab;
   // uiautomator는 화면이 정착하기 전에 노드를 통째로 빠뜨린다. 실제로 홈 화면이
   // 다 로드된 덤프에 하단 탭 바가 하나도 없어서 job이 실패한 적이 있다.

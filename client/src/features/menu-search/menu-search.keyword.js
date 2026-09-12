@@ -36,7 +36,7 @@ function scoreMenu(item, normalizedQuery, queryTokens) {
     const normalizedCandidate = normalizeSearchText(candidate.text);
     if (!normalizedCandidate) continue;
 
-    let candidateScore = 0;
+    let candidateScore;
     if (normalizedCandidate === normalizedQuery) {
       candidateScore = 1;
     } else if (

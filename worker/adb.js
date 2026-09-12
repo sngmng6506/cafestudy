@@ -144,7 +144,7 @@ export function createAdb({
       const port = Number(/:(\d+)$/.exec(connectAddress || serial)?.[1]);
       if (!deviceSerialNo || !subnet || !Number.isInteger(port)) return false;
 
-      let hosts = [];
+      let hosts;
       try {
         hosts = await scanHosts({ subnet, port, preferHost: previousHost });
       } catch {

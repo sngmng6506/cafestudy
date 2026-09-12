@@ -40,8 +40,8 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: '1'
 
-      - name: Check JavaScript syntax
-        run: npm run check:js
+      - name: Lint
+        run: npm run lint
 
       - name: Apply migrations
         run: npm run db:migrate

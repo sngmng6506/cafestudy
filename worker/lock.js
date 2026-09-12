@@ -49,6 +49,7 @@ export async function acquireWorkerLock({
       throw new Error(
         `Another worker is already running (pid ${holder}, lock ${lockFile}). `
           + 'Only one worker may drive the tablet.',
+        { cause: error },
       );
     }
 
