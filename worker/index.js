@@ -2,7 +2,11 @@ import { createAdb } from './adb.js';
 import { createApiClient } from './api-client.js';
 import { createWorkerConfig } from './config.js';
 import { createDeviceWatch, formatDowntime } from './device-watch.js';
-import { createDeviceNotifier, createDiscordNotifier } from './discord-notifier.js';
+import {
+  createDeviceNotifier,
+  createDiscordNotifier,
+  createStartupNotifier,
+} from './discord-notifier.js';
 import { createCreateMeetupHandler } from './handlers/create-meetup.js';
 import { createDeleteMeetupHandler } from './handlers/delete-meetup.js';
 import { runJob } from './job-runner.js';
@@ -30,6 +34,10 @@ const notifyDiscord = createDiscordNotifier({
   timeoutMs: config.discordAlertTimeoutMs,
 });
 const notifyDeviceEvent = createDeviceNotifier({
+  webhookUrl: config.discordWebhookUrl,
+  timeoutMs: config.discordAlertTimeoutMs,
+});
+const notifyStarted = createStartupNotifier({
   webhookUrl: config.discordWebhookUrl,
   timeoutMs: config.discordAlertTimeoutMs,
 });
@@ -156,6 +164,19 @@ async function main() {
     pollIntervalMs: config.pollIntervalMs,
     lockFile,
   });
+  try {
+    const sent = await notifyStarted({
+      serverUrl: config.serverUrl,
+      allowSubmit: config.allowSubmit,
+      pollIntervalMs: config.pollIntervalMs,
+    });
+    if (sent.sent) log('info', 'discord_alert_sent', { event: 'worker_started' });
+  } catch (error) {
+    log('warn', 'discord_alert_failed', {
+      event: 'worker_started',
+      message: error?.message || 'Unknown Discord webhook error',
+    });
+  }
 
   // 시작할 때 기기 상태를 한 번 확인한다. 없으면 재연결까지 시도하므로,
   // 태블릿이 절전에서 깬 뒤 worker만 다시 켜도 대개 여기서 붙는다.

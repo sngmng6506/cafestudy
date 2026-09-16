@@ -53,6 +53,49 @@ export function createDeviceNotifier({ webhookUrl = '', fetchImpl = fetch, timeo
   };
 }
 
+// job 실패·기기 알림과 별개로, worker 프로세스가 정상 시작했다는 확인용 알림이다.
+// 중복 제거를 하지 않는 이유는 device 알림과 같다 — 매 시작(재부팅, 재시작)마다
+// 알려야 하고, 시작 자체는 자주 일어나지 않아 스팸이 될 일이 없다.
+export function createStartupNotifier({ webhookUrl = '', fetchImpl = fetch, timeoutMs = 5_000 } = {}) {
+  return async function notifyStarted(info) {
+    if (!webhookUrl) return { sent: false, reason: 'disabled' };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetchImpl(webhookUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(toStartupPayload(info)),
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`Discord webhook returned HTTP ${response.status}`);
+      return { sent: true };
+    } finally {
+      clearTimeout(timeout);
+    }
+  };
+}
+
+function toStartupPayload({ serverUrl, allowSubmit, pollIntervalMs }) {
+  const fields = [
+    ['서버', serverUrl],
+    ['allowSubmit', allowSubmit],
+    ['pollIntervalMs', pollIntervalMs],
+  ].filter(([, value]) => value !== undefined && value !== null && value !== '');
+
+  return {
+    username: 'CafeStudy 자동화',
+    embeds: [{
+      title: 'worker 정상 시작됨',
+      description: '소모임 자동화 worker가 시작되어 job을 받을 준비가 됐다.',
+      color: 0x16a34a,
+      fields: fields.map(([name, value]) => ({ name, value: String(value), inline: true })),
+      timestamp: new Date().toISOString(),
+    }],
+  };
+}
+
 function toDevicePayload(event) {
   if (event.type === 'device_recovered') {
     const fields = [
